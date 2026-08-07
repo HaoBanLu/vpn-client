@@ -81,9 +81,9 @@ PowerShell 转 keystore Base64（在仓库根目录）：
 ## 发版命令
 
 ```bash
-# 见完整手册 §5 / §9
-git tag v1.2.1
-git push origin v1.2.1
+# 见完整手册 §0 / §5 / §10
+git tag v1.2.8
+git push origin v1.2.8
 ```
 
 完成后：GitHub → Releases 核对体积与 `.sig` → 管理后台上传发布。

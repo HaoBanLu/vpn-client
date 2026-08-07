@@ -3,10 +3,11 @@
 > **单一事实来源**：本文件记录功能实现状态，与路由、页面、节点协议、订阅类型保持一致。  
 > 状态：`✅ 已完成` · `🚧 开发中/需联调` · `📋 待开发` · `❌ 未集成`
 
-最后核对：**2026-08-07**（版本线 `1.2.8` / code `128`）
+最后核对：**2026-08-08**（版本线 `1.2.8` / code `128`；App Release 已绿）
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
+| 发版铁律/踩坑写入打包手册 | ✅ | 2026-08-08 | [`GitHub自动打包与密钥配置说明.md`](guides/GitHub自动打包与密钥配置说明.md) §0/§9；Android 检查清单同步 |
 | 修复 Android CI 找不到 universal APK | ✅ | 2026-08-07 | 构建已成功产出 `app-universal-release-unsigned.apk`；收集脚本兼容 universal/arm64；发版 `v1.2.8` |
 | 修复 Android Manifest minSdk 冲突 | ✅ | 2026-08-07 | Tauri 默认 24 < mihomo-core 26；`bundle.android.minSdkVersion=26`；发版 `v1.2.7` |
 | 修复 Android serialization 插件未声明 | ✅ | 2026-08-07 | sync 向 gen `build.gradle.kts`/`settings.gradle` 注入 kotlin serialization；发版 `v1.2.6` |
