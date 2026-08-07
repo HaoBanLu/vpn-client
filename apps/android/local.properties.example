@@ -1,0 +1,17 @@
+# 复制为 local.properties（已在 .gitignore，不会提交）
+# cp local.properties.example local.properties
+
+# Debug 包连接本机 Docker API（真机必填电脑局域网 IP；模拟器可删此行用默认 10.0.2.2）
+# 查 IP：bash ../../scripts/dev/android-local-api.sh
+debug.api.base=http://192.168.100.108:48080/
+
+# Android SDK 路径（Android Studio 通常会自动生成）
+# sdk.dir=C\:\\Users\\YourName\\AppData\\Local\\Android\\Sdk
+
+# Release 正式签名（与 keystore.properties 二选一；生成：bash scripts/create-release-keystore.sh）
+# release.storeFile=keystore/kuayun-release.keystore
+# release.storePassword=你的密码
+# release.keyAlias=key0
+# release.keyPassword=你的密码
+# release.keyAlias=kuayun
+# release.keyPassword=你的密码

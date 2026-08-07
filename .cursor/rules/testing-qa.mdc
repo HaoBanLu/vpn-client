@@ -1,0 +1,27 @@
+---
+description: 测试与验证：失败测优先，以仓库 CI 为准
+globs: "**/*test*/**","**/*_test.go","**/*.test.ts","**/*Test.kt"
+alwaysApply: false
+---
+
+# 测试与验证
+
+## 原则
+
+- 修 Bug：先写（或补）能复现的失败测试，再修；回归测试保留。
+- 新增公共函数优先单测；关键用户流程考虑仪器化 / E2E。
+- 集成测试隔离外部依赖（Mock），保持快速稳定。
+- **覆盖率**：以仓库实际 CI 门槛为准；核心模块优先，勿虚构「一律 80%」若 CI 未强制。
+- TDD 对核心业务**推荐**，非教条强制每一行。
+
+## 验证命令（改了什么跑什么）
+
+| 改动范围 | 建议命令 |
+|----------|----------|
+| `apps/android` | `cd apps/android && ./gradlew :app:testDebugUnitTest` |
+| `apps/tauri` | `cd apps/tauri && npm test` |
+| Go `internal/` | `go test ./internal/...`（或相关包） |
+| `frontend/admin` | 项目既有 lint/test（见该目录 README） |
+| 协议/init.sql | 含 `init_sql_protocol_guard_test.go` |
+
+无法运行时：最终回复必须说明未验证内容与原因。

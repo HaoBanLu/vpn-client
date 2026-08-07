@@ -1,0 +1,20 @@
+---
+description: Android App：TUN 数据面、假连防护、隐私基线
+globs: apps/android/**/*
+alwaysApply: false
+---
+
+# Android App 规范
+
+- 子项目说明见 [`apps/android/AGENTS.md`](apps/android/AGENTS.md)。
+- 内核：Mihomo TUN；全流量「已保护」须 **系统 VPN Network 真实出网**（`vpn_network_ok` / VALIDATED）；禁止仅凭 mixed-port / TUN 字节判定「已联网」（P0-11）。跨云自身不得强制 disallow，否则探测与浏览器不同路。
+- `dataplane inactive` 必须断开并提示（`disconnectDataplaneInactive`），禁止长期假连。
+- 海外回国首连：硬门禁可留，但须 `PostConnectVerifyPolicy`（海外+回国加长 settle/次数）；禁止再砍成过短首连重试误杀缅甸等经港 Reality 回国线（见 `apps/android/AGENTS.md`）。
+- **切网 / 断网恢复（防回归，2026-08）**：自动重连开启时一律 **直接完整重连**；禁止改回 HEAL+探测 OK。**须先备配置（API/缓存）再 `disconnectHoldingKillSwitch`**，禁止先 KS 再拉 API（会 30s 超时）。单测 `autoReconnectEnabled_neverReturnsHeal` / `AutoReconnectPrepPolicyTest` 须保持绿。细则见 `apps/android/AGENTS.md`。
+- 默认：`blockOnConnectFailure=false`；`AUTO_FAILOVER_ENABLED=false`；隐私引导静默基线。
+- 默认 TUN 栈倾向 gvisor；栈切换失败须有用户可见提示。
+- 协议门控与 Tauri 对齐：`AppProtocolSupport`（sing-box 族中转可连；OV/WG native-only）。
+- 用户可见 UX 变更同步 `docs/功能todo.md`；跨端能力见对齐清单（TUN/KS **不对齐**到桌面）。
+- 验证：`./gradlew :app:testDebugUnitTest`；发版见 `docs/guides/App-Android-发版检查清单.md`。
+- `scripts/_emulator_shots/`、`scripts/**/__pycache__/` 为本地产物，勿提交。
+- 注释与用户文案：中文。

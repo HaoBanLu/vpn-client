@@ -1,0 +1,139 @@
+name: Tauri Desktop CI
+
+on:
+  push:
+    paths:
+      - 'apps/tauri/**'
+      - '.github/workflows/tauri-ci.yml'
+  pull_request:
+    paths:
+      - 'apps/tauri/**'
+      - '.github/workflows/tauri-ci.yml'
+
+concurrency:
+  group: tauri-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tauri-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/tauri/package-lock.json
+      - run: npm ci
+      - run: npm run test
+      - run: npm run build
+
+  tauri-rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/tauri/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo check
+
+  tauri-linux-build:
+    name: Linux desktop (deb)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: apps/tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - run: npm ci
+      - run: npm run tauri:linux:build
+
+  tauri-macos-build:
+    name: macOS desktop (dmg)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - run: npm ci
+      - run: npm run tauri:mac:build
+
+  tauri-windows-build:
+    name: Windows desktop (nsis)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Build Windows installer (CI smoke)
+        env:
+          VITE_API_BASE_URL: https://example.com/api
+        run: |
+          npm ci
+          npm run tauri:win:build
+
+  tauri-ios-build:
+    name: iPhone (Simulator xcodebuild)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - run: npm run tauri:ios:check

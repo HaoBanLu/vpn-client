@@ -1,0 +1,18 @@
+---
+description: Tauri 桌面/iOS：系统代理 MVP，不对齐 TUN/KS
+globs: apps/tauri/**/*
+alwaysApply: false
+---
+
+# Tauri 客户端规范
+
+- 子项目说明见 [`apps/tauri/AGENTS.md`](apps/tauri/AGENTS.md)。
+- 对齐清单：[`docs/product/Tauri-Android功能对齐.md`](docs/product/Tauri-Android功能对齐.md)。
+- 桌面 MVP：**系统代理**（`DESKTOP_MVP_PROXY_ONLY`）；TUN / Kill Switch UI **不对齐** Android。
+- 共享 UI/API 放 `src/`；桌面 VPN 在 `src-tauri/src/vpn/`；iOS 在 `platforms/ios/`。
+- 「我的」子页挂 `/main/*`，保持侧栏。
+- 布局复用 `KyTabPage` / `KyStack` / `KyGrid2`。
+- 跨端应对齐：协议门控、连接中可中断/切节点、关自动 failover、速率 warmup/cap、**断网/网卡恢复**。
+- **断网 / 网卡恢复（防回归，2026-08）**：对齐 Android 3.15.7——自动重连开启时 `online` → **直接完整重连**（1.5s 防抖），禁止仅 `vpn_heal`+探测 OK 当恢复。细则见 `apps/tauri/AGENTS.md`。
+- 功能状态同步根目录 `docs/功能todo.md`。
+- 验证：`cd apps/tauri && npm test`；VPN 真连须在 **Tauri 窗口** E2E，浏览器不能测 invoke。

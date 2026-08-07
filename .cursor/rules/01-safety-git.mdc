@@ -1,0 +1,36 @@
+---
+description: 安全红线与 Git 安全：密钥、破坏性操作、无关改动
+alwaysApply: true
+---
+
+# 安全与 Git
+
+## 安全红线
+
+- 禁止提交密钥、令牌、密码、私钥、数据库连接串、生产 SSH 密码。
+- `.env`、本地凭据、用户数据、含密钥的调试产物不进版本库（优先用 `.env.example` / `credentials.example.yaml`）。
+- 外部输入必须校验；防注入 / XSS / 路径穿越。
+- 上传限制类型、大小、路径与权限。
+- 权限判断在可信后端，不能只靠前端藏按钮。
+- 日志可记业务事件与错误上下文，禁止明文密码/令牌/身份证等。
+- `ssh_debug/` 只提交排障**脚本**；`credentials.local.yaml`、运行产物、`.tools/` 缓存勿进库；分析日志注意脱敏。
+
+## 禁止入库的本地产物
+
+生产 API 走 **Docker 镜像内构建**（容器内 `./api`），勿把本机编译结果提交进 Git：
+
+- 根目录：`api` / `api.exe` / `api.linux`（及同类 `server`/`main` 二进制）
+- `**/__pycache__/`、`*.pyc`
+- `apps/android/scripts/_emulator_shots/`（截图、logcat、抓包 yaml）
+- `ssh_debug/` 下 `_*.json|_*.txt`、`ui_*`、`last_*`、clash/config dump、`.docker_test/`
+
+以上已由根 `.gitignore` 覆盖；提交前若仍出现在 `git status`，应删除或取消暂存，并检查 ignore 是否失效。
+
+## Git 安全
+
+- 仅在用户明确要求时创建 commit / PR / push。
+- 禁止 force push 到 main/master；禁止擅自 amend 已推送提交。
+- 禁止破坏性操作（hard reset、丢弃用户修改），除非用户明确要求。
+- 不更新 git config；不使用需交互的 `git rebase -i` / `git add -i`。
+- 工作区有与当前任务无关的改动：保留并绕开，不要擅自处理。
+- 提交信息说明业务目的，禁止只写 `update`。

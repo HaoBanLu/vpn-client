@@ -1,0 +1,37 @@
+# Build
+**/build/
+**/.gradle/
+**/node_modules/
+**/target/
+**/dist/
+**/.vite/
+**/.cxx/
+**/.idea/
+*.iml
+local.properties
+keystore.properties
+*.apk
+*.aab
+*.ipa
+*.dmg
+*.AppImage
+*.deb
+*.exe
+*.msi
+*.log
+.DS_Store
+Thumbs.db
+
+# Android emulator / debug dumps
+apps/android/scripts/_emulator_shots/
+**/__pycache__/
+*.pyc
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Tauri
+apps/tauri/src-tauri/gen/
+apps/tauri/src-tauri/target/

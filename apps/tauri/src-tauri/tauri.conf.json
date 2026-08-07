@@ -1,0 +1,66 @@
+{
+    "$schema":  "https://schema.tauri.app/config/2",
+    "productName":  "跨云",
+    "version":  "1.5.2",
+    "identifier":  "com.vpn.tauri",
+    "build":  {
+                  "beforeDevCommand":  "npm run dev",
+                  "devUrl":  "http://127.0.0.1:5173",
+                  "beforeBuildCommand":  "npm run build",
+                  "frontendDist":  "../dist"
+              },
+    "app":  {
+                "withGlobalTauri":  true,
+                "windows":  [
+                                {
+                                    "label":  "splash",
+                                    "title":  "跨云 · 正在启动",
+                                    "url":  "splash.html",
+                                    "width":  380,
+                                    "height":  460,
+                                    "resizable":  false,
+                                    "maximizable":  false,
+                                    "minimizable":  false,
+                                    "decorations":  false,
+                                    "center":  true,
+                                    "visible":  true,
+                                    "skipTaskbar":  true,
+                                    "alwaysOnTop":  true,
+                                    "focus":  true,
+                                    "backgroundColor":  "#0a0e17"
+                                }
+                            ],
+                "security":  {
+                                 "csp":  null
+                             }
+            },
+    "bundle":  {
+                   "active":  true,
+                   "targets":  [
+                                   "nsis"
+                               ],
+                   "createUpdaterArtifacts":  true,
+                   "useLocalToolsDir":  true,
+                   "icon":  [
+                                "icons/32x32.png",
+                                "icons/128x128.png",
+                                "icons/128x128@2x.png",
+                                "icons/icon.icns",
+                                "icons/icon.ico"
+                            ],
+                   "resources":  {
+                                     "resources/bin/":  "bin/"
+                                 }
+               },
+    "plugins":  {
+                    "updater":  {
+                                    "active":  true,
+                                    "dialog":  false,
+                                    "dangerousInsecureTransportProtocol":  true,
+                                    "endpoints":  [
+                                                      "http://192.229.87.112:44080/api/v1/client/version/tauri-manifest?target={{target}}&current_version={{current_version}}"
+                                                  ],
+                                    "pubkey":  "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM2MzQxOTRDRTMzRUQzMApSV1F3N1RQT2xFRmpBMHlvd0dxUnJ3Yll1QmhhaVJ3Wmhjd1RLWUh0RFFKdFJXWHovNnJNdXhzRQo="
+                                }
+                }
+}

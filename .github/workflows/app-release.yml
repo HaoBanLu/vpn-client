@@ -1,0 +1,328 @@
+name: App Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: app-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android-release:
+    name: Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Setup Android signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: bash ../../scripts/ci/setup-android-signing.sh .
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Fetch Mihomo native libs (full APK)
+        run: bash scripts/setup-mihomo-native.sh
+
+      - name: Unit tests + Release build
+        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease -PreleaseArm64Only=true --no-daemon
+
+      - name: Verify full APK contains native libs
+        run: |
+          APK="app/build/outputs/apk/release/app-arm64-v8a-release.apk"
+          test -f "$APK"
+          SIZE=$(stat -c%s "$APK")
+          echo "APK size: $SIZE bytes"
+          if [ "$SIZE" -lt 30000000 ]; then
+            echo "ERROR: APK too small (<30MB); native libs likely missing. Expected ~49MB full arm64 release." >&2
+            exit 1
+          fi
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libclash.so' || {
+            echo "ERROR: lib/arm64-v8a/libclash.so not found in APK" >&2
+            exit 1
+          }
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libbridge.so' || {
+            echo "ERROR: lib/arm64-v8a/libbridge.so not found in APK" >&2
+            exit 1
+          }
+
+      - name: Rename APK artifact
+        run: |
+          VERSION_NAME=$(grep -E '^\s*versionName\s*=' app/build.gradle.kts | head -1 | sed -E 's/.*=\s*"([^"]+)".*/\1/')
+          VERSION_CODE=$(grep -E '^\s*versionCode\s*=' app/build.gradle.kts | head -1 | sed -E 's/.*=\s*([0-9]+).*/\1/')
+          cp "app/build/outputs/apk/release/app-arm64-v8a-release.apk" "../kuayun-android-${VERSION_NAME}-${VERSION_CODE}-arm64.apk"
+        working-directory: apps/android
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: apps/kuayun-android-*.apk
+          if-no-files-found: error
+
+  tauri-windows:
+    name: Windows NSIS
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install dependencies and test
+        run: npm ci
+
+      - name: Prepare Tauri release build
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: node ../../scripts/ci/prepare-tauri-release-build.mjs .
+
+      - name: Fetch Mihomo binary (full desktop bundle)
+        run: npm run fetch:mihomo
+
+      - name: Build Windows installer
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          $mihomo = Get-Item src-tauri/resources/bin/mihomo.exe -ErrorAction Stop
+          # 未压缩 mihomo.exe 通常 ~25–40MB；空壳安装包曾约 3.6MB
+          if ($mihomo.Length -lt 8MB) {
+            throw "mihomo.exe too small ($($mihomo.Length) bytes); fetch:mihomo likely failed"
+          }
+          Write-Host "mihomo.exe size: $($mihomo.Length) bytes"
+          npm run test
+          npm run tauri:win:build
+
+      - name: Collect Windows artifacts
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          $bundle = "src-tauri/target/release/bundle"
+          # 确认 release 产物内嵌了 resources/bin/mihomo.exe
+          $bundled = @(
+            "src-tauri/target/release/bin/mihomo.exe",
+            "src-tauri/target/release/resources/bin/mihomo.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $bundled) {
+            throw "bundled mihomo.exe not found under target/release after tauri build"
+          }
+          $bundledSize = (Get-Item $bundled).Length
+          if ($bundledSize -lt 8MB) {
+            throw "bundled mihomo.exe too small ($bundledSize bytes): $bundled"
+          }
+          Write-Host "bundled mihomo: $bundled ($bundledSize bytes)"
+          New-Item -ItemType Directory -Force -Path release-out | Out-Null
+          Get-ChildItem "$bundle/nsis/*-setup.exe" | ForEach-Object {
+            # NSIS 压缩后全量包通常 ~10–15MB；空壳曾约 3.6MB
+            if ($_.Length -lt 8MB) {
+              throw "Windows installer too small ($($_.Length) bytes); mihomo likely not bundled."
+            }
+            Write-Host "installer: $($_.Name) ($($_.Length) bytes)"
+            Copy-Item $_.FullName "release-out/kuayun-windows-$version-x64-setup.exe"
+          }
+          Get-ChildItem "$bundle/nsis/*.sig" -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName "release-out/"
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tauri-windows
+          path: apps/tauri/release-out/*
+          if-no-files-found: error
+
+  tauri-macos:
+    name: macOS DMG
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install dependencies and test
+        run: npm ci
+
+      - name: Prepare Tauri release build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: node ../../scripts/ci/prepare-tauri-release-build.mjs .
+
+      - name: Fetch Mihomo binary (full desktop bundle)
+        run: npm run fetch:mihomo
+
+      - name: Build macOS DMG
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # 无 Developer ID 时使用 ad-hoc，避免 CI codesign 失败
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_SIGNING_IDENTITY || '-' }}
+        run: |
+          test -f src-tauri/resources/bin/mihomo || { echo "mihomo binary missing after fetch:mihomo" >&2; exit 1; }
+          npm run test
+          npm run tauri:mac:build
+
+      - name: Collect macOS artifacts
+        run: |
+          # macOS 自带 BSD sed，不支持 \s；用 Node 读 JSON 最稳
+          VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [[ -z "$VERSION" || "$VERSION" == *'"'* ]]; then
+            echo "ERROR: invalid VERSION='$VERSION'" >&2
+            exit 1
+          fi
+          mkdir -p release-out
+          shopt -s nullglob
+          for f in src-tauri/target/release/bundle/dmg/*.dmg; do
+            cp "$f" "release-out/kuayun-macos-${VERSION}.dmg"
+          done
+          for f in src-tauri/target/release/bundle/dmg/*.sig; do
+            cp "$f" release-out/
+          done
+          ls -la release-out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tauri-macos
+          path: apps/tauri/release-out/*
+          if-no-files-found: error
+
+  ios-ipa:
+    name: iPhone IPA
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: apps/tauri
+    env:
+      HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE_BASE64 != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_PROVISIONING_PROFILE_APP_BASE64 != '' && secrets.APPLE_PROVISIONING_PROFILE_TUNNEL_BASE64 != '' && secrets.APPLE_TEAM_ID != '' && secrets.KEYCHAIN_PASSWORD != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip iOS IPA when Apple secrets are missing
+        if: env.HAS_APPLE_SIGNING != 'true'
+        run: echo 'Apple signing secrets missing; skip iPhone IPA and continue release for Android/Windows/macOS.'
+
+      - uses: actions/setup-go@v5
+        if: env.HAS_APPLE_SIGNING == 'true'
+        with:
+          go-version-file: ../../go.mod
+          cache: false
+
+      - name: Cache Mihomo xcframework
+        if: env.HAS_APPLE_SIGNING == 'true'
+        uses: actions/cache@v4
+        with:
+          path: apps/tauri/platforms/ios/vendor/Mihomo.xcframework
+          key: mihomo-xcfw-${{ runner.os }}-${{ hashFiles('apps/tauri/scripts/build-mihomo-ios-xcframework.sh', 'apps/tauri/platforms/ios/native/**') }}
+          restore-keys: |
+            mihomo-xcfw-${{ runner.os }}-
+
+      - name: Setup Apple signing
+        if: env.HAS_APPLE_SIGNING == 'true'
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_APP_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_APP_BASE64 }}
+          APPLE_PROVISIONING_PROFILE_TUNNEL_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_TUNNEL_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: bash ../../scripts/ci/setup-apple-signing.sh
+
+      - name: Install xcodegen
+        if: env.HAS_APPLE_SIGNING == 'true'
+        run: brew install xcodegen
+
+      - name: Build signed IPA
+        if: env.HAS_APPLE_SIGNING == 'true'
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
+        run: npm run tauri:ios:build:ipa
+
+      - name: Collect IPA artifact
+        if: env.HAS_APPLE_SIGNING == 'true'
+        run: |
+          mkdir -p release-out
+          cp platforms/ios/build/kuayun-ios-*.ipa release-out/
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_APPLE_SIGNING == 'true'
+        with:
+          name: ios-ipa
+          path: apps/tauri/release-out/*.ipa
+          if-no-files-found: error
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - android-release
+      - tauri-windows
+      - tauri-macos
+      - ios-ipa
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write release metadata
+        run: bash scripts/ci/write-release-versions.sh release-meta.json
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Generate release notes
+        run: bash scripts/ci/format-release-notes.sh release-meta.json > release-notes.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: release-artifacts/**/*
+          fail_on_unmatched_files: false

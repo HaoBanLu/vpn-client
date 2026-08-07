@@ -1,0 +1,61 @@
+# Node/Vite
+node_modules/
+dist/
+.vite/
+
+# Tauri/Rust
+src-tauri/target/
+
+# Tauri Android generated project.
+# Keep source in src-tauri/android/ and regenerate gen/android with scripts.
+src-tauri/gen/
+src-tauri/gen/**
+src-tauri/**/build/
+src-tauri/**/.gradle/
+src-tauri/**/.kotlin/
+src-tauri/**/.cxx/
+src-tauri/**/.externalNativeBuild/
+src-tauri/**/captures/
+src-tauri/**/outputs/
+
+# Packages and installers
+*.apk
+*.aab
+*.apks
+*.msi
+*.dmg
+*.appimage
+*.AppImage
+*.deb
+*.rpm
+
+# Local env files
+.env
+.env.*
+!.env.example
+src-tauri/**/local.properties
+
+# Downloaded runtime binaries and signing material
+src-tauri/resources/bin/*
+!src-tauri/resources/bin/.gitkeep
+.tauri/
+*.jks
+*.keystore
+**/keystore.properties
+**/signing.properties
+
+# Logs and local analysis outputs
+*.log
+*.hprof
+**/lint-results*.html
+**/lint-results*.xml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# iOS native (place Mihomo.xcframework under platforms/ios/vendor/ locally)
+platforms/ios/vendor/Mihomo.xcframework/
+platforms/ios/PacketTunnel/Frameworks/
+platforms/ios/.mihomo_native_enabled
+.cache/mihomo-ios-build/

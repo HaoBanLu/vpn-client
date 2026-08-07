@@ -1,0 +1,63 @@
+{
+  "version": "0.2.0",
+  "description": "Tauri 跨端 MVP 验证矩阵（2026-07-05：桌面=系统代理；TUN/Kill Switch/FCM 仅 Android）",
+  "platforms": ["android", "windows", "macos", "linux", "ios"],
+  "categories": [
+    {
+      "id": "auth",
+      "name": "认证与会话",
+      "cases": [
+        { "id": "auth-login", "steps": "邮箱密码登录", "expected": "JWT 持久化，进入主壳", "android": "required", "desktop": "required", "ios": "required" },
+        { "id": "auth-session-expired", "steps": "API 401", "expected": "自动断开 VPN 并跳转登录", "android": "required", "desktop": "required", "ios": "required" },
+        { "id": "auth-heartbeat", "steps": "前台/VPN 连接时心跳", "expected": "POST /session/heartbeat 正常", "android": "required", "desktop": "optional", "ios": "optional" }
+      ]
+    },
+    {
+      "id": "vpn-connect",
+      "name": "VPN 连接",
+      "cases": [
+        { "id": "vpn-permission", "steps": "首次连接", "expected": "Android/iOS VPN 授权；桌面设置系统代理", "android": "required", "desktop": "required", "ios": "required" },
+        { "id": "vpn-connect-proxy", "steps": "有效订阅下点击连接（桌面系统代理）", "expected": "connected + 出口 IP 变化", "android": "n/a", "desktop": "required", "ios": "n/a" },
+        { "id": "vpn-connect-tun", "steps": "有效订阅下 TUN 连接", "expected": "connected + 全隧道", "android": "required", "desktop": "n/a", "ios": "blocked" },
+        { "id": "vpn-disconnect", "steps": "点击断开", "expected": "代理/TUN 关闭，路由恢复", "android": "required", "desktop": "required", "ios": "required" },
+        { "id": "vpn-reconnect-node", "steps": "已连接时切换节点", "expected": "reload config，不崩溃", "android": "required", "desktop": "required", "ios": "optional" },
+        { "id": "vpn-app-bypass", "steps": "分应用直连", "expected": "仅 Android OS 能力", "android": "optional", "desktop": "n/a", "ios": "n/a" },
+        { "id": "vpn-kill-switch", "steps": "断线后阻断外网", "expected": "仅 Android Kill Switch", "android": "required", "desktop": "n/a", "ios": "n/a" }
+      ]
+    },
+    {
+      "id": "vpn-probe",
+      "name": "连通性探测",
+      "cases": [
+        { "id": "probe-basic", "steps": "连接后探测", "expected": "基础联网 OK", "android": "required", "desktop": "optional", "ios": "optional" },
+        { "id": "probe-privacy-leak", "steps": "泄露自检", "expected": "出口 IP/DNS 检查", "android": "optional", "desktop": "required", "ios": "optional" }
+      ]
+    },
+    {
+      "id": "business",
+      "name": "业务功能",
+      "cases": [
+        { "id": "biz-packages", "steps": "购买套餐", "expected": "余额扣款，订阅生效", "android": "required", "desktop": "required", "ios": "required" },
+        { "id": "biz-recharge", "steps": "USDT 充值流程", "expected": "下单/上传凭证/状态轮询", "android": "required", "desktop": "required", "ios": "optional" },
+        { "id": "biz-nodes", "steps": "节点列表与延迟", "expected": "与 /nodes API 一致", "android": "required", "desktop": "required", "ios": "required" },
+        { "id": "biz-traffic", "steps": "流量统计页", "expected": "服务端统计展示正确", "android": "required", "desktop": "required", "ios": "required" }
+      ]
+    },
+    {
+      "id": "lifecycle",
+      "name": "生命周期与清理",
+      "cases": [
+        { "id": "life-tray", "steps": "关闭窗口到托盘", "expected": "VPN 保持", "android": "n/a", "desktop": "required", "ios": "n/a" },
+        { "id": "life-logout", "steps": "登出", "expected": "断开 VPN，清理 token", "android": "required", "desktop": "required", "ios": "required" }
+      ]
+    },
+    {
+      "id": "update",
+      "name": "更新",
+      "cases": [
+        { "id": "upd-check", "steps": "检查更新", "expected": "/client/version 按平台上报", "android": "required", "desktop": "required", "ios": "optional" },
+        { "id": "upd-install", "steps": "安装更新", "expected": "Android APK / 桌面安装包", "android": "required", "desktop": "required", "ios": "n/a" }
+      ]
+    }
+  ]
+}

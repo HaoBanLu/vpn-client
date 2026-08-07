@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  CI 构建前由 ios-build-ipa.sh 根据环境变量覆写 teamID / method。
+  IOS_EXPORT_METHOD: app-store（默认）| ad-hoc | enterprise
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store</string>
+	<key>teamID</key>
+	<string>REPLACE_TEAM_ID</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>compileBitcode</key>
+	<false/>
+	<key>signingStyle</key>
+	<string>manual</string>
+</dict>
+</plist>
