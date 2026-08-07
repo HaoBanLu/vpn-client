@@ -33,6 +33,7 @@ src-tauri/**/outputs/
 .env
 .env.*
 !.env.example
+!.env.development.example
 src-tauri/**/local.properties
 
 # Downloaded runtime binaries and signing material

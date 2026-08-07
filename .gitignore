@@ -76,6 +76,7 @@ apps/tauri/**/*.ipa
 apps/tauri/.env
 apps/tauri/.env.*
 !apps/tauri/.env.example
+!apps/tauri/.env.development.example
 apps/tauri/src-tauri/**/local.properties
 apps/tauri/src-tauri/resources/bin/*
 !apps/tauri/src-tauri/resources/bin/.gitkeep
