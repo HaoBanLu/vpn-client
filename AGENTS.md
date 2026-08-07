@@ -7,6 +7,7 @@
 | 路径 | 说明 |
 |------|------|
 | `apps/tauri` | **跨端主工程**：桌面 + Android 发包（Vue）+ iOS |
+| `frontend/shared` | Tauri `@shared/*`（tokens / traffic） |
 | `apps/android` | **已存档**（[`ARCHIVE.md`](apps/android/ARCHIVE.md)）；仅 `mihomo-core` 仍被 Tauri 链接 |
 | `docs/` | 客户端文档（SSOT：`docs/功能todo.md`） |
 
