@@ -3,7 +3,7 @@
 > **仓库**：`vpn-client`（客户端独立仓；控制面 `vpn` 仓不跑客户端发版）  
 > **用途**：Tag 触发自动打包、GitHub Secrets、版本 bump、产物核对、后台发布、**发版铁律与踩坑**  
 > **最后更新**：2026-08-08  
-> **当前版本线**：`1.2.9` / code `129`（以 `apps/tauri` 为准）  
+> **当前版本线**：`1.2.10` / code `130`（以 `apps/tauri` 为准）  
 > **Workflow**：[`app-release.yml`](../../.github/workflows/app-release.yml) · 门禁 [`tauri-ci.yml`](../../.github/workflows/tauri-ci.yml)  
 > **密钥短表**：[`.github/GitHub发版密钥说明.md`](../../.github/GitHub发版密钥说明.md)  
 > **本机备忘模板**：复制 [`.github/GitHub发版密钥本机备忘模板.md`](../../.github/GitHub发版密钥本机备忘模板.md) → `.github/GitHub发版密钥本机备忘.md`（已 gitignore，勿提交）  
@@ -103,13 +103,13 @@ flowchart LR
 
 ## 3. 当前版本对照（以源码为准）
 
-> Tag（如 `v1.2.9`）是发版列车号；用户看到的版本以各端源码为准。下表按 **2026-08-08** 核对。
+> Tag（如 `v1.2.10`）是发版列车号；用户看到的版本以各端源码为准。下表按 **2026-08-08** 核对。
 
 | 端 | 用户可见版本 | 版本码 | 改哪里 |
 |----|--------------|--------|--------|
-| **Android / Windows / macOS / Linux** | `1.2.9` | `129` | **统一**：`apps/tauri/package.json`、`src-tauri/tauri.conf.json`、`src/lib/app-meta.ts`；`Cargo.toml` 一并 |
-| **iPhone** | `1.2.9` | `129` | `apps/tauri/platforms/ios/project.yml` |
-| **发版 Tag** | `v1.2.9` | — | 仅 Git Tag |
+| **Android / Windows / macOS / Linux** | `1.2.10` | `130` | **统一**：`apps/tauri/package.json`、`src-tauri/tauri.conf.json`、`src/lib/app-meta.ts`；`Cargo.toml` 一并 |
+| **iPhone** | `1.2.10` | `130` | `apps/tauri/platforms/ios/project.yml` |
+| **发版 Tag** | `v1.2.10` | — | 仅 Git Tag |
 
 > **`apps/android` 已存档**：不再改其 `build.gradle.kts` 发版。CI Android APK 来自 `apps/tauri`。
 

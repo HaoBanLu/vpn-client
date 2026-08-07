@@ -127,9 +127,7 @@ export const useConnectStore = defineStore('connect', () => {
   const exitCity = ref<string | null>(null)
   let autoReconnectInProgress = false
   let networkRestoreInProgress = false
-  let healthFailStreak = 0
   let networkRestoreDebounceTimer: ReturnType<typeof setTimeout> | null = null
-  let degradedDisconnectTimer: ReturnType<typeof setTimeout> | null = null
   let healthProbeTimer: ReturnType<typeof setInterval> | null = null
   /** 连接世代号：中断/新连接时递增，丢弃过期的 in-flight connect。 */
   let connectGeneration = 0
@@ -166,18 +164,6 @@ export const useConnectStore = defineStore('connect', () => {
       return
     }
     void updateTrayTooltip('跨云 · 未连接')
-  }
-
-  function clearDegradedTimer() {
-    if (degradedDisconnectTimer) {
-      clearTimeout(degradedDisconnectTimer)
-      degradedDisconnectTimer = null
-    }
-  }
-
-  function scheduleDegradedDisconnect() {
-    // 对齐 Android：探测降级仅记录日志，不再主动断开隧道
-    clearDegradedTimer()
   }
 
   function resetSessionStats() {
@@ -405,7 +391,6 @@ export const useConnectStore = defineStore('connect', () => {
     if (probeFailed) {
       recordProbeFailure()
       appendDebugLog('probe', '连接后质量探测未通过，保持隧道', 'warn')
-      clearDegradedTimer()
       if (connectionState.value === 'connected') {
         actionHint.value = null
         error.value = null
@@ -415,8 +400,6 @@ export const useConnectStore = defineStore('connect', () => {
     }
 
     recordProbeSuccess()
-    healthFailStreak = 0
-    clearDegradedTimer()
     syncTrayTooltip()
 
     const info = await probeExitIp()
@@ -491,7 +474,6 @@ export const useConnectStore = defineStore('connect', () => {
     if (next === 'connected' && prev !== 'connected') {
       connectPending.value = false
       autoReconnectAttempts.value = 0
-      healthFailStreak = 0
       userInitiatedDisconnect.value = false
       markVpnSession(true)
       resetSessionStats()
@@ -504,7 +486,6 @@ export const useConnectStore = defineStore('connect', () => {
       // 在途连接中的 disconnected 已在 applyExternalVpnStatus 过滤；此处仅处理真实结束
       connectPending.value = false
       cancelProbe()
-      clearDegradedTimer()
       stopHealthProbeLoop()
       resetSessionStats()
       if (next === 'disconnected') markVpnSession(false)
@@ -585,7 +566,6 @@ export const useConnectStore = defineStore('connect', () => {
       clearTimeout(networkRestoreDebounceTimer)
       networkRestoreDebounceTimer = null
     }
-    healthFailStreak = 0
     if (connectionState.value === 'connected' && !userInitiatedDisconnect.value) {
       actionHint.value = '网络已断开，恢复后将自动重连'
       appendDebugLog('network', '物理网断开，保持会话等待恢复', 'info')
@@ -720,7 +700,6 @@ export const useConnectStore = defineStore('connect', () => {
     userInitiatedDisconnect.value = true
     autoReconnectAttempts.value = 0
     cancelProbe()
-    clearDegradedTimer()
     stopHealthProbeLoop()
     isSwitching.value = false
     connectPending.value = false
@@ -946,7 +925,6 @@ export const useConnectStore = defineStore('connect', () => {
     userInitiatedDisconnect.value = true
     autoReconnectAttempts.value = 0
     cancelProbe()
-    clearDegradedTimer()
     stopHealthProbeLoop()
     isSwitching.value = false
     connectPending.value = false
@@ -974,7 +952,6 @@ export const useConnectStore = defineStore('connect', () => {
     userInitiatedDisconnect.value = false
     autoReconnectAttempts.value = 0
     cancelProbe()
-    clearDegradedTimer()
     stopHealthProbeLoop()
     connectPending.value = false
     markVpnSession(false)
@@ -1027,7 +1004,6 @@ export const useConnectStore = defineStore('connect', () => {
     unlistenStatus?.()
     unlistenStats?.()
     stopHealthProbeLoop()
-    clearDegradedTimer()
     if (networkRestoreDebounceTimer) {
       clearTimeout(networkRestoreDebounceTimer)
       networkRestoreDebounceTimer = null

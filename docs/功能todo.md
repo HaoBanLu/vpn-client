@@ -83,7 +83,8 @@
 | 桌面连接页/流量对齐 Android | ✅ | 2026-08-08 | `ConnectSessionCard` 同行速率+时长；文案「剩余 GB」；速率改用累计字节差+EMA（禁用 `/traffic` 瞬时）；时长 `mm:ss` 补零 |
 | 「我的」入口精简 | ✅ | 2026-08-08 | 订阅导出/规则直连/诊断日志仅 `app_debug_enabled` 可见；iOS Profile 同步 |
 | Tauri Android 应用内 APK 更新 | ✅ | 2026-08-08 | `VpnPlugin.installApkUpdate` + `AppUpdateInstaller`；FileProvider；前端 `installAppUpdate` 优先走插件 |
-| 发版 1.2.9 | ✅ | 2026-08-08 | 软探测/连接页对齐/「我的」精简/Android 应用内更新；Tag `v1.2.9` code `129` |
+| 发版 1.2.9 | ⚠️ | 2026-08-08 | Tag 已打；CI 因 `connect.ts` 未使用变量 TS6133 失败 |
+| 发版 1.2.10 | ✅ | 2026-08-08 | 清理 dead code 后重发；Tag `v1.2.10` code `130` |
 | 桌面选节点后先跳连接页 | ✅ | 2026-07-25 | 对齐 Android `selectedTab=0` 再 `connectToNode` |
 | 桌面上下行偶发显示 — | ✅ | 2026-07-25 | `formatDisplaySpeed` 对齐 Android；EMA 平滑；`secret: ""` 保证 `/connections` 可读；JSON 总量支持 float；优先 Mihomo `/traffic` 瞬时速率 |
 | 桌面连接后窗口无响应 | ✅ | 2026-07-25 | Win 系统代理补 `ProxyOverride` 绕过 localhost（避免 WebView/Vite 回环）；探测总预算 ≤12s、优先 curl 且静默 PowerShell；`vpn_connect`/`vpn_probe` 走 `spawn_blocking` |
