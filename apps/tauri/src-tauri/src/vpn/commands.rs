@@ -431,5 +431,12 @@ pub fn vpn_kill_switch_release() -> Result<(), String> {
 
 #[tauri::command]
 pub fn vpn_kill_switch_status() -> Result<bool, String> {
-    Ok(super::kill_switch::is_engaged())
+    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+    {
+        Ok(super::kill_switch::is_engaged())
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    {
+        Ok(false)
+    }
 }

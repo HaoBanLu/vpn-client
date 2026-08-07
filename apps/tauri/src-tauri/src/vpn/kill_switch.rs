@@ -289,13 +289,13 @@ mod linux {
             let detail = format!("{stderr}{stdout}").trim().to_string();
             let lower = detail.to_lowercase();
             if lower.contains("permission denied") || lower.contains("must be root") {
-                return Err(KillSwitchError::Permission(if detail.isEmpty() {
+                return Err(KillSwitchError::Permission(if detail.is_empty() {
                     "需要 root 权限执行 iptables".into()
                 } else {
                     detail
                 }));
             }
-            Err(KillSwitchError::Command(if detail.isEmpty() {
+            Err(KillSwitchError::Command(if detail.is_empty() {
                 "iptables failed".into()
             } else {
                 detail

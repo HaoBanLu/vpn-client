@@ -1,8 +1,28 @@
 mod vpn;
-mod tray;
 mod privacy;
 
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+#[cfg(desktop)]
+mod tray;
+
+#[cfg(not(desktop))]
+mod tray {
+    /// 移动端无系统托盘；保留同名命令避免 invoke_handler 分叉。
+    pub struct HideOnCloseState(pub std::sync::Mutex<bool>);
+
+    #[tauri::command]
+    pub fn tray_set_hide_on_close(_enabled: bool) -> Result<(), String> {
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub fn tray_update_tooltip(_text: String) -> Result<(), String> {
+        Ok(())
+    }
+}
+
+use tauri::Manager;
+#[cfg(desktop)]
+use tauri::{WebviewUrl, WebviewWindowBuilder};
 use vpn::VpnState;
 
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
@@ -28,28 +48,42 @@ fn vpn_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 /// 启动完成：先显示主窗口并抢焦点，再关闭 splash，减少切换空隙闪桌面。
 #[tauri::command]
 fn boot_reveal_main(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(main) = app.get_webview_window("main") {
-        let _ = main.set_title("跨云");
-        let _ = main.set_skip_taskbar(false);
-        let _ = main.center();
-        main.show().map_err(|e| e.to_string())?;
-        let _ = main.set_focus();
+    #[cfg(desktop)]
+    {
+        if let Some(main) = app.get_webview_window("main") {
+            let _ = main.set_title("跨云");
+            let _ = main.set_skip_taskbar(false);
+            let _ = main.center();
+            main.show().map_err(|e| e.to_string())?;
+            let _ = main.set_focus();
+        }
+        // 主窗已显示后再关 splash（splash 为 alwaysOnTop，顺序可避免露桌面）
+        if let Some(splash) = app.get_webview_window("splash") {
+            let _ = splash.close();
+        }
     }
-    // 主窗已显示后再关 splash（splash 为 alwaysOnTop，顺序可避免露桌面）
-    if let Some(splash) = app.get_webview_window("splash") {
-        let _ = splash.close();
+    #[cfg(mobile)]
+    {
+        let _ = app;
     }
     Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(vpn_plugin())
-        .manage(VpnState::default())
-        .manage(tray::HideOnCloseState(std::sync::Mutex::new(true)))
+        .manage(VpnState::default());
+
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .manage(tray::HideOnCloseState(std::sync::Mutex::new(true)));
+    }
+
+    builder
         .setup(|app| {
             #[cfg(desktop)]
             {

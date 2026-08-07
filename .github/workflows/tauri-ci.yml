@@ -47,11 +47,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
             librsvg2-dev \
-            patchelf \
-            libgtk-3-dev \
-            pkg-config
+            patchelf
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo check
 
@@ -69,10 +73,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
             librsvg2-dev \
-            patchelf \
-            libgtk-3-dev
+            patchelf
 
       - uses: actions/setup-node@v4
         with:
@@ -147,7 +156,7 @@ jobs:
   tauri-ios-build:
     name: iPhone (Simulator xcodebuild)
     runs-on: macos-latest
-    # Network Extension + App Group 在无签名 Simulator 上常 exit 65；正式 IPA 由 app-release 负责
+    # Network Extension 无签名 Simulator 常 exit 65；正式 IPA 由 app-release 负责
     continue-on-error: true
     defaults:
       run:
@@ -161,4 +170,10 @@ jobs:
           brew untap aws/tap 2>/dev/null || true
           brew install xcodegen
 
-      - run: npm run tauri:ios:check
+      # 仅验证工程可生成，避免 NE 无签名 xcodebuild 污染门禁
+      - name: Generate Xcode project
+        run: |
+          bash scripts/fetch-mihomo-ios.sh
+          bash scripts/setup-mihomo-ios-native.sh
+          (cd platforms/ios && xcodegen generate)
+          test -d platforms/ios/KuayunVPN.xcodeproj
