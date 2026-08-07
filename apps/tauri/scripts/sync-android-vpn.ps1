@@ -10,13 +10,18 @@ if (-not (Test-Path $GenApp)) {
     throw "gen/android missing; run: npx tauri android init --ci"
 }
 
-$vpnSrc = Join-Path $OverlayMain "java\com\vpn\tauri\vpn"
-$vpnDst = Join-Path $GenMain "java\com\vpn\tauri\vpn"
+$vpnSrc = Join-Path $OverlayMain "java\com\vpn\kuayun\vpn"
+$vpnDst = Join-Path $GenMain "java\com\vpn\kuayun\vpn"
 if (-not (Test-Path $vpnSrc)) {
     throw "VPN sources missing: $vpnSrc"
 }
 if (Test-Path $vpnDst) {
     Remove-Item -Path $vpnDst -Recurse -Force
+}
+# 清理旧包名残留
+$legacyDst = Join-Path $GenMain "java\com\vpn\tauri"
+if (Test-Path $legacyDst) {
+    Remove-Item -Path $legacyDst -Recurse -Force
 }
 New-Item -ItemType Directory -Force -Path (Split-Path $vpnDst) | Out-Null
 Copy-Item -Path $vpnSrc -Destination $vpnDst -Recurse -Force

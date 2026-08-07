@@ -13,12 +13,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Android 正式包：apps/tauri（Vue + VPN overlay）。apps/android 已存档，仅提供 mihomo-core JNI。
   android-release:
-    name: Android APK
+    name: Android APK (Tauri)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/android
+        working-directory: apps/tauri
     steps:
       - uses: actions/checkout@v4
 
@@ -27,50 +28,43 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Setup Android signing
+      - name: Install NDK
+        run: sdkmanager --install "ndk;26.1.10909125"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build signed Tauri Android APK
         env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: bash ../../scripts/ci/setup-android-signing.sh .
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Fetch Mihomo native libs (full APK)
-        run: bash scripts/setup-mihomo-native.sh
-
-      - name: Unit tests + Release build
-        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease -PreleaseArm64Only=true --no-daemon
-
-      - name: Verify full APK contains native libs
         run: |
-          APK="app/build/outputs/apk/release/app-arm64-v8a-release.apk"
-          test -f "$APK"
-          SIZE=$(stat -c%s "$APK")
-          echo "APK size: $SIZE bytes"
-          if [ "$SIZE" -lt 30000000 ]; then
-            echo "ERROR: APK too small (<30MB); native libs likely missing. Expected ~49MB full arm64 release." >&2
-            exit 1
-          fi
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libclash.so' || {
-            echo "ERROR: lib/arm64-v8a/libclash.so not found in APK" >&2
-            exit 1
-          }
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libbridge.so' || {
-            echo "ERROR: lib/arm64-v8a/libbridge.so not found in APK" >&2
-            exit 1
-          }
-
-      - name: Rename APK artifact
-        run: |
-          VERSION_NAME=$(grep -E '^\s*versionName\s*=' app/build.gradle.kts | head -1 | sed -E 's/.*=\s*"([^"]+)".*/\1/')
-          VERSION_CODE=$(grep -E '^\s*versionCode\s*=' app/build.gradle.kts | head -1 | sed -E 's/.*=\s*([0-9]+).*/\1/')
-          cp "app/build/outputs/apk/release/app-arm64-v8a-release.apk" "../kuayun-android-${VERSION_NAME}-${VERSION_CODE}-arm64.apk"
-        working-directory: apps/android
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_HOME/ndk/26.1.10909125}"
+          export NDK_HOME="$ANDROID_NDK_HOME"
+          chmod +x ../../scripts/ci/build-tauri-android-release.sh
+          chmod +x scripts/sync-android-vpn.sh
+          bash ../../scripts/ci/build-tauri-android-release.sh
 
       - uses: actions/upload-artifact@v4
         with:

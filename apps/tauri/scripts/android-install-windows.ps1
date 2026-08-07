@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $ApkRoot = Join-Path $Root "src-tauri\gen\android\app\build\outputs\apk"
-$PackageName = "com.vpn.tauri"
+$PackageName = "com.vpn.kuayun"
 
 function Assert-Adb {
     $adb = Get-Command adb -ErrorAction SilentlyContinue

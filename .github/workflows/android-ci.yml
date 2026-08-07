@@ -1,49 +1,22 @@
-name: Android CI
+# ARCHIVED 2026-08-07：Android 发版已迁至 apps/tauri（app-release.yml）。
+# 本 workflow 仅保留手动触发，便于对照历史 Compose 工程，勿作新版本门禁。
+name: Android CI (archived)
 
 on:
-  push:
-    branches: [main, master, develop]
-    paths:
-      - 'apps/android/**'
-      - '.github/workflows/android-ci.yml'
-  pull_request:
-    paths:
-      - 'apps/android/**'
-      - '.github/workflows/android-ci.yml'
-  schedule:
-    - cron: '0 2 * * *'
   workflow_dispatch:
 
 concurrency:
-  group: android-ci-${{ github.ref }}
+  group: android-ci-archived-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  android-unit-release:
-    name: Unit tests + Release build
+  notice:
+    name: Archived notice
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/android
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Run unit tests
-        run: ./gradlew :app:testDebugUnitTest --no-daemon
-
-      - name: Assemble Release (debug signing for CI)
-        run: ./gradlew :app:assembleRelease -PreleaseArm64Only=true -PuseDebugSigning --no-daemon
-
-      - name: ROM matrix gate (hint)
-        run: bash scripts/rom-matrix-gate.sh
+      - name: apps/android is archived
+        run: |
+          echo "apps/android 已存档，不再作为发版/PR 门禁。"
+          echo "请使用 apps/tauri：npm run tauri:android:build:release"
+          echo "Tag 发版见 .github/workflows/app-release.yml"
+          exit 1

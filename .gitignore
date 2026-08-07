@@ -1,37 +1,98 @@
-# Build
-**/build/
-**/.gradle/
-**/node_modules/
-**/target/
-**/dist/
-**/.vite/
-**/.cxx/
-**/.idea/
-*.iml
-local.properties
-keystore.properties
-*.apk
-*.aab
-*.ipa
-*.dmg
-*.AppImage
-*.deb
-*.exe
-*.msi
-*.log
+# ================================
+# 通用
+# ================================
 .DS_Store
 Thumbs.db
-
-# Android emulator / debug dumps
-apps/android/scripts/_emulator_shots/
+*.log
+logs/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 **/__pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 
-# Env
-.env
-.env.*
-!.env.example
+# ================================
+# Android (apps/android)
+# ================================
+apps/android/.gradle/
+apps/android/build/
+apps/android/app/build/
+apps/android/**/build/
+apps/android/.kotlin/
+apps/android/captures/
+apps/android/local.properties
+apps/android/.idea/
+apps/android/*.iml
+apps/android/app/release/
+apps/android/app/debug/
+apps/android/**/*.apk
+apps/android/**/*.aab
+apps/android/**/outputs/
+apps/android/.cxx/
+apps/android/.externalNativeBuild/
+# 签名材料勿提交（私有仓若刻意跟踪 keystore 可自行放宽）
+apps/android/**/*.jks
+apps/android/**/*.keystore
+apps/android/**/keystore.properties
+apps/android/**/signing.properties
+apps/android/app/libs/*.aar
+apps/android/tmp/
+apps/android/scripts/_emulator_shots/
+apps/android/scripts/**/__pycache__/
+apps/android/**/*.hprof
+apps/android/**/lint-results*.html
+apps/android/**/lint-results*.xml
 
-# Tauri
-apps/tauri/src-tauri/gen/
+# ================================
+# Tauri / 桌面 / iOS 壳 (apps/tauri)
+# ================================
+apps/tauri/node_modules/
+apps/tauri/dist/
+apps/tauri/.vite/
 apps/tauri/src-tauri/target/
+apps/tauri/src-tauri/gen/
+apps/tauri/src-tauri/gen/**
+apps/tauri/src-tauri/**/build/
+apps/tauri/src-tauri/**/.gradle/
+apps/tauri/src-tauri/**/.kotlin/
+apps/tauri/src-tauri/**/.cxx/
+apps/tauri/src-tauri/**/.externalNativeBuild/
+apps/tauri/src-tauri/**/captures/
+apps/tauri/src-tauri/**/outputs/
+apps/tauri/**/*.apk
+apps/tauri/**/*.aab
+apps/tauri/**/*.apks
+apps/tauri/**/*.msi
+apps/tauri/**/*.dmg
+apps/tauri/**/*.appimage
+apps/tauri/**/*.AppImage
+apps/tauri/**/*.deb
+apps/tauri/**/*.rpm
+apps/tauri/**/*.exe
+apps/tauri/**/*.ipa
+apps/tauri/.env
+apps/tauri/.env.*
+!apps/tauri/.env.example
+apps/tauri/src-tauri/**/local.properties
+apps/tauri/src-tauri/resources/bin/*
+!apps/tauri/src-tauri/resources/bin/.gitkeep
+apps/tauri/**/*.jks
+apps/tauri/**/*.keystore
+apps/tauri/**/keystore.properties
+apps/tauri/**/signing.properties
+apps/tauri/**/*.log
+apps/tauri/**/*.hprof
+apps/tauri/**/lint-results*.html
+apps/tauri/**/lint-results*.xml
+# updater 私钥（公钥可在仓库；私钥与密码勿提交）
+apps/tauri/.tauri/updater.key
+apps/tauri/.tauri/updater.key.password
+
+# ================================
+# GitHub 发版本机备忘（含真实密码）
+# ================================
+.github/RELEASE_SECRETS.local.md
+.github/GitHub发版密钥本机备忘.md

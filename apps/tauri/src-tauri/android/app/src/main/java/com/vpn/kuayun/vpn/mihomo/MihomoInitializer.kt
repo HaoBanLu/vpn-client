@@ -1,4 +1,4 @@
-package com.vpn.tauri.vpn.mihomo
+﻿package com.vpn.kuayun.vpn.mihomo
 
 import android.app.Application
 import com.github.kr328.clash.core.bridge.Bridge

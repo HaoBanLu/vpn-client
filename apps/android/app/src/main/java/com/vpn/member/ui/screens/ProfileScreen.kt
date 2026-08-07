@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Shield
@@ -63,6 +64,7 @@ fun ProfileScreen(
     onAbout: () -> Unit,
     onTickets: () -> Unit,
     onSupport: () -> Unit,
+    onHelp: (() -> Unit)? = null,
     onNavigateDebugLog: (() -> Unit)? = null,
     onNavigatePackages: () -> Unit,
     isVip: Boolean = false,
@@ -204,6 +206,16 @@ fun ProfileScreen(
                                 onClick = onTickets,
                             ),
                         )
+                        if (onHelp != null) {
+                            add(
+                                ProfileMenuEntry(
+                                    title = "帮助中心",
+                                    subtitle = "导出订阅链接与连接辅助",
+                                    icon = Icons.Default.Help,
+                                    onClick = { onHelp.invoke() },
+                                ),
+                            )
+                        }
                         if (state.user?.app_debug_enabled == true) {
                             add(
                                 ProfileMenuEntry(

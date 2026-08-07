@@ -1,9 +1,9 @@
-import NetworkExtension
+﻿import NetworkExtension
 import os.log
 
 /// Phase B：App Group Clash 配置 → 本机 mixed-port Mihomo + NE 代理设置（对齐桌面系统代理 MVP）。
 final class PacketTunnelProvider: NEPacketTunnelProvider {
-    private let log = Logger(subsystem: "com.kuayun.vpn.tunnel", category: "PacketTunnel")
+    private let log = Logger(subsystem: "com.vpn.kuayun.tunnel", category: "PacketTunnel")
     private let mixedPort: Int = 17890
 
     override func startTunnel(options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void) {

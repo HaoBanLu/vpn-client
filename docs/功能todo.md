@@ -3,12 +3,20 @@
 > **单一事实来源**：本文件记录功能实现状态，与路由、页面、节点协议、订阅类型保持一致。  
 > 状态：`✅ 已完成` · `🚧 开发中/需联调` · `📋 待开发` · `❌ 未集成`
 
-最后核对：**2026-08-07**（客户端迁出 vpn-client；Android 3.16.2 掉线可恢复）
+最后核对：**2026-08-07**（包名统一 `com.vpn.kuayun`；文档瘦身）
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
+| 包名统一 com.vpn.kuayun | ✅ | 2026-08-07 | Tauri `identifier` + Android overlay `com.vpn.kuayun.vpn`；iOS `com.vpn.kuayun.app/.tunnel`；App Group `group.com.vpn.kuayun`；历史 Compose 仍为 `com.vpn.member`（存档） |
+| 客户端文档瘦身 | ✅ | 2026-08-07 | 删发版跳转 stub；`文档目录`/`开发指南` 仅保留客户端；存档 Android 长文档改为指针 |
+| Android 发包迁至 apps/tauri；apps/android 存档 | ✅ | 2026-08-07 | Tag CI 打 Tauri Android；`android-ci` 停用；[`ARCHIVE.md`](../apps/android/ARCHIVE.md) |
+| GitHub 发版文档中文命名 | ✅ | 2026-08-07 | 主手册 [`GitHub自动打包与密钥配置说明.md`](guides/GitHub自动打包与密钥配置说明.md)；密钥 [`GitHub发版密钥说明.md`](../.github/GitHub发版密钥说明.md)；旧英文名留跳转 |
+| 统一客户端版本线 1.2 | ✅ | 2026-08-07 | 展示名 `1.2`、code `120`：以 `apps/tauri` `APP_VERSION_*` 为准 |
+| Tauri 功能梳理 + Android 正式发包路径 | ✅ | 2026-08-07 | [`Tauri-Android功能对齐.md`](product/Tauri-Android功能对齐.md) §0；`tauri:android:build:release` |
+| Android「帮助中心」入口补齐 | ✅ | 2026-08-07 | 存档前已合入 Compose；现行入口在 Tauri Vue |
+| Tauri 诊断日志入口放开 Android | ✅ | 2026-08-07 | `ProfileView` 与 `app_debug_enabled` 对齐 |
 | 客户端仓拆分 vpn-client | ✅ | 2026-08-07 | 本仓为客户端正式工程；控制面仍在 `vpn` |
-| Android 3.16.2 掉线可恢复（监督器+看门狗） | ✅ | 2026-08-07 | `3.16.2`/`55`：`VpnReconnectSupervisor`（Application）接管网络恢复；意外 FAILED/dataplane inactive 自动重连；前台恢复覆盖 FAILED；Service 隧道看门狗；DNS 防抖 3s；单测 Dns/Failed/Watchdog/Foreground |
+| Android 3.16.2 掉线可恢复（监督器+看门狗） | ✅ 存档 | 2026-08-07 | 逻辑在存档 `apps/android`；Tauri Android 应对齐插件策略 |
 | Android 3.16.1 重连先备配置再 KS | ✅ | 2026-08-01 | `3.16.1`/`54`：先拉配置/缓存再 KS；失败最多 3 次；FAILED 仍可被切网再调度 |
 | 数据库备份大文件下载/上传 | ✅ 代码 | 2026-08-04 | 详情下载进度条；axios `timeout:0`+`onDownloadProgress`；上传进度；API Read/WriteTimeout 默认 3600s（原硬编码 10s 导致大文件断流）；**待部署 api+admin** |
 | 管理后台总览运营信息架构 | ✅ 代码 | 2026-08-04 | 移出探测四卡→监控页；KPI 改为会员/订阅/收入/节点在线；到期待办可点；自动刷新可配（同节点列表）；PRD [`管理后台总览运营信息架构.md`](product/管理后台总览运营信息架构.md)；**待部署 admin** |
@@ -47,7 +55,7 @@
 | Android 3.15 发版（系统 VPN 硬门禁） | ✅ | 2026-07-29 | `3.15`/`45`：全流量须 `vpn_network_ok`；出海/回国分探测 URL；禁止 mixed+TUN 单独放行；PRD [`连接可信-系统VPN硬门禁产品需求.md`](product/连接可信-系统VPN硬门禁产品需求.md) |
 | Android 系统 VPN 硬门禁（防假连） | ✅ | 2026-07-29 | 同上；`TunDataPlaneVerifier` + 单测 |
 | iOS 真实 Mihomo 出网路径 | 🚧 | 2026-07-28 | Go `hub.Parse` 桥接 + NEProxySettings/mixed-port；`build-xcframework` 须在 **Mac** 产出；真机签名后可上网 |
-| 客户端 CI Tag 自动发包 | ✅ | 2026-07-28 | [`app-release.yml`](../.github/workflows/app-release.yml)：Tag `v*` → 全量包；**操作手册** [`客户端GitHub-Actions发版.md`](guides/客户端GitHub-Actions发版.md)；Secrets 见 [`.github/RELEASE_SECRETS.example.md`](../.github/RELEASE_SECRETS.example.md)；PRD [`客户端CI自动发包产品需求.md`](product/客户端CI自动发包产品需求.md)；**v3.14.6** 三端绿 |
+| 客户端 CI Tag 自动发包 | ✅ | 2026-08-07 | [`app-release.yml`](../.github/workflows/app-release.yml)；手册已中文命名 [`GitHub自动打包与密钥配置说明.md`](guides/GitHub自动打包与密钥配置说明.md)；密钥 [`GitHub发版密钥说明.md`](../.github/GitHub发版密钥说明.md)；PRD [`客户端CI自动发包产品需求.md`](product/客户端CI自动发包产品需求.md) |
 | macOS 系统代理加固 | ✅ | 2026-07-28 | 对所有有 IP 的网卡设 HTTP/HTTPS 代理 + bypass localhost；与 Win 对齐防回环 |
 | macOS 桌面验收清单落地 | ✅ | 2026-07-28 | [`macOS桌面验收清单.md`](product/macOS桌面验收清单.md)：P0 系统代理 E2E / P1 体验 / 公证发版；待真机勾选 |
 | 桌面主窗口关闭最大化 | ✅ | 2026-07-28 | `WebviewWindowBuilder.maximizable(false)`；仍可拖拽改尺寸 |

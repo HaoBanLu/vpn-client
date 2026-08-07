@@ -1,4 +1,4 @@
-package com.vpn.tauri.vpn
+﻿package com.vpn.kuayun.vpn
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

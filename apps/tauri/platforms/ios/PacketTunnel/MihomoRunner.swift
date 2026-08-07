@@ -1,4 +1,4 @@
-import Foundation
+﻿import Foundation
 import os.log
 
 #if MIHOMO_NATIVE
@@ -19,7 +19,7 @@ func ky_mihomo_is_running() -> Int32
 final class MihomoRunner {
     static let shared = MihomoRunner()
 
-    private let log = Logger(subsystem: "com.kuayun.vpn.tunnel", category: "MihomoRunner")
+    private let log = Logger(subsystem: "com.vpn.kuayun.tunnel", category: "MihomoRunner")
     private var process: Process?
     private var isRunning = false
     private var usingNative = false

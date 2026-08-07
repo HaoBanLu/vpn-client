@@ -1,4 +1,4 @@
-package com.vpn.tauri.vpn
+﻿package com.vpn.kuayun.vpn
 
 import android.app.Activity
 import android.net.VpnService
@@ -9,7 +9,7 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
-import com.vpn.tauri.vpn.mihomo.MihomoInitializer
+import com.vpn.kuayun.vpn.mihomo.MihomoInitializer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

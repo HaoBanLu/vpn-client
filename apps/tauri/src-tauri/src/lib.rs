@@ -13,7 +13,7 @@ fn vpn_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .setup(|app, api| {
             #[cfg(target_os = "android")]
             {
-                let handle = api.register_android_plugin("com.vpn.tauri.vpn", "VpnPlugin")?;
+                let handle = api.register_android_plugin("com.vpn.kuayun.vpn", "VpnPlugin")?;
                 app.manage(vpn::mobile::MobileVpnHandle(handle));
             }
             #[cfg(not(target_os = "android"))]

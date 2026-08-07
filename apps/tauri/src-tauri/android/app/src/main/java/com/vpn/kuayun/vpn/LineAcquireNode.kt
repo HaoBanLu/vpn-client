@@ -1,4 +1,4 @@
-package com.vpn.tauri.vpn
+﻿package com.vpn.kuayun.vpn
 
 /** 占线 API 可识别的真实节点名（排除智能选路/selector 组标签）。 */
 object LineAcquireNode {

@@ -1,8 +1,8 @@
 {
     "$schema":  "https://schema.tauri.app/config/2",
     "productName":  "跨云",
-    "version":  "1.5.2",
-    "identifier":  "com.vpn.tauri",
+    "version":  "1.2",
+    "identifier":  "com.vpn.kuayun",
     "build":  {
                   "beforeDevCommand":  "npm run dev",
                   "devUrl":  "http://127.0.0.1:5173",

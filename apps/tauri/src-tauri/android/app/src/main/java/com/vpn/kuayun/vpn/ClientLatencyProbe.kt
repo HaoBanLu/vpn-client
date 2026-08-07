@@ -1,4 +1,4 @@
-package com.vpn.tauri.vpn
+﻿package com.vpn.kuayun.vpn
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

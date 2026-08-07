@@ -1,4 +1,4 @@
-import Foundation
+﻿import Foundation
 import NetworkExtension
 
 enum VPNControllerError: LocalizedError {
@@ -111,5 +111,5 @@ final class VPNController: ObservableObject {
     }
 
     private static let profileName = "跨云 VPN"
-    private static let tunnelBundleId = "com.kuayun.vpn.tunnel"
+    private static let tunnelBundleId = "com.vpn.kuayun.tunnel"
 }

@@ -1,8 +1,8 @@
-package com.vpn.tauri.vpn
+﻿package com.vpn.kuayun.vpn
 
 import android.net.Network
 import android.net.NetworkCapabilities
-import com.vpn.tauri.vpn.NetworkServices
+import com.vpn.kuayun.vpn.NetworkServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext

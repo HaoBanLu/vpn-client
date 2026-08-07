@@ -9,18 +9,21 @@
 | Windows | [`windows/`](windows/) | `src-tauri/src/vpn/`、`kill_switch.rs` | `npm run tauri:build` |
 | macOS | [`macos/`](macos/) | 同上 + `system_proxy.rs` | `npm run tauri:build`（需在 macOS） |
 | Linux | [`linux/`](linux/) | 同上 + gsettings 代理 | `npm run tauri:build` |
-| iPhone | [`ios/`](ios/) | SwiftUI + PacketTunnel | `npm run ios:generate` → Xcode |
+| **Android** | （overlay）`../src-tauri/android/` | Vue `src/` + VPN Kotlin overlay | `npm run tauri:android:build:release` |
+| iPhone | [`ios/`](ios/) | SwiftUI + PacketTunnel | `npm run tauri:ios:generate` → Xcode |
 
 ## 共享层
 
 | 层级 | 路径 | 说明 |
 |------|------|------|
-| UI | [`../src/`](../src/) | Vue 3 + Pinia；Win/Mac/Linux 共用 |
-| API | [`../src/api/`](../src/api/) | 与 Android 共用 `/api/v1` |
+| UI | [`../src/`](../src/) | Vue 3 + Pinia；**Win/Mac/Linux/Android WebView 共用** |
+| API | [`../src/api/`](../src/api/) | 与原生 Android 共用 `/api/v1` |
 | VPN 逻辑（TS） | [`../src/lib/vpn/`](../src/lib/vpn/) | 连接场景、规则直连、Failover |
 | Tauri 壳 | [`../src-tauri/`](../src-tauri/) | Rust commands、托盘、桌面 mihomo |
 
-## Android 说明
+## Android 说明（1.2）
 
-会员 **Android 正式版** 在 [`../../android/`](../../android/)（Kotlin + Compose）。  
-`src-tauri/android/` 仅为历史 Tauri overlay，**不要**与主 Android 工程混用。
+- **正式发包**：本目录（`tauri:android:*` + Tag CI）。
+- VPN overlay：`src-tauri/android/` → sync → `gen/android`。
+- **`apps/android` 已存档**：仅 `mihomo-core` 仍被引用；见 [`ARCHIVE.md`](../../android/ARCHIVE.md)。
+- 缺口与对齐：[`docs/product/Tauri-Android功能对齐.md`](../../../docs/product/Tauri-Android功能对齐.md)。

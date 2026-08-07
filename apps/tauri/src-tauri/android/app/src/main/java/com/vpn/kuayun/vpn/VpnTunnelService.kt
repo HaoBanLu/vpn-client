@@ -1,4 +1,4 @@
-package com.vpn.tauri.vpn
+﻿package com.vpn.kuayun.vpn
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -12,8 +12,8 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.github.kr328.clash.core.Clash
-import com.vpn.tauri.MainActivity
-import com.vpn.tauri.vpn.mihomo.MihomoInitializer
+import com.vpn.kuayun.MainActivity
+import com.vpn.kuayun.vpn.mihomo.MihomoInitializer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -304,9 +304,9 @@ class VpnTunnelService : VpnService() {
     }
 
     companion object {
-        const val ACTION_CONNECT = "com.vpn.tauri.CONNECT"
-        const val ACTION_RECONNECT = "com.vpn.tauri.RECONNECT"
-        const val ACTION_DISCONNECT = "com.vpn.tauri.DISCONNECT"
+        const val ACTION_CONNECT = "com.vpn.kuayun.CONNECT"
+        const val ACTION_RECONNECT = "com.vpn.kuayun.RECONNECT"
+        const val ACTION_DISCONNECT = "com.vpn.kuayun.DISCONNECT"
         const val EXTRA_CONFIG = "config"
         const val EXTRA_NODE_NAME = "node_name"
         private const val CHANNEL_ID = "vpn_tunnel"

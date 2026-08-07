@@ -547,6 +547,7 @@ class MainActivity : ComponentActivity() {
                     onNavigateChangePassword = { navController.navigate(Routes.ChangePassword) },
                     onNavigateTickets = { navController.navigate(Routes.Tickets) },
                     onNavigateSupport = { navController.navigate(Routes.Support) },
+                    onNavigateHelp = { navController.navigate(Routes.Help) },
                     onNavigateAbout = { navController.navigate(Routes.About) },
                     onNavigateAppDirectConnect = { navController.navigate(Routes.AppDirectConnect) },
                     onNavigateDirectBypassRule = { navController.navigate(Routes.DirectBypassRule) },

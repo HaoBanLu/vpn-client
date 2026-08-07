@@ -3,13 +3,13 @@
 > **文档状态**：MVP 已实现（Tag 触发 GitHub Actions + Release 附件）  
 > **适用阶段**：Android / Tauri 桌面 / iPhone 四端发版自动化  
 > **最后更新**：2026-07-28（v3.14.6 全量包 CI 验证通过；§4.1 门禁与体积参考）  
-> **关联文档**：[客户端 GitHub Actions 发版手册](../guides/客户端GitHub-Actions发版.md)（**日常操作以手册为准**）、[App升级管理需求文档](App升级管理需求文档.md)、[App-Android-发版检查清单](../guides/App-Android-发版检查清单.md)、[跨云客户端打包说明](../../apps/tauri/跨云客户端打包说明.md)、[RELEASE_SECRETS.example.md](../../.github/RELEASE_SECRETS.example.md)
+> **关联文档**：[GitHub自动打包与密钥配置说明](../guides/GitHub自动打包与密钥配置说明.md)（**日常操作以手册为准**）、[App-Android-发版检查清单](../guides/App-Android-发版检查清单.md)、[跨云客户端打包说明](../../apps/tauri/跨云客户端打包说明.md)、[GitHub发版密钥说明](../../.github/GitHub发版密钥说明.md)
 
 ---
 
 ## 1. 核心结论
 
-**打 Git Tag（`v*`）后，GitHub Actions 自动并行构建 Android APK、Windows NSIS、macOS DMG；若已配置 Apple 签名 Secrets，再额外产出已签名 iPhone IPA，并创建 GitHub Release 作为版本标记与下载入口。** 管理后台 `app_versions` 仍由运营**人工上传** Release 产物发布（MVP 不做 CI 自动写库）。
+**打 Git Tag（`v*`）后，GitHub Actions 自动并行构建 **Tauri Android APK**、Windows NSIS、macOS DMG；若已配置 Apple 签名 Secrets，再额外产出已签名 iPhone IPA，并创建 GitHub Release。** `apps/android` **已存档**，不再参与发版。管理后台 `app_versions` 仍由运营人工上传 Release 产物发布。
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### 2.1 情景
 
-- 仓库已有 PR 级 CI：[`android-ci.yml`](../../.github/workflows/android-ci.yml)、[`tauri-ci.yml`](../../.github/workflows/tauri-ci.yml)
+- 仓库已有 PR 级 CI：[`tauri-ci.yml`](../../.github/workflows/tauri-ci.yml)（[`android-ci.yml`](../../.github/workflows/android-ci.yml) 已存档停用）
 - 本地打包脚本齐全，但发版依赖各端开发者本机操作，无统一版本标记与产物归档
 - 管理后台已支持 android / windows / macos 安装包托管
 
@@ -41,7 +41,7 @@
 | 事件 | 行为 |
 |------|------|
 | `push tags: v*` | 触发 **App Release** workflow，创建 GitHub Release |
-| `push` / `pull_request` | 不触发发版；继续走现有 android-ci / tauri-ci |
+| `push` / `pull_request` | 不触发发版；走 `tauri-ci` |
 | `workflow_dispatch` | 不支持（避免误触正式包） |
 
 **Tag 语义**：发版「列车号」（如 `v3.14.0`）。各端实际 `versionName` / `versionCode` **以源码为准**，Release 正文列出各平台版本摘要。
@@ -56,23 +56,23 @@
 
 | 平台 | Runner | 构建命令 | Release 附件命名 |
 |------|--------|----------|------------------|
-| Android | `ubuntu-latest` | `setup-mihomo-native.sh` → `./gradlew :app:assembleRelease -PreleaseArm64Only=true` | `kuayun-android-{versionName}-{versionCode}-arm64.apk` |
+| Android | `ubuntu-latest` | `scripts/ci/build-tauri-android-release.sh`（`apps/tauri`） | `kuayun-android-{version}-{code}-arm64.apk` |
 | Windows | `windows-latest` | `npm run fetch:mihomo` → `npm run tauri:win:build` | `kuayun-windows-{version}-x64-setup.exe` + 可选 `.sig` |
 | macOS | `macos-latest` | `npm run fetch:mihomo` → `npm run tauri:mac:build` | `kuayun-macos-{version}.dmg` + 可选 `.sig` |
 | iPhone | `macos-latest` | `npm run tauri:ios:build:ipa` | `kuayun-ios-{version}.ipa`（Apple Secrets 齐全时） |
 
-- Android 默认 **arm64 全量 APK**（不用瘦包）；CI 构建前拉取 `libclash.so`/`libbridge.so`，产物约 **49MB**，并校验 APK 内含 native 库
-- Windows/macOS CI 构建前 **`npm run fetch:mihomo`**，安装包内含 mihomo 二进制，下载即可连接
-- Tauri 构建注入 Secret `VITE_API_BASE_URL`（与 Android 生产 API 对齐）
+- Android：**Tauri** arm64 全量 APK；构建拉存档 `mihomo-core` JNI，校验含 `libclash.so`/`libbridge.so`
+- Windows/macOS CI 构建前 **`npm run fetch:mihomo`**
+- 构建注入 Secret `VITE_API_BASE_URL`
 - 配置 `TAURI_SIGNING_*` 时一并上传 updater 签名产物
 
-### 4.1 全量包 CI 门禁（2026-07-28 起）
+### 4.1 全量包 CI 门禁
 
 | 平台 | 构建前 | 构建后校验 | 正常体积参考 |
 |------|--------|------------|--------------|
-| Android | `bash scripts/setup-mihomo-native.sh` | APK ≥30MB；含 `lib/arm64-v8a/libclash.so`、`libbridge.so` | **~49MB** |
-| Windows | `npm run fetch:mihomo` | `mihomo.exe` ≥8MB；`target/release/**/mihomo.exe` 存在；NSIS 安装包 ≥8MB | **~10–15MB**（LZMA 压缩；空壳曾 ~3.6MB） |
-| macOS | `npm run fetch:mihomo`（`tauri:mac:build` 内亦会拉取） | `resources/bin/mihomo` 存在 | DMG **~15–20MB** |
+| Android | 存档目录 `setup-mihomo-native.sh` + Tauri android build | APK ≥20MB；含 `libclash.so`、`libbridge.so` | 约数十 MB（含 Rust so） |
+| Windows | `npm run fetch:mihomo` | `mihomo.exe` ≥8MB；NSIS ≥8MB | **~10–15MB** |
+| macOS | `npm run fetch:mihomo` | `resources/bin/mihomo` 存在 | DMG **~15–20MB** |
 
 > **勿用安装包绝对体积判断 Windows 是否全量**：NSIS 强压缩后 ~13MB 仍可能为全量包；以 **mihomo 二进制是否打入** 为准。  
 > **v3.14.4** 曾因 CI 未拉 native/mihomo 产出空壳包（Android ~2.5MB）；**v3.14.5+** 已修复；**v3.14.6** 修正 Windows 体积误杀门禁。
@@ -83,7 +83,9 @@
 
 | 端 | 文件 | 字段 |
 |----|------|------|
-| Android | `apps/android/app/build.gradle.kts` | `versionName` / `versionCode` |
+| Android | `apps/tauri` `APP_VERSION_*` | 与桌面同一版本源；`apps/android` 已存档 |
+| Windows / macOS | `apps/tauri` 三处 + Cargo | 同上 |
+| iPhone | `platforms/ios/project.yml` | MARKETING / CURRENT |
 | Tauri 桌面 | `apps/tauri/package.json`、`src-tauri/tauri.conf.json`、`src/lib/app-meta.ts` | `version` / `APP_VERSION_CODE` |
 | iPhone | `apps/tauri/platforms/ios/project.yml` | `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` |
 
@@ -93,7 +95,7 @@
 
 ## 6. GitHub Secrets
 
-详见 [`.github/RELEASE_SECRETS.example.md`](../../.github/RELEASE_SECRETS.example.md)。摘要：
+详见 [`.github/GitHub发版密钥说明.md`](../../.github/GitHub发版密钥说明.md)。摘要：
 
 | Secret | 用途 |
 |--------|------|
@@ -114,7 +116,7 @@
 1. 本地 bump 各端版本号并合并到 `main`
 2. 跑门禁：
    ```bash
-   cd apps/android && bash scripts/release-gate.sh
+   cd apps/tauri && npm test && npm run preflight:desktop
    cd apps/tauri && npm run preflight:desktop && npm test
    ```
 3. `git tag v3.14.6 && git push origin v3.14.6`
@@ -155,7 +157,7 @@ flowchart TB
   ghRel --> manual[运营人工下载]
   manual --> admin[管理后台 app_versions]
   admin --> client[App 检查更新 API]
-  prCi[android-ci / tauri-ci] --> quality[PR 质量门禁]
+  prCi[tauri-ci] --> quality[PR 质量门禁]
 ```
 
 - PR CI：测试 + 非正式构建（Android debug 签名）

@@ -19,7 +19,7 @@ npm run tauri:mac:build
 
 ## CI Tag 发版 / 后台更新
 
-- 操作手册：[客户端 GitHub Actions 发版](../../../../docs/guides/客户端GitHub-Actions发版.md)
+- 操作手册：[GitHub自动打包与密钥配置说明](../../../../docs/guides/GitHub自动打包与密钥配置说明.md)
 - Tag `v*` → Release 附件 `kuayun-macos-*.dmg`（+ `.sig` 需配置 `TAURI_SIGNING_*`）
 - 后台：`platform=macos`，版本与 `APP_VERSION_*` 一致，Updater 签名贴 `.sig` 全文
 

@@ -1,4 +1,4 @@
-package com.vpn.tauri.vpn
+﻿package com.vpn.kuayun.vpn
 
 /** 连接后网络探测结果（隧道已建立前提下） */
 enum class ProbeStatus {

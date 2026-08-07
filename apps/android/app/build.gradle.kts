@@ -75,8 +75,8 @@ android {
         applicationId = "com.vpn.member"
         minSdk = 26
         targetSdk = 34
-        versionCode = 55
-        versionName = "3.16.2"
+        versionCode = 120
+        versionName = "1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "APP_BASE_URL", buildConfigString(releaseAppBaseUrl))
         buildConfigField("String", "API_BASE_URL", buildConfigString("${releaseAppBaseUrl}api/v1/"))

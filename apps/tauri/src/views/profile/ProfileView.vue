@@ -106,7 +106,6 @@ import KyCard from '@/components/KyCard.vue'
 import KyListItem from '@/components/KyListItem.vue'
 import { KyButton, KyEmpty } from '@/components/ky'
 import { formatMoney, formatTraffic } from '@/lib/format'
-import { isDesktopPlatform } from '@/lib/layout'
 import { useAuthStore } from '@/stores/auth'
 import { useAccountStore } from '@/stores/account'
 
@@ -133,7 +132,7 @@ const settingItems = computed<Array<{ title: string; subtitle: string; route: st
     { title: '连接与隐私', subtitle: '自动重连、托盘与泄露自检', route: 'StabilitySettings', icon: SettingOutlined },
     { title: '规则直连', subtitle: '域名/IP 绕过 VPN', route: 'DirectBypassRules', icon: FilterOutlined },
   ]
-  if (account.user?.app_debug_enabled && isDesktopPlatform()) {
+  if (account.user?.app_debug_enabled) {
     items.push({
       title: '诊断日志',
       subtitle: '本地 VPN 事件与上传',
