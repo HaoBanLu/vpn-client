@@ -53,14 +53,27 @@ if [[ -f "$GRADLE_PROPS" ]] && ! grep -q 'kotlin.compiler.execution.strategy' "$
   printf '\nkotlin.compiler.execution.strategy=in-process\n' >> "$GRADLE_PROPS"
 fi
 
-SETTINGS="$GEN_ANDROID/settings.gradle.kts"
-if [[ -f "$SETTINGS" ]] && ! grep -q 'include(":mihomo-core")' "$SETTINGS"; then
-  # 存档工程 apps/android/mihomo-core：仍作为 JNI 模块依赖，勿删
-  cat >> "$SETTINGS" <<'EOF'
+SETTINGS_KTS="$GEN_ANDROID/settings.gradle.kts"
+SETTINGS_GROOVY="$GEN_ANDROID/settings.gradle"
+MIHOMO_INCLUDE=$'include(":mihomo-core")\nproject(":mihomo-core").projectDir = file("../../../../android/mihomo-core")\n'
 
-include(":mihomo-core")
-project(":mihomo-core").projectDir = file("../../../../android/mihomo-core")
-EOF
+patch_settings() {
+  local settings="$1"
+  if [[ -f "$settings" ]] && ! grep -q 'include(":mihomo-core")' "$settings"; then
+    # 存档工程 apps/android/mihomo-core：仍作为 JNI 模块依赖，勿删
+    # Tauri 2 当前生成 settings.gradle（Groovy）；旧模板可能是 .kts
+    printf '\n%s' "$MIHOMO_INCLUDE" >> "$settings"
+    echo "Patched mihomo-core into $settings"
+  fi
+}
+
+patch_settings "$SETTINGS_KTS"
+patch_settings "$SETTINGS_GROOVY"
+
+if ! grep -rq 'include(":mihomo-core")' "$GEN_ANDROID"/settings.gradle* 2>/dev/null; then
+  echo "ERROR: failed to include :mihomo-core in gen/android settings.gradle*" >&2
+  ls -la "$GEN_ANDROID"/settings.gradle* 2>/dev/null || true
+  exit 1
 fi
 
 ROOT_BUILD="$GEN_ANDROID/build.gradle.kts"

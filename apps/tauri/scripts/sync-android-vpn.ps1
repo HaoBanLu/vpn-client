@@ -79,17 +79,28 @@ if (Test-Path $gradleProps) {
 }
 
 $GenAndroidRoot = Split-Path $GenApp
-$genSettings = Join-Path $GenAndroidRoot "settings.gradle.kts"
-if (Test-Path $genSettings) {
-    $settings = Get-Content $genSettings -Raw -Encoding UTF8
-    if ($settings -notmatch 'include\(":mihomo-core"\)') {
-        $settings = $settings.TrimEnd() + @"
+$mihomoBlock = @"
 
 include(":mihomo-core")
 project(":mihomo-core").projectDir = file("../../../../android/mihomo-core")
 "@
-        Set-Content -Path $genSettings -Value $settings -Encoding UTF8 -NoNewline
-    }
+function Patch-MihomoSettings([string]$settingsPath) {
+    if (-not (Test-Path $settingsPath)) { return $false }
+    $settings = Get-Content $settingsPath -Raw -Encoding UTF8
+    if ($settings -match 'include\(":mihomo-core"\)') { return $true }
+    $settings = $settings.TrimEnd() + $mihomoBlock
+    Set-Content -Path $settingsPath -Value $settings -Encoding UTF8 -NoNewline
+    Write-Host "Patched mihomo-core into $settingsPath"
+    return $true
+}
+
+$patched = $false
+# Tauri 2 当前生成 settings.gradle（Groovy）；兼容旧 .kts
+foreach ($name in @("settings.gradle.kts", "settings.gradle")) {
+    if (Patch-MihomoSettings (Join-Path $GenAndroidRoot $name)) { $patched = $true }
+}
+if (-not $patched) {
+    throw "failed to include :mihomo-core; no settings.gradle* under gen/android"
 }
 
 $genRootBuild = Join-Path $GenAndroidRoot "build.gradle.kts"
