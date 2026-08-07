@@ -140,6 +140,18 @@ if (-not (Select-String -Path (Join-Path $GenAndroidRoot "build.gradle.kts"), (J
     throw "kotlin.plugin.serialization not declared for gen/android"
 }
 
+$appGradle = Join-Path $GenApp "build.gradle.kts"
+if (Test-Path $appGradle) {
+    $ag = Get-Content $appGradle -Raw -Encoding UTF8
+    if ($ag -match "minSdk\s*=\s*\d+") {
+        $ag2 = [regex]::Replace($ag, "minSdk\s*=\s*\d+", "minSdk = 26", 1)
+        if ($ag2 -ne $ag) {
+            Set-Content -Path $appGradle -Value $ag2 -Encoding UTF8 -NoNewline
+            Write-Host "Patched minSdk=26 into $appGradle"
+        }
+    }
+}
+
 $mihomoJni = Join-Path $Root "..\android\mihomo-core\src\main\jniLibs"
 if (-not (Test-Path $mihomoJni)) {
     $setupScript = Join-Path $Root "..\android\scripts\setup-mihomo-native.sh"

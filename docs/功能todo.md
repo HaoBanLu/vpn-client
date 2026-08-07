@@ -3,10 +3,11 @@
 > **单一事实来源**：本文件记录功能实现状态，与路由、页面、节点协议、订阅类型保持一致。  
 > 状态：`✅ 已完成` · `🚧 开发中/需联调` · `📋 待开发` · `❌ 未集成`
 
-最后核对：**2026-08-07**（版本线 `1.2.6` / code `126`）
+最后核对：**2026-08-07**（版本线 `1.2.7` / code `127`）
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
+| 修复 Android Manifest minSdk 冲突 | ✅ | 2026-08-07 | Tauri 默认 24 < mihomo-core 26；`bundle.android.minSdkVersion=26`；发版 `v1.2.7` |
 | 修复 Android serialization 插件未声明 | ✅ | 2026-08-07 | sync 向 gen `build.gradle.kts`/`settings.gradle` 注入 kotlin serialization；发版 `v1.2.6` |
 | 修复 Android `:mihomo-core` 未 include | ✅ | 2026-08-07 | Tauri 生成 `settings.gradle`（非 .kts）；sync 两边都 patch；发版 `v1.2.5` |
 | 修复 Linux isEmpty + Android 桌面 API 门控 | ✅ | 2026-08-07 | `kill_switch` 用 `is_empty`；tray/updater/boot 仅 desktop；发版 `v1.2.4` |

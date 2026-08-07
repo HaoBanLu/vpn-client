@@ -137,6 +137,23 @@ if ! grep -rq 'kotlin.plugin.serialization' "$GEN_ANDROID"/build.gradle.kts "$GE
   exit 1
 fi
 
+# mihomo-core minSdk=26；若 init 时未读到 tauri.conf android.minSdkVersion，这里兜底改 gen
+APP_GRADLE="$GEN_APP/build.gradle.kts"
+if [[ -f "$APP_GRADLE" ]]; then
+  python3 - "$APP_GRADLE" <<'PY'
+from pathlib import Path
+import re, sys
+p = Path(sys.argv[1])
+t = p.read_text(encoding="utf-8")
+nt, n = re.subn(r"minSdk\s*=\s*\d+", "minSdk = 26", t, count=1)
+if n:
+    p.write_text(nt, encoding="utf-8")
+    print(f"Patched minSdk=26 into {p}")
+elif "minSdk" not in t:
+    print(f"WARN: minSdk not found in {p}", file=sys.stderr)
+PY
+fi
+
 MIHOMO_JNI="$ROOT/../android/mihomo-core/src/main/jniLibs"
 if [[ ! -d "$MIHOMO_JNI/arm64-v8a" ]]; then
   echo "WARN: mihomo jniLibs missing under apps/android/mihomo-core; run setup-mihomo-native.sh" >&2
