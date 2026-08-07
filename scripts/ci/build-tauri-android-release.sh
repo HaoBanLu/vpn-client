@@ -56,13 +56,22 @@ bash scripts/sync-android-vpn.sh
 echo "Running tauri android build --target aarch64 ..."
 npx tauri android build --target aarch64 --verbose
 
-# 优先 unsigned，避免二次签名冲突
+# Tauri 可能产出 arm64-* 或 universal-*；优先 unsigned，避免二次签名冲突
 APK=""
-if APK="$(find "$GEN_APK_DIR" -type f -name '*arm64*release*unsigned*.apk' | sort | tail -1)" && [[ -n "$APK" ]]; then
-  :
-elif APK="$(find "$GEN_APK_DIR" -type f -name '*arm64*release*.apk' | sort | tail -1)" && [[ -n "$APK" ]]; then
-  :
-else
+for pattern in \
+  '*arm64*release*unsigned*.apk' \
+  '*universal*release*unsigned*.apk' \
+  '*release*unsigned*.apk' \
+  '*arm64*release*.apk' \
+  '*universal*release*.apk' \
+  '*release*.apk'
+do
+  if APK="$(find "$GEN_APK_DIR" -type f -name "$pattern" | sort | tail -1)" && [[ -n "$APK" ]]; then
+    break
+  fi
+  APK=""
+done
+if [[ -z "$APK" ]]; then
   echo "ERROR: release APK not found under $GEN_APK_DIR" >&2
   find "$GEN_APK_DIR" -type f -name '*.apk' 2>/dev/null || true
   exit 1
