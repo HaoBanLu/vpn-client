@@ -112,25 +112,10 @@ impl DesktopVpnManager {
             }
         }
 
-        // 对齐 Android：selector 在数据面门禁与 Connected 之前
+        // 对齐 Android / Clash Verge：selector 写入后即 Connected。
+        // 不以百度/QQ 等外网探针作为连接成败条件（探针失败≠隧道未建立）。
         if let Some(name) = options.node_name.as_deref() {
             let _ = super::desktop_selector::apply_node_selection(api_port, name);
-        }
-
-        // 对齐 Android TunConnectivityVerifier：Connected 前先验经代理可达性
-        let probe = super::desktop_probe::probe_through_proxy(proxy_port, Some(api_port));
-        if !probe.basic_ok {
-            stop_child(&mut child);
-            let _ = system_proxy::disable();
-            let node = options
-                .node_name
-                .as_deref()
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .unwrap_or("当前节点");
-            return Err(DesktopVpnError::StartFailed(format!(
-                "节点不可达：代理入口无响应（{node}），请更换节点后重试"
-            )));
         }
 
         if let Ok(mut path_guard) = self.config_path.lock() {

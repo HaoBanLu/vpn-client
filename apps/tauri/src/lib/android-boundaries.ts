@@ -43,7 +43,7 @@ export const ANDROID_VPN_BOUNDARIES: AndroidModuleBoundary[] = [
 export const ANDROID_PLATFORM_BOUNDARIES: AndroidModuleBoundary[] = [
   { layer: 'platform', androidPath: 'AndroidManifest.xml', tauriStrategy: 'android-plugin', notes: 'VPN/FGS/通知/安装权限' },
   { layer: 'session', androidPath: 'session/SessionHeartbeatManager.kt', tauriStrategy: 'reuse-api', notes: '前后台心跳，Tauri 生命周期对接' },
-  { layer: 'update', androidPath: 'update/AppUpdateInstaller.kt', tauriStrategy: 'android-plugin', notes: 'APK 下载安装，桌面端换 updater 插件' },
+  { layer: 'update', androidPath: 'update/AppUpdateInstaller.kt', tauriStrategy: 'android-plugin', notes: 'VpnPlugin.installApkUpdate + AppUpdateInstaller；桌面走 updater 插件' },
 ]
 
 export const ANDROID_MIHOMO_DEPENDENCY = {

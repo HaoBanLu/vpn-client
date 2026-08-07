@@ -12,15 +12,18 @@ export const MAX_DISPLAY_BPS = 25_000_000
 /** 对齐 Android TrafficRateEma：约 3～4 次 1s 采样达稳态。 */
 export const RATE_EMA_ALPHA = 0.35
 
+/** 对齐 Android VpnSessionStatsTracker.formatDuration：`mm:ss` / `hh:mm:ss`，分秒补零 */
 export function formatSessionDuration(durationMs: number): string {
   const totalSec = Math.max(0, Math.floor(durationMs / 1000))
   const hours = Math.floor(totalSec / 3600)
   const minutes = Math.floor((totalSec % 3600) / 60)
   const seconds = totalSec % 60
+  const mm = String(minutes).padStart(2, '0')
+  const ss = String(seconds).padStart(2, '0')
   if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    return `${String(hours).padStart(2, '0')}:${mm}:${ss}`
   }
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
+  return `${mm}:${ss}`
 }
 
 /**

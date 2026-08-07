@@ -79,7 +79,11 @@
 | 桌面选节点后连接中 UI 立即统一 | ✅ | 2026-07-25 | `connectPending` 跳转前即置位；Hero 立刻「连接中」；去掉底部重复 hint/蓝条 |
 | 桌面连接页布局疏密优化 | ✅ | 2026-07-25 | 压缩 Hero/按钮区留白；会话卡分区 gap=14、隧道流量默认收起对齐 Android；`stack-gap=sm` |
 | 桌面连接按钮动画对齐 Android | ✅ | 2026-07-25 | `ConnectPowerButton`：连接中扩散波纹、已保护稳态护盾环、按压缩放、ConnectVisual 色板；连接中可点中断；文案去掉「再点可取消」 |
-| 桌面连接门禁对齐 Android | ✅ | 2026-07-25 | Connected 前：selector + 经代理 basic 探测；失败→Failed；连接后质量探测失败保持隧道 |
+| 桌面连接门禁对齐 Android | ✅ 已调整 | 2026-08-08 | **全端 Verge 模型**：mihomo/系统代理或 TUN 起来即 Connected；不以外网探针成败挡连接。连后探测仅软诊断（出口 IP/心跳），不拆隧道、不因探针自动切节点 |
+| 桌面连接页/流量对齐 Android | ✅ | 2026-08-08 | `ConnectSessionCard` 同行速率+时长；文案「剩余 GB」；速率改用累计字节差+EMA（禁用 `/traffic` 瞬时）；时长 `mm:ss` 补零 |
+| 「我的」入口精简 | ✅ | 2026-08-08 | 订阅导出/规则直连/诊断日志仅 `app_debug_enabled` 可见；iOS Profile 同步 |
+| Tauri Android 应用内 APK 更新 | ✅ | 2026-08-08 | `VpnPlugin.installApkUpdate` + `AppUpdateInstaller`；FileProvider；前端 `installAppUpdate` 优先走插件 |
+| 发版 1.2.9 | ✅ | 2026-08-08 | 软探测/连接页对齐/「我的」精简/Android 应用内更新；Tag `v1.2.9` code `129` |
 | 桌面选节点后先跳连接页 | ✅ | 2026-07-25 | 对齐 Android `selectedTab=0` 再 `connectToNode` |
 | 桌面上下行偶发显示 — | ✅ | 2026-07-25 | `formatDisplaySpeed` 对齐 Android；EMA 平滑；`secret: ""` 保证 `/connections` 可读；JSON 总量支持 float；优先 Mihomo `/traffic` 瞬时速率 |
 | 桌面连接后窗口无响应 | ✅ | 2026-07-25 | Win 系统代理补 `ProxyOverride` 绕过 localhost（避免 WebView/Vite 回环）；探测总预算 ≤12s、优先 curl 且静默 PowerShell；`vpn_connect`/`vpn_probe` 走 `spawn_blocking` |

@@ -38,13 +38,7 @@ import {
   type ConnectionScenarioValue,
 } from '@/lib/vpn/connection-scenario'
 import { injectDirectBypassRules } from '@/lib/vpn/direct-bypass-rule'
-import {
-  pickBackupNode,
-  recordProbeFailure,
-  recordProbeSuccess,
-  resetFailoverMonitor,
-  shouldNodeFailover,
-} from '@/lib/vpn/node-failover'
+import { recordProbeFailure, recordProbeSuccess } from '@/lib/vpn/node-failover'
 import { savePrivacyBaselineIp } from '@/lib/vpn/privacy-leak-probe'
 import {
   AUTO_RECONNECT_POLICY,
@@ -53,9 +47,7 @@ import {
 import {
   decideDesktopNetworkRestore,
   DESKTOP_NETWORK_RESTORE,
-  nextDesktopHealthFailStreak,
   shouldProceedDesktopAutoReconnect,
-  shouldReconnectOnDesktopHealthStreak,
 } from '@/lib/vpn/network-restore-policy'
 import {
   effectiveConnectionMode,
@@ -400,82 +392,55 @@ export const useConnectStore = defineStore('connect', () => {
     if (probeStatus.value === 'probing') return
     const token = ++probeToken
     probeStatus.value = 'probing'
-    actionHint.value = probeHint('probing')
-    // 与 Android TUN_SETTLE_MS 对齐，避免隧道刚建立时误判探测失败
+    // 与 Android TUN_SETTLE_MS 对齐，避免隧道刚建立时误判
     await new Promise((resolve) => setTimeout(resolve, 500))
     if (token !== probeToken || connectionState.value !== 'connected') return
     const result = await runConnectivityProbe()
     if (token !== probeToken || connectionState.value !== 'connected') return
     probeLatencyMs.value = result.latencyMs ?? null
     probeStatus.value = probeResultToStatus(result, true)
-    actionHint.value = probeHint(probeStatus.value)
     const probeFailed = probeStatus.value === 'failed' || probeStatus.value === 'degraded'
-    healthFailStreak = nextDesktopHealthFailStreak({
-      navigatorOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-      probeFailed,
-      previousStreak: healthFailStreak,
-    })
+
+    // 全端对齐 Clash Verge：探针只做软诊断（出口 IP / 心跳），不拆隧道、不自动切节点、不刷失败文案
     if (probeFailed) {
       recordProbeFailure()
-      if (shouldNodeFailover() && selectedNode.value) {
-        const switched = await trySwitchToBackupNode()
-        resetFailoverMonitor()
-        if (switched) {
-          appendDebugLog('failover', `已切换至备用节点 ${selectedNode.value}`, 'warn')
-          return
-        }
-      }
-      if (
-        loadDesktopSettings().autoReconnect &&
-        shouldReconnectOnDesktopHealthStreak({
-          navigatorOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-          failStreak: healthFailStreak,
-        })
-      ) {
-        healthFailStreak = 0
-        appendDebugLog('network', '周期探活连续失败，升级完整重连', 'warn')
-        actionHint.value = '网络异常，正在自动重连以恢复保护…'
-        void handleUnexpectedTunnelStop()
-        return
-      }
-      // 对齐 Android：连接后质量探测失败仅记 degraded，保持会话；没网时不拆隧道
-    } else {
-      recordProbeSuccess()
-    }
-    if (probeStatus.value === 'degraded') {
-      scheduleDegradedDisconnect()
-      appendDebugLog('probe', '连接探测降级，保持隧道', 'warn')
-    } else {
+      appendDebugLog('probe', '连接后质量探测未通过，保持隧道', 'warn')
       clearDegradedTimer()
+      if (connectionState.value === 'connected') {
+        actionHint.value = null
+        error.value = null
+      }
+      syncTrayTooltip()
+      return
     }
+
+    recordProbeSuccess()
+    healthFailStreak = 0
+    clearDegradedTimer()
     syncTrayTooltip()
-    if (probeStatus.value !== 'failed' && probeStatus.value !== 'degraded') {
-      const info = await probeExitIp()
-      if (info && connectionState.value === 'connected' && token === probeToken) {
-        exitIp.value = info.ip
-        exitCountry.value = info.country ?? null
-        exitCity.value = info.city ?? null
-        if (dashboard.value) {
-          dashboard.value = {
-            ...dashboard.value,
-            exit_ip: info.ip,
-            exit_country: info.country,
-            exit_city: info.city,
-            probe_latency_ms: probeLatencyMs.value ?? dashboard.value.probe_latency_ms,
-          }
-        }
-        const nodeName = selectedNode.value ?? undefined
-        if (nodeName && isAcquirableNodeName(nodeName)) {
-          try {
-            dashboard.value = (await clientApi.getConnectDashboard(selectedNode.value)).data
-          } catch {
-            // dashboard 刷新失败不阻断已建立的 VPN
-          }
+
+    const info = await probeExitIp()
+    if (info && connectionState.value === 'connected' && token === probeToken) {
+      exitIp.value = info.ip
+      exitCountry.value = info.country ?? null
+      exitCity.value = info.city ?? null
+      if (dashboard.value) {
+        dashboard.value = {
+          ...dashboard.value,
+          exit_ip: info.ip,
+          exit_country: info.country,
+          exit_city: info.city,
+          probe_latency_ms: probeLatencyMs.value ?? dashboard.value.probe_latency_ms,
         }
       }
-    }
-    if (probeStatus.value === 'failed') {
-      error.value = null
+      const nodeName = selectedNode.value ?? undefined
+      if (nodeName && isAcquirableNodeName(nodeName)) {
+        try {
+          dashboard.value = (await clientApi.getConnectDashboard(selectedNode.value)).data
+        } catch {
+          // dashboard 刷新失败不阻断已建立的 VPN
+        }
+      }
     }
   }
 
@@ -744,20 +709,6 @@ export const useConnectStore = defineStore('connect', () => {
     }
     if (!isConnectGenerationCurrent(token)) return
     if (hint) actionHint.value = hint
-  }
-
-  async function trySwitchToBackupNode(): Promise<boolean> {
-    const current = selectedNode.value?.trim()
-    if (!current) return false
-    const nodes = (await clientApi.getNodes()).data.nodes
-    const backup = pickBackupNode(current, selectedRegion.value, nodes)
-    if (!backup) return false
-    saveNode(backup.name)
-    if (backup.region) saveRegion(backup.region)
-    actionHint.value = `节点异常，正在切换至 ${backup.name}…`
-    appendDebugLog('failover', `从 ${current} 切换至 ${backup.name}`, 'warn')
-    await reconnect(`正在切换至 ${backup.name}…`)
-    return connectionState.value === 'connected'
   }
 
   /** 对齐 Android disconnect()：连接中再点 Hero 取消在途连接并回到未连接。 */

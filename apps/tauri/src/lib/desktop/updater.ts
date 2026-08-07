@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { clientApi } from '@/api/client'
 import { APP_VERSION_CODE, APP_VERSION_NAME, detectClientPlatform } from '@/lib/app-meta'
 import { openExternalUrl } from '@/lib/open-url'
@@ -10,10 +11,17 @@ export interface AppUpdateResult {
   downloadUrl?: string
   forceUpdate?: boolean
   latestVersionCode?: number
+  latestVersionName?: string
   releaseNotes?: string
 }
 
-/** 优先尝试 Tauri 内置 updater，失败则回退 API 检查 + 外链下载。 */
+export interface InstallAppUpdateOptions {
+  downloadUrl?: string
+  versionLabel?: string
+  versionCode?: number
+}
+
+/** 优先尝试 Tauri 内置 updater；无更新或失败时再查 API（含强制更新）。 */
 export async function checkAppUpdate(): Promise<AppUpdateResult> {
   if (isDesktopPlatform()) {
     try {
@@ -26,9 +34,10 @@ export async function checkAppUpdate(): Promise<AppUpdateResult> {
           message: `发现新版本 ${update.version}`,
           downloadUrl: undefined,
           forceUpdate: false,
+          latestVersionName: update.version,
         }
       }
-      return { source: 'updater', hasUpdate: false, message: '当前已是最新版本' }
+      // 内置 updater 无新包时仍查 API，避免漏掉强制更新
     } catch {
       // updater 未配置或不可用，回退 API
     }
@@ -50,11 +59,20 @@ export async function checkAppUpdate(): Promise<AppUpdateResult> {
     downloadUrl: data.download_url,
     forceUpdate: data.force_update,
     latestVersionCode: data.latest_version_code,
+    latestVersionName: data.latest_version_name,
     releaseNotes: data.release_notes,
   }
 }
 
-export async function installAppUpdate(downloadUrl?: string): Promise<boolean> {
+/**
+ * 安装更新：
+ * - 桌面：Tauri updater，否则外链
+ * - Android：应用内 DownloadManager 下载并调起安装，失败再外链
+ */
+export async function installAppUpdate(options?: InstallAppUpdateOptions | string): Promise<boolean> {
+  const opts: InstallAppUpdateOptions =
+    typeof options === 'string' ? { downloadUrl: options } : options ?? {}
+
   if (isDesktopPlatform()) {
     try {
       const { check } = await import('@tauri-apps/plugin-updater')
@@ -67,8 +85,24 @@ export async function installAppUpdate(downloadUrl?: string): Promise<boolean> {
       // fallback below
     }
   }
-  if (downloadUrl) {
-    await openExternalUrl(downloadUrl)
+
+  if (opts.downloadUrl && detectClientPlatform() === 'android') {
+    try {
+      await invoke('vpn_install_apk_update', {
+        options: {
+          url: opts.downloadUrl,
+          versionLabel: opts.versionLabel || APP_VERSION_NAME,
+          versionCode: opts.versionCode ?? 0,
+        },
+      })
+      return true
+    } catch {
+      // 插件未就绪时回退浏览器下载
+    }
+  }
+
+  if (opts.downloadUrl) {
+    await openExternalUrl(opts.downloadUrl)
     return true
   }
   return false

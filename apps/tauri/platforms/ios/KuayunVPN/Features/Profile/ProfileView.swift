@@ -53,17 +53,19 @@ struct ProfileView: View {
                 Section("服务") {
                     NavigationLink("在线客服") { SupportView() }
                     NavigationLink("我的工单") { TicketsView() }
-                    NavigationLink("帮助中心") { HelpView() }
+                    if auth.user?.appDebugEnabled == true {
+                        NavigationLink("订阅导出") { HelpView() }
+                    }
                 }
 
                 Section("设置") {
                     NavigationLink("连接与隐私") { SettingsView() }
-                    NavigationLink("规则直连") { DirectBypassRulesView() }
-                    NavigationLink("我的设备") { DevicesView() }
-                    NavigationLink("修改密码") { ChangePasswordView() }
                     if auth.user?.appDebugEnabled == true {
+                        NavigationLink("规则直连") { DirectBypassRulesView() }
                         NavigationLink("诊断日志") { DebugLogView() }
                     }
+                    NavigationLink("我的设备") { DevicesView() }
+                    NavigationLink("修改密码") { ChangePasswordView() }
                     NavigationLink("关于") { AboutView() }
                 }
 

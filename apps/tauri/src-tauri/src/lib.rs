@@ -126,6 +126,7 @@ pub fn run() {
             vpn::tcp_connect_latency,
             vpn::vpn_kill_switch_release,
             vpn::vpn_kill_switch_status,
+            vpn::vpn_install_apk_update,
             tray::tray_update_tooltip,
             tray::tray_set_hide_on_close,
             privacy::privacy_detect_local_ipv6,

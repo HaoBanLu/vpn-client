@@ -26,6 +26,14 @@ if (Test-Path $legacyDst) {
 New-Item -ItemType Directory -Force -Path (Split-Path $vpnDst) | Out-Null
 Copy-Item -Path $vpnSrc -Destination $vpnDst -Recurse -Force
 
+# 同步 overlay 资源（FileProvider paths 等）
+$overlayRes = Join-Path $OverlayMain "res"
+$genRes = Join-Path $GenMain "res"
+if (Test-Path $overlayRes) {
+    New-Item -ItemType Directory -Force -Path $genRes | Out-Null
+    Copy-Item -Path (Join-Path $overlayRes "*") -Destination $genRes -Recurse -Force
+}
+
 $genManifest = Join-Path $GenMain "AndroidManifest.xml"
 $overlayManifest = Join-Path $OverlayMain "AndroidManifest.xml"
 if (-not (Test-Path $genManifest)) { throw "Missing $genManifest" }
@@ -35,24 +43,30 @@ $genXml = Get-Content $genManifest -Raw -Encoding UTF8
 $overlayXml = Get-Content $overlayManifest -Raw -Encoding UTF8
 $marker = "<!-- vpn-tauri-overlay -->"
 
-if ($genXml -notmatch [regex]::Escape($marker)) {
-    $permissions = [regex]::Matches($overlayXml, '<uses-permission[^>]+>') | ForEach-Object { $_.Value }
-    $missingPerms = $permissions | Where-Object { $genXml -notmatch [regex]::Escape($_) } | Select-Object -Unique
-    $permBlock = ($missingPerms | Select-Object -Unique) -join "`n    "
-    if ($permBlock) {
-        $genXml = $genXml -replace '(<manifest[^>]*>)', "`$1`n    $permBlock"
-    }
+$permissions = [regex]::Matches($overlayXml, '<uses-permission[^>]+>') | ForEach-Object { $_.Value }
+$missingPerms = $permissions | Where-Object { $genXml -notmatch [regex]::Escape($_) } | Select-Object -Unique
+$permBlock = ($missingPerms | Select-Object -Unique) -join "`n    "
+if ($permBlock) {
+    $genXml = $genXml -replace '(<manifest[^>]*>)', "`$1`n    $permBlock"
+}
 
-    $serviceBlock = [regex]::Match(
-        $overlayXml,
-        '(?s)<application[^>]*>(.*?)</application>'
-    ).Groups[1].Value.Trim()
-    if ($serviceBlock) {
-        $insert = "        $marker`n        $serviceBlock`n        $marker"
+$serviceBlock = [regex]::Match(
+    $overlayXml,
+    '(?s)<application[^>]*>(.*?)</application>'
+).Groups[1].Value.Trim()
+if ($serviceBlock) {
+    $insert = "        $marker`n        $serviceBlock`n        $marker"
+    if ($genXml -match [regex]::Escape($marker)) {
+        $genXml = [regex]::Replace(
+            $genXml,
+            "(?s)$([regex]::Escape($marker)).*?$([regex]::Escape($marker))",
+            $insert
+        )
+    } else {
         $genXml = $genXml -replace '</application>', "$insert`n    </application>"
     }
-    Set-Content -Path $genManifest -Value $genXml -Encoding UTF8 -NoNewline
 }
+Set-Content -Path $genManifest -Value $genXml -Encoding UTF8 -NoNewline
 
 $genGradle = Join-Path $GenApp "build.gradle.kts"
 $gradle = Get-Content $genGradle -Raw -Encoding UTF8

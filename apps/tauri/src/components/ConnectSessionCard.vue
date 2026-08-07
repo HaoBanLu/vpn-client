@@ -6,35 +6,44 @@
       class="session-card__switch"
       @click="$emit('switch-node')"
     >
-      <div class="session-card__switch-copy">
-        <span class="session-card__switch-label">当前线路</span>
-        <span class="session-card__switch-value">{{ nodeLabel }}</span>
-      </div>
-      <span class="session-card__switch-action">切换 ›</span>
+      <span class="session-card__switch-value">{{ nodeLabel }}</span>
+      <span class="session-card__switch-action">切换</span>
+      <span class="session-card__chevron" aria-hidden="true">›</span>
     </button>
 
+    <!-- 对齐 Android CompactSpeedAndDurationRow：下载 | 上传 | 时长 同行 -->
     <div class="session-card__speed">
       <div class="session-card__speed-item">
-        <span class="session-card__speed-label">下载</span>
-        <strong class="session-card__speed-value">{{ downloadSpeedText }}</strong>
+        <div class="session-card__speed-head">
+          <span class="session-card__speed-dot session-card__speed-dot--down" />
+          <span class="session-card__speed-label">下载</span>
+        </div>
+        <strong
+          class="session-card__speed-value"
+          :class="{ idle: downloadBps <= 0 }"
+        >{{ downloadSpeedText }}</strong>
       </div>
       <div class="session-card__divider" />
       <div class="session-card__speed-item">
-        <span class="session-card__speed-label">上传</span>
-        <strong class="session-card__speed-value">{{ uploadSpeedText }}</strong>
+        <div class="session-card__speed-head">
+          <span class="session-card__speed-dot session-card__speed-dot--up" />
+          <span class="session-card__speed-label">上传</span>
+        </div>
+        <strong
+          class="session-card__speed-value"
+          :class="{ idle: uploadBps <= 0 }"
+        >{{ uploadSpeedText }}</strong>
+      </div>
+      <div class="session-card__divider" />
+      <div class="session-card__duration">
+        <span class="session-card__duration-icon" aria-hidden="true">⏱</span>
+        <strong>{{ durationText }}</strong>
       </div>
     </div>
 
-    <p class="session-card__duration">已连接 {{ durationText }}</p>
+    <p v-if="subscriptionLine" class="session-card__meta">{{ subscriptionLine }}</p>
 
-    <template v-if="subscriptionLine">
-      <div class="session-card__sep" />
-      <p class="session-card__meta">{{ subscriptionLine }}</p>
-    </template>
-
-    <div class="session-card__sep" />
-
-    <!-- 对齐 Android：默认收起本次隧道流量，减少下方拥挤 -->
+    <!-- 对齐 Android：默认收起本次隧道流量 -->
     <button type="button" class="session-card__traffic-toggle" @click="trafficExpanded = !trafficExpanded">
       <span>本次隧道流量</span>
       <span class="session-card__chevron" :class="{ open: trafficExpanded }">›</span>
@@ -43,11 +52,11 @@
       <div class="session-card__traffic">
         <div>
           <span class="session-card__traffic-label">接收</span>
-          <strong>{{ formatBytes(downloadBytes) }}</strong>
+          <strong class="session-card__traffic-down">{{ formatSessionBytes(downloadBytes) }}</strong>
         </div>
         <div>
           <span class="session-card__traffic-label">发送</span>
-          <strong>{{ formatBytes(uploadBytes) }}</strong>
+          <strong class="session-card__traffic-up">{{ formatSessionBytes(uploadBytes) }}</strong>
         </div>
       </div>
       <p class="session-card__traffic-hint">仅统计本次连接，断开重连后重新计数</p>
@@ -58,7 +67,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import KyCard from '@/components/KyCard.vue'
-import { formatBytes } from '@/lib/format'
 import { displayNodeLabel } from '@/lib/connect-hero'
 import { formatDisplaySpeed, formatSessionDuration } from '@/lib/vpn/session-throughput'
 
@@ -83,27 +91,36 @@ const durationText = computed(() =>
   props.durationMs > 0 ? formatSessionDuration(props.durationMs) : '00:00',
 )
 
+/** 对齐 Android ConnectNodeDetailCard：剩余 X.X GB · yyyy-mm-dd 到期 */
 const subscriptionLine = computed(() => {
   const remaining = props.remainingGb
   const expires = props.expiresAt?.slice(0, 10)
-  if (remaining != null && expires) return `套餐剩余 ${remaining.toFixed(1)} GB · ${expires} 到期`
-  if (remaining != null) return `套餐剩余 ${remaining.toFixed(1)} GB`
+  if (remaining != null && expires) return `剩余 ${remaining.toFixed(1)} GB · ${expires} 到期`
+  if (remaining != null) return `剩余 ${remaining.toFixed(1)} GB`
   if (expires) return `${expires} 到期`
   return ''
 })
 
 const downloadSpeedText = computed(() => formatDisplaySpeed(props.downloadBps))
 const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
+
+/** 对齐 Android VpnSessionStatsTracker.formatBytes（MB 一位小数） */
+function formatSessionBytes(bytes: number): string {
+  const n = Math.max(0, bytes)
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
 </script>
 
 <style scoped>
-/* 样式落在 KyCard 根节点；内容在 __body，用 :deep 控间距 */
 .session-card {
   border: 1px solid rgba(74, 222, 128, 0.22);
-  border-radius: 22px;
+  border-radius: 18px;
   background: linear-gradient(
     135deg,
-    rgba(74, 222, 128, 0.08) 0%,
+    rgba(74, 222, 128, 0.1) 0%,
     rgba(0, 212, 255, 0.05) 100%
   );
 }
@@ -111,18 +128,18 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
 .session-card :deep(.ky-card__body) {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px 18px;
+  gap: 10px;
+  padding: 12px 14px;
 }
 
 .session-card__switch {
   display: flex;
   align-items: center;
-  gap: var(--ky-space-sm);
+  gap: 8px;
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
   color: inherit;
   cursor: pointer;
@@ -133,20 +150,9 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
   background: rgba(255, 255, 255, 0.1);
 }
 
-.session-card__switch-copy {
+.session-card__switch-value {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.session-card__switch-label {
-  font-size: var(--ky-font-xs);
-  color: var(--ky-text-muted);
-}
-
-.session-card__switch-value {
   font-size: var(--ky-font-md);
   font-weight: 650;
   color: var(--ky-text);
@@ -164,11 +170,11 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
 
 .session-card__speed {
   display: flex;
-  align-items: stretch;
-  gap: var(--ky-space-sm);
-  padding: 12px 14px;
-  border-radius: var(--ky-radius-md);
-  background: rgba(255, 255, 255, 0.04);
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .session-card__speed-item {
@@ -176,7 +182,50 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+  min-width: 0;
+}
+
+.session-card__speed-head {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.session-card__speed-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.session-card__speed-dot::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+}
+
+.session-card__speed-dot--down {
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.session-card__speed-dot--down::after {
+  border-top: 5px solid #4ade80;
+  margin-top: 2px;
+}
+
+.session-card__speed-dot--up {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.session-card__speed-dot--up::after {
+  border-bottom: 5px solid #2563eb;
+  margin-bottom: 2px;
 }
 
 .session-card__speed-label {
@@ -185,34 +234,47 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
 }
 
 .session-card__speed-value {
-  font-size: var(--ky-font-lg);
+  font-size: var(--ky-font-md);
   font-weight: 650;
   color: var(--ky-text);
 }
 
+.session-card__speed-value.idle {
+  color: var(--ky-text-muted);
+}
+
 .session-card__divider {
   width: 1px;
-  align-self: stretch;
-  background: var(--ky-border-soft);
+  height: 32px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .session-card__duration {
-  margin: 0;
-  font-size: var(--ky-font-md);
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 4px;
+  flex-shrink: 0;
+}
+
+.session-card__duration-icon {
+  font-size: 12px;
+  opacity: 0.65;
+  line-height: 1;
+}
+
+.session-card__duration strong {
+  font-size: var(--ky-font-sm);
+  font-weight: 650;
   color: var(--ky-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .session-card__meta {
   margin: 0;
-  font-size: var(--ky-font-sm);
+  font-size: var(--ky-font-xs);
   color: var(--ky-text-muted);
-}
-
-.session-card__sep {
-  height: 1px;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.06);
 }
 
 .session-card__traffic-toggle {
@@ -220,11 +282,11 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 4px 0;
+  padding: 2px 0;
   border: 0;
   background: transparent;
   color: var(--ky-text);
-  font-size: var(--ky-font-sm);
+  font-size: var(--ky-font-xs);
   font-weight: 600;
   cursor: pointer;
   text-align: left;
@@ -233,7 +295,7 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
 .session-card__chevron {
   display: inline-block;
   color: var(--ky-text-muted);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
   transform: rotate(0deg);
   transition: transform 0.15s ease;
@@ -246,16 +308,13 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
 .session-card__traffic-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding-bottom: 2px;
 }
 
 .session-card__traffic {
   display: flex;
   gap: 20px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
 }
 
 .session-card__traffic-label {
@@ -265,9 +324,19 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
   margin-bottom: 2px;
 }
 
+.session-card__traffic-down {
+  color: #4ade80;
+  font-size: var(--ky-font-md);
+}
+
+.session-card__traffic-up {
+  color: #60a5fa;
+  font-size: var(--ky-font-md);
+}
+
 .session-card__traffic-hint {
   margin: 0;
-  font-size: var(--ky-font-xs);
+  font-size: 11px;
   line-height: 1.4;
   color: var(--ky-text-muted);
 }

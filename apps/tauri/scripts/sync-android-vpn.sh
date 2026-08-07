@@ -18,22 +18,37 @@ rm -rf "$GEN_MAIN/java/com/vpn/kuayun/vpn"
 cp -R "$OVERLAY_MAIN/java/com/vpn/kuayun/vpn" "$GEN_MAIN/java/com/vpn/kuayun/"
 # 清理旧包名残留
 rm -rf "$GEN_MAIN/java/com/vpn/tauri"
+
+# 同步 overlay 资源（FileProvider paths 等）
+if [[ -d "$OVERLAY_MAIN/res" ]]; then
+  mkdir -p "$GEN_MAIN/res"
+  cp -R "$OVERLAY_MAIN/res/." "$GEN_MAIN/res/"
+fi
+
 python3 - "$OVERLAY_MAIN/AndroidManifest.xml" "$GEN_MAIN/AndroidManifest.xml" <<'PY'
 import re, sys
 overlay_path, gen_path = sys.argv[1], sys.argv[2]
 marker = "<!-- vpn-tauri-overlay -->"
 gen = open(gen_path, encoding="utf-8").read()
-if marker in gen:
-    sys.exit(0)
 overlay = open(overlay_path, encoding="utf-8").read()
-perms = "\n    ".join(dict.fromkeys(re.findall(r"<uses-permission[^>]+>", overlay)))
-if perms:
-    gen = re.sub(r"(<manifest[^>]*>)", r"\1\n    " + perms, gen, count=1)
+perms = list(dict.fromkeys(re.findall(r"<uses-permission[^>]+>", overlay)))
+missing = [p for p in perms if p not in gen]
+if missing:
+    gen = re.sub(r"(<manifest[^>]*>)", r"\1\n    " + "\n    ".join(missing), gen, count=1)
 m = re.search(r"<application[^>]*>(.*)</application>", overlay, re.S)
 if m:
     block = m.group(1).strip()
     insert = f"        {marker}\n        {block}\n        {marker}"
-    gen = gen.replace("</application>", insert + "\n    </application>")
+    if marker in gen:
+        gen = re.sub(
+            re.escape(marker) + r".*?" + re.escape(marker),
+            insert,
+            gen,
+            count=1,
+            flags=re.S,
+        )
+    else:
+        gen = gen.replace("</application>", insert + "\n    </application>")
 open(gen_path, "w", encoding="utf-8").write(gen)
 PY
 

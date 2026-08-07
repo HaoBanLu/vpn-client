@@ -124,21 +124,22 @@ const serviceItems = computed<Array<{ title: string; subtitle: string; route: st
     ? [{ title: '在线客服', subtitle: 'Telegram、群组与人工协助', route: 'Support', icon: CustomerServiceOutlined }]
     : []),
   { title: '我的工单', subtitle: '问题反馈与回复', route: 'Tickets', icon: FileTextOutlined },
-  { title: '帮助中心', subtitle: '导出订阅链接与连接辅助', route: 'Help', icon: QuestionCircleOutlined },
+  // Clash 订阅导出仅高级/调试账号可见，避免会员误当主路径
+  ...(account.user?.app_debug_enabled
+    ? [{ title: '订阅导出', subtitle: 'Clash 订阅链接（高级）', route: 'Help', icon: QuestionCircleOutlined }]
+    : []),
 ])
 
 const settingItems = computed<Array<{ title: string; subtitle: string; route: string; icon: Component }>>(() => {
   const items: Array<{ title: string; subtitle: string; route: string; icon: Component }> = [
     { title: '连接与隐私', subtitle: '自动重连、托盘与泄露自检', route: 'StabilitySettings', icon: SettingOutlined },
-    { title: '规则直连', subtitle: '域名/IP 绕过 VPN', route: 'DirectBypassRules', icon: FilterOutlined },
   ]
+  // 规则直连 / 诊断日志：仅调试账号，减少误触泄露与噪音入口
   if (account.user?.app_debug_enabled) {
-    items.push({
-      title: '诊断日志',
-      subtitle: '本地 VPN 事件与上传',
-      route: 'DebugLog',
-      icon: BugOutlined,
-    })
+    items.push(
+      { title: '规则直连', subtitle: '域名/IP 绕过 VPN（高级）', route: 'DirectBypassRules', icon: FilterOutlined },
+      { title: '诊断日志', subtitle: '本地 VPN 事件与上传', route: 'DebugLog', icon: BugOutlined },
+    )
   }
   items.push(
     { title: '我的设备', subtitle: '登录设备与会话管理', route: 'Devices', icon: ProfileOutlined },

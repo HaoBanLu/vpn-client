@@ -82,7 +82,7 @@ import PageHeader from '@/components/PageHeader.vue'
 
 import { KyAlert, KyButton } from '@/components/ky'
 
-import { APP_VERSION_CODE, APP_VERSION_NAME } from '@/lib/app-meta'
+import { APP_VERSION_CODE, APP_VERSION_NAME, detectClientPlatform } from '@/lib/app-meta'
 
 import { checkAppUpdate, installAppUpdate, type AppUpdateResult } from '@/lib/desktop/updater'
 
@@ -154,11 +154,22 @@ async function installUpdate() {
 
   try {
 
-    const ok = await installAppUpdate(updateResult.value.downloadUrl)
+    const ok = await installAppUpdate({
+      downloadUrl: updateResult.value.downloadUrl,
+      versionLabel: updateResult.value.latestVersionName,
+      versionCode: updateResult.value.latestVersionCode,
+    })
 
     if (ok) {
 
-      message.success(updateResult.value.source === 'updater' ? '更新已安装，请重启应用' : '已在浏览器打开下载页')
+      const tip =
+        updateResult.value.source === 'updater'
+          ? '更新已安装，请重启应用'
+          : detectClientPlatform() === 'android'
+            ? '已开始下载，完成后将提示安装'
+            : '已在浏览器打开下载页'
+
+      message.success(tip)
 
     } else {
 

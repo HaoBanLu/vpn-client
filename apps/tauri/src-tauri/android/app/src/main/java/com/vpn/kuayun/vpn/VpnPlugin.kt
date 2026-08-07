@@ -107,6 +107,28 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
+    /** 应用内下载并安装 APK（DownloadManager + FileProvider）。 */
+    @Command
+    fun installApkUpdate(invoke: Invoke) {
+        val args = invoke.getArgs()
+        val url = args.getString("url", "").orEmpty()
+        val versionLabel = args.getString("versionLabel", "latest").orEmpty().ifBlank { "latest" }
+        val versionCode =
+            runCatching { args.getDouble("versionCode").toInt() }.getOrElse {
+                args.getString("versionCode", "0")?.toIntOrNull() ?: 0
+            }
+        if (url.isBlank()) {
+            invoke.reject("下载地址无效")
+            return
+        }
+        val installer = AppUpdateInstaller(activity.applicationContext)
+        installer.attachActivity(activity)
+        installer.startDownload(url, versionLabel, versionCode)
+        val ret = JSObject()
+        ret.put("started", true)
+        invoke.resolve(ret)
+    }
+
     private fun emitStatus(status: VpnConnectionStatus) {
         trigger("vpn://status", statusObject(status.state, status.error))
     }

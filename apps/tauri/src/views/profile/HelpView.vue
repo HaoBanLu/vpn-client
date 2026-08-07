@@ -1,8 +1,8 @@
 <template>
   <KyPage sub>
     <PageHeader
-      title="帮助中心"
-      subtitle="若 App 无法连接，可导出订阅链接在第三方客户端使用"
+      title="订阅导出"
+      subtitle="高级功能：导出 Clash 订阅，供第三方客户端使用"
     />
 
     <KyButton type="primary" block size="large" :loading="loading" @click="loadSubscriptionUrl">

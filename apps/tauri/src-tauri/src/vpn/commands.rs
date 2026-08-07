@@ -440,3 +440,47 @@ pub fn vpn_kill_switch_status() -> Result<bool, String> {
         Ok(false)
     }
 }
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApkUpdateOptions {
+    pub url: String,
+    pub version_label: Option<String>,
+    pub version_code: Option<i32>,
+}
+
+/// Android：经 VpnPlugin 下载并调起系统安装；其它平台返回错误由前端回退外链。
+#[tauri::command]
+pub async fn vpn_install_apk_update<R: Runtime>(
+    app: AppHandle<R>,
+    options: ApkUpdateOptions,
+) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Args {
+            url: String,
+            version_label: String,
+            version_code: i32,
+        }
+        let args = Args {
+            url: options.url,
+            version_label: options
+                .version_label
+                .unwrap_or_else(|| "latest".into()),
+            version_code: options.version_code.unwrap_or(0),
+        };
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<serde_json::Value>("installApkUpdate", &args)
+            .map(|_| ())
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, options);
+        Err("当前平台请使用桌面 updater 或外链下载".into())
+    }
+}

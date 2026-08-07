@@ -54,6 +54,6 @@ describe('resolveConnectHeroCopy', () => {
       selectedNode: '新加坡2',
     })
     expect(copy.buttonLabel).toBe('一键连接')
-    expect(copy.subtitle).toContain('点击按钮连接')
+    expect(copy.subtitle).toContain('点击下方连接')
   })
 })

@@ -11,7 +11,7 @@
 ## 1. 发布前结论
 
 - [ ] **包名** 为 `com.vpn.kuayun`（`tauri.conf.json` → `identifier`）
-- [ ] **版本为完整 semver**（如 `1.2.8`，勿写 `1.2`）
+- [ ] **版本为完整 semver**（如 `1.2.9`，勿写 `1.2`）
 - [ ] **`APP_VERSION_NAME` / `APP_VERSION_CODE`** 已递增，并同步 `package.json` / `tauri.conf` / `Cargo.toml`
 - [ ] **`bundle.android.minSdkVersion` ≥ 26**（对齐 `mihomo-core`）
 - [ ] **Release 签名**：密码三项 Secrets 已配（入库 keystore 可无 BASE64）
@@ -42,8 +42,8 @@ npm run tauri:android:build:release
 见 [`GitHub自动打包与密钥配置说明.md`](GitHub自动打包与密钥配置说明.md)。
 
 ```bash
-git tag v1.2.8
-git push origin v1.2.8
+git tag v1.2.9
+git push origin v1.2.9
 ```
 
 核对 Actions **App Release** 全绿后：下载 `kuayun-android-*-arm64.apk` → 管理后台 `platform=android` 上传发布。

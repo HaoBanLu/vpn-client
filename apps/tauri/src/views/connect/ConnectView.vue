@@ -98,13 +98,8 @@ const renewalHint = computed(() =>
   store.subscription ? buildRenewalHint(store.subscription.expires_at) : null,
 )
 
-const showNetworkError = computed(
-  () => store.isConnected && store.probeStatus === 'failed' && !store.error,
-)
-
-/** 未选节点类提示不再展示，改为跳转节点页 */
+/** 仅展示真正的连接失败；已连接后质量探测失败不挡「已保护」 */
 const showConnectError = computed(() => {
-  if (showNetworkError.value) return true
   if (!store.error) return false
   return !store.error.includes(NODE_REQUIRED_HINT)
 })
@@ -173,23 +168,9 @@ watch(
     }
     const now = Date.now()
     const sessionElapsedMs = now - sessionStartedAt
-    const inWarmup = sessionElapsedMs < RATE_WARMUP_MS
 
-    // 优先用 Mihomo /traffic 瞬时速率（更贴近真实吞吐）；warmup 内仍压成 0
-    const hasNativeRates =
-      typeof stats.downloadBps === 'number' || typeof stats.uploadBps === 'number'
-    if (hasNativeRates) {
-      const downInstant = inWarmup ? 0 : Math.max(0, stats.downloadBps ?? 0)
-      const upInstant = inWarmup ? 0 : Math.max(0, stats.uploadBps ?? 0)
-      downloadBps.value = smoothTrafficRateEma(downloadBps.value, downInstant)
-      uploadBps.value = smoothTrafficRateEma(uploadBps.value, upInstant)
-      prevDownloadBytes = stats.downloadBytes
-      prevUploadBytes = stats.uploadBytes
-      prevSampleAt = now
-      return
-    }
-
-    // 回退：会话字节差估算
+    // 对齐 Android VpnSessionStatsTracker：用会话累计字节差算速率，不用 /traffic 瞬时值
+    //（短间隔或被别处消费时 TrafficNow 易放大成虚高 Mbps）
     if (prevSampleAt > 0) {
       const elapsed = now - prevSampleAt
       const downInstant = estimateDisplayBps({
@@ -212,6 +193,12 @@ watch(
     prevDownloadBytes = stats.downloadBytes
     prevUploadBytes = stats.uploadBytes
     prevSampleAt = now
+
+    // warmup 内强制展示 0（与 Android capDisplayRate 一致）
+    if (sessionElapsedMs < RATE_WARMUP_MS) {
+      downloadBps.value = 0
+      uploadBps.value = 0
+    }
   },
   { deep: true },
 )

@@ -10,8 +10,9 @@ import {
 } from './session-throughput'
 
 describe('session-throughput', () => {
-  it('formats duration under one hour as m:ss', () => {
-    expect(formatSessionDuration(65_000)).toBe('1:05')
+  it('formats duration under one hour as mm:ss (Android padded)', () => {
+    expect(formatSessionDuration(65_000)).toBe('01:05')
+    expect(formatSessionDuration(125_000)).toBe('02:05')
   })
 
   it('estimates mbps from byte delta', () => {

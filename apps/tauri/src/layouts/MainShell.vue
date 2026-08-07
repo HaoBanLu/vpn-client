@@ -138,7 +138,11 @@ async function checkForUpdateSilently() {
       cancelText: result.forceUpdate ? undefined : '稍后再说',
       onOk: async () => {
         if (result.source === 'updater' || result.downloadUrl) {
-          await installAppUpdate(result.downloadUrl)
+          await installAppUpdate({
+            downloadUrl: result.downloadUrl,
+            versionLabel: result.latestVersionName,
+            versionCode: result.latestVersionCode,
+          })
         }
       },
       onCancel: () => {

@@ -98,7 +98,7 @@ export function resolveConnectHeroCopy(input: {
   return {
     title: '未连接',
     subtitle: selectedNode?.trim()
-      ? `已选 ${nodeLabel} · 点击按钮连接`
+      ? `已选 ${nodeLabel} · 点击下方连接`
       : '点击「一键连接」前往选择节点',
     buttonLabel: '一键连接',
     variant: 'default',
