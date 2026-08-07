@@ -56,6 +56,8 @@ fi
 SETTINGS_KTS="$GEN_ANDROID/settings.gradle.kts"
 SETTINGS_GROOVY="$GEN_ANDROID/settings.gradle"
 MIHOMO_INCLUDE=$'include(":mihomo-core")\nproject(":mihomo-core").projectDir = file("../../../../android/mihomo-core")\n'
+# 与 Tauri gen 工程常见 Kotlin 版本对齐（日志见 1.9.25）
+SERIALIZATION_VER="${KUAYUN_KOTLIN_SERIALIZATION_VERSION:-1.9.25}"
 
 patch_settings() {
   local settings="$1"
@@ -76,22 +78,63 @@ if ! grep -rq 'include(":mihomo-core")' "$GEN_ANDROID"/settings.gradle* 2>/dev/n
   exit 1
 fi
 
-ROOT_BUILD="$GEN_ANDROID/build.gradle.kts"
-if [[ -f "$ROOT_BUILD" ]] && ! grep -q 'kotlin.plugin.serialization' "$ROOT_BUILD"; then
-  python3 - "$ROOT_BUILD" <<'PY'
+# mihomo-core 需要 kotlin serialization 插件版本；Tauri 根工程默认不声明
+ensure_serialization_plugin() {
+  local root_build="$GEN_ANDROID/build.gradle.kts"
+  local settings_groovy="$GEN_ANDROID/settings.gradle"
+  local marker='org.jetbrains.kotlin.plugin.serialization'
+
+  if [[ -f "$root_build" ]] && ! grep -q "$marker" "$root_build"; then
+    python3 - "$root_build" "$SERIALIZATION_VER" <<'PY'
 from pathlib import Path
 import sys
 p = Path(sys.argv[1])
+ver = sys.argv[2]
 t = p.read_text(encoding="utf-8")
-needle = 'id("org.jetbrains.kotlin.android")'
-if needle in t and "kotlin.plugin.serialization" not in t:
-    t = t.replace(
-        needle,
-        needle + '\n    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.24" apply false',
-        1,
-    )
-    p.write_text(t, encoding="utf-8")
+line = f'    id("org.jetbrains.kotlin.plugin.serialization") version "{ver}" apply false'
+if "plugins {" in t:
+    t = t.replace("plugins {", "plugins {\n" + line, 1)
+else:
+    t = f"plugins {{\n{line}\n}}\n\n" + t
+p.write_text(t, encoding="utf-8")
+print(f"Patched serialization plugin into {p}")
 PY
+  fi
+
+  # settings.gradle pluginManagement 再兜一层（部分模板根 build 无 plugins 块）
+  if [[ -f "$settings_groovy" ]] && ! grep -q "$marker" "$settings_groovy"; then
+    python3 - "$settings_groovy" "$SERIALIZATION_VER" <<'PY'
+from pathlib import Path
+import re, sys
+p = Path(sys.argv[1])
+ver = sys.argv[2]
+t = p.read_text(encoding="utf-8")
+plugin_line = f"        id 'org.jetbrains.kotlin.plugin.serialization' version '{ver}'\n"
+# 在 pluginManagement { ... } 内插入 plugins { ... }
+m = re.search(r"pluginManagement\s*\{", t)
+if not m:
+    t = "pluginManagement {\n    plugins {\n" + plugin_line + "    }\n}\n" + t
+else:
+    # 若已有 plugins { 则插入其中，否则在 pluginManagement 开头加
+    rest = t[m.end():]
+    pm_plugins = re.search(r"plugins\s*\{", rest)
+    if pm_plugins and pm_plugins.start() < rest.find("}"):
+        idx = m.end() + pm_plugins.end()
+        t = t[:idx] + "\n" + plugin_line + t[idx:]
+    else:
+        idx = m.end()
+        t = t[:idx] + "\n    plugins {\n" + plugin_line + "    }\n" + t[idx:]
+p.write_text(t, encoding="utf-8")
+print(f"Patched serialization plugin into {p}")
+PY
+  fi
+}
+
+ensure_serialization_plugin
+
+if ! grep -rq 'kotlin.plugin.serialization' "$GEN_ANDROID"/build.gradle.kts "$GEN_ANDROID"/settings.gradle 2>/dev/null; then
+  echo "ERROR: kotlin.plugin.serialization not declared for gen/android" >&2
+  exit 1
 fi
 
 MIHOMO_JNI="$ROOT/../android/mihomo-core/src/main/jniLibs"

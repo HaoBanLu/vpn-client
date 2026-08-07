@@ -104,13 +104,40 @@ if (-not $patched) {
 }
 
 $genRootBuild = Join-Path $GenAndroidRoot "build.gradle.kts"
+$serializationVer = if ($env:KUAYUN_KOTLIN_SERIALIZATION_VERSION) { $env:KUAYUN_KOTLIN_SERIALIZATION_VERSION } else { "1.9.25" }
+$serializationLine = "    id(`"org.jetbrains.kotlin.plugin.serialization`") version `"$serializationVer`" apply false"
 if (Test-Path $genRootBuild) {
     $rootBuild = Get-Content $genRootBuild -Raw -Encoding UTF8
     if ($rootBuild -notmatch "kotlin\.plugin\.serialization") {
-        $rootBuild = $rootBuild -replace '(id\("org\.jetbrains\.kotlin\.android"\)[^\n]+)', '$1
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.24" apply false'
+        if ($rootBuild -match "plugins\s*\{") {
+            $rootBuild = $rootBuild -replace "plugins\s*\{", "plugins {`n$serializationLine", 1
+        } else {
+            $rootBuild = "plugins {`n$serializationLine`n}`n`n" + $rootBuild
+        }
         Set-Content -Path $genRootBuild -Value $rootBuild -Encoding UTF8 -NoNewline
+        Write-Host "Patched serialization plugin into $genRootBuild"
     }
+}
+
+$settingsGroovy = Join-Path $GenAndroidRoot "settings.gradle"
+if ((Test-Path $settingsGroovy) -and ((Get-Content $settingsGroovy -Raw) -notmatch "kotlin\.plugin\.serialization")) {
+    $sg = Get-Content $settingsGroovy -Raw -Encoding UTF8
+    $pluginLine = "        id 'org.jetbrains.kotlin.plugin.serialization' version '$serializationVer'`n"
+    if ($sg -match "pluginManagement\s*\{") {
+        if ($sg -match "pluginManagement\s*\{[\s\S]*?plugins\s*\{") {
+            $sg = $sg -replace "(pluginManagement\s*\{[\s\S]*?plugins\s*\{)", "`$1`n$pluginLine", 1
+        } else {
+            $sg = $sg -replace "(pluginManagement\s*\{)", "`$1`n    plugins {`n$pluginLine    }`n", 1
+        }
+    } else {
+        $sg = "pluginManagement {`n    plugins {`n$pluginLine    }`n}`n" + $sg
+    }
+    Set-Content -Path $settingsGroovy -Value $sg -Encoding UTF8 -NoNewline
+    Write-Host "Patched serialization plugin into $settingsGroovy"
+}
+
+if (-not (Select-String -Path (Join-Path $GenAndroidRoot "build.gradle.kts"), (Join-Path $GenAndroidRoot "settings.gradle") -Pattern "kotlin.plugin.serialization" -Quiet -ErrorAction SilentlyContinue)) {
+    throw "kotlin.plugin.serialization not declared for gen/android"
 }
 
 $mihomoJni = Join-Path $Root "..\android\mihomo-core\src\main\jniLibs"

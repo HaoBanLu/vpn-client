@@ -11,7 +11,7 @@
 `apps/android/` **已存档**（[`../android/ARCHIVE.md`](../android/ARCHIVE.md)），仅 `mihomo-core` 仍作 JNI 依赖。  
 对齐清单：[`docs/product/Tauri-Android功能对齐.md`](../../docs/product/Tauri-Android功能对齐.md)。
 
-版本以 `src/lib/app-meta.ts` / `package.json` / `tauri.conf.json` 为准（**当前线：`1.2.5` / code `125`**；`tauri.conf` version **必须**完整 semver）。  
+版本以 `src/lib/app-meta.ts` / `package.json` / `tauri.conf.json` 为准（**当前线：`1.2.6` / code `126`**；`tauri.conf` version **必须**完整 semver）。  
 包名 / identifier：**`com.vpn.kuayun`**（Android overlay 包：`com.vpn.kuayun.vpn`）。
 
 ## 约定
