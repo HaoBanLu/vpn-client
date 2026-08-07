@@ -31,8 +31,14 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install NDK
-        run: sdkmanager --install "ndk;26.1.10909125"
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install \
+            "ndk;26.1.10909125" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "platform-tools"
 
       - uses: actions/setup-node@v4
         with:
@@ -42,7 +48,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
       - uses: swatinem/rust-cache@v2
         with:
@@ -59,10 +65,21 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          if [ -z "${ANDROID_HOME:-}" ]; then
+            echo "ERROR: ANDROID_HOME not set by setup-android" >&2
+            exit 1
+          fi
           export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_HOME/ndk/26.1.10909125}"
           export NDK_HOME="$ANDROID_NDK_HOME"
+          if [ ! -d "$ANDROID_NDK_HOME" ]; then
+            echo "ERROR: NDK missing at $ANDROID_NDK_HOME" >&2
+            ls -la "$ANDROID_HOME/ndk" 2>/dev/null || true
+            exit 1
+          fi
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
           chmod +x ../../scripts/ci/build-tauri-android-release.sh
+          chmod +x ../../scripts/ci/setup-android-signing.sh
           chmod +x scripts/sync-android-vpn.sh
           bash ../../scripts/ci/build-tauri-android-release.sh
 

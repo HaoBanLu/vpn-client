@@ -28,7 +28,9 @@ PowerShell 转 keystore Base64（在仓库根目录）：
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("apps\android\keystore\kuayun-release.keystore")) | Set-Clipboard
 ```
 
-> 私有仓若已跟踪 keystore + `keystore.properties`，CI 可优先用仓库内文件；Secrets 作备份。强制用 Secret：环境变量 `ANDROID_FORCE_SECRET_SIGNING=1`。
+> 私有仓若已跟踪 keystore + `keystore.properties`，CI 可优先用仓库内文件。  
+> 若只跟踪了 `.keystore`（`keystore.properties` 在 `.gitignore`），**至少**配置 `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`；`ANDROID_KEYSTORE_BASE64` 可选作备份。  
+> 强制整包覆盖：环境变量 `ANDROID_FORCE_SECRET_SIGNING=1`。
 
 `VITE_API_BASE_URL` 须与 Android `releaseAppBaseUrl` 指向同一控制面（Android 地址在 gradle，不是本 Secret）。
 

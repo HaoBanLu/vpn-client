@@ -19,6 +19,19 @@ if [[ -z "$VERSION_NAME" || -z "$VERSION_CODE" ]]; then
 fi
 echo "Building Tauri Android $VERSION_NAME ($VERSION_CODE)"
 
+if [[ -z "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}" ]]; then
+  echo "ERROR: ANDROID_HOME / ANDROID_SDK_ROOT not set" >&2
+  exit 1
+fi
+export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+echo "ANDROID_HOME=$ANDROID_HOME"
+echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-}"
+echo "NDK_HOME=${NDK_HOME:-}"
+
+# 尽早校验签名材料，避免 init/build 跑很久后才因 Secrets 失败
+bash "$ROOT/scripts/ci/setup-android-signing.sh" "$ANDROID_ARCHIVE"
+
 # 存档工程内 mihomo-core 仍提供 JNI（见 apps/android/ARCHIVE.md）
 if [[ ! -f "$ANDROID_ARCHIVE/mihomo-core/src/main/jniLibs/arm64-v8a/libclash.so" ]]; then
   echo "Fetching mihomo native libs into archived apps/android/mihomo-core ..."
@@ -26,16 +39,22 @@ if [[ ! -f "$ANDROID_ARCHIVE/mihomo-core/src/main/jniLibs/arm64-v8a/libclash.so"
 fi
 
 if [[ ! -d src-tauri/gen/android/app ]]; then
-  echo "Initializing Tauri Android project..."
-  npx tauri android init --ci
+  echo "Initializing Tauri Android project (gen/android)..."
+  # overlay 位于 src-tauri/android/，生成工程必须写到 gen/android
+  npx tauri android init --ci --verbose
+fi
+
+if [[ ! -d src-tauri/gen/android/app ]]; then
+  echo "ERROR: src-tauri/gen/android/app missing after tauri android init" >&2
+  ls -la src-tauri/gen 2>/dev/null || true
+  ls -la src-tauri/android 2>/dev/null || true
+  exit 1
 fi
 
 bash scripts/sync-android-vpn.sh
 
-bash "$ROOT/scripts/ci/setup-android-signing.sh" "$ANDROID_ARCHIVE"
-
 echo "Running tauri android build --target aarch64 ..."
-npx tauri android build --target aarch64
+npx tauri android build --target aarch64 --verbose
 
 # 优先 unsigned，避免二次签名冲突
 APK=""

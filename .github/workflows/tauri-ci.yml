@@ -4,11 +4,15 @@ on:
   push:
     paths:
       - 'apps/tauri/**'
+      - 'frontend/shared/**'
       - '.github/workflows/tauri-ci.yml'
+      - 'scripts/ci/prepare-tauri-release-build.mjs'
   pull_request:
     paths:
       - 'apps/tauri/**'
+      - 'frontend/shared/**'
       - '.github/workflows/tauri-ci.yml'
+      - 'scripts/ci/prepare-tauri-release-build.mjs'
 
 concurrency:
   group: tauri-ci-${{ github.ref }}
@@ -38,6 +42,16 @@ jobs:
         working-directory: apps/tauri/src-tauri
     steps:
       - uses: actions/checkout@v4
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            pkg-config
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo check
 
@@ -72,6 +86,9 @@ jobs:
           workspaces: apps/tauri/src-tauri
 
       - run: npm ci
+      # CI 无 updater 私钥时关闭 createUpdaterArtifacts（与 App Release 一致）
+      - name: Prepare Tauri CI build
+        run: node ../../scripts/ci/prepare-tauri-release-build.mjs .
       - run: npm run tauri:linux:build
 
   tauri-macos-build:
@@ -95,6 +112,8 @@ jobs:
           workspaces: apps/tauri/src-tauri
 
       - run: npm ci
+      - name: Prepare Tauri CI build
+        run: node ../../scripts/ci/prepare-tauri-release-build.mjs .
       - run: npm run tauri:mac:build
 
   tauri-windows-build:
@@ -122,11 +141,14 @@ jobs:
           VITE_API_BASE_URL: https://example.com/api
         run: |
           npm ci
+          node ../../scripts/ci/prepare-tauri-release-build.mjs .
           npm run tauri:win:build
 
   tauri-ios-build:
     name: iPhone (Simulator xcodebuild)
     runs-on: macos-latest
+    # Network Extension + App Group 在无签名 Simulator 上常 exit 65；正式 IPA 由 app-release 负责
+    continue-on-error: true
     defaults:
       run:
         working-directory: apps/tauri
@@ -134,6 +156,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install xcodegen
-        run: brew install xcodegen
+        run: |
+          export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
+          brew untap aws/tap 2>/dev/null || true
+          brew install xcodegen
 
       - run: npm run tauri:ios:check

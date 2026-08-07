@@ -34,6 +34,8 @@ if [[ ! -d "KuayunVPN.xcodeproj" ]]; then
 fi
 
 echo "Building for iOS Simulator (no code signing) ..."
+# Network Extension / App Group 在无 Team 的 Simulator 上常失败；CI 将该 job 标为 continue-on-error
+set +e
 xcodebuild \
   -project KuayunVPN.xcodeproj \
   -scheme KuayunVPN \
@@ -42,6 +44,14 @@ xcodebuild \
   -configuration Debug \
   build \
   CODE_SIGNING_ALLOWED=NO \
-  CODE_SIGNING_REQUIRED=NO
+  CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGN_IDENTITY="" \
+  DEVELOPMENT_TEAM=""
+xc=$?
+set -e
+if [[ "$xc" -ne 0 ]]; then
+  echo "WARN: iOS Simulator xcodebuild exit $xc (expected without Apple signing for NE)." >&2
+  exit "$xc"
+fi
 
 echo "iOS build OK"

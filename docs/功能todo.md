@@ -3,10 +3,11 @@
 > **单一事实来源**：本文件记录功能实现状态，与路由、页面、节点协议、订阅类型保持一致。  
 > 状态：`✅ 已完成` · `🚧 开发中/需联调` · `📋 待开发` · `❌ 未集成`
 
-最后核对：**2026-08-07**（Tauri version 必须 semver X.Y.Z；修 1.2→1.2.2）
+最后核对：**2026-08-07**（版本线 `1.2.3` / code `123`）
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
+| 修复 v1.2.2 CI：tauri-rust/桌面 smoke/Android 签名 | ✅ | 2026-08-07 | rust 补 WebKit；CI `prepare-tauri-release-build`；Android 入库 keystore+密码 Secrets；发版 `v1.2.3` |
 | 修复 Tauri version 非 semver 导致 CI 全挂 | ✅ | 2026-08-07 | `tauri.conf.json` 写 `1.2` 非法；须 `1.2.2`；本地 `cargo check` + `npm test` 已绿 |
 | 迁入 frontend/shared 修复 CI | ✅ | 2026-08-07 | 拆仓后缺失 `@shared/theme/tokens` |
 | 包名统一 com.vpn.kuayun | ✅ | 2026-08-07 | Tauri `identifier` + Android overlay `com.vpn.kuayun.vpn`；iOS `com.vpn.kuayun.app/.tunnel` |
