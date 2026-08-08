@@ -1084,6 +1084,7 @@ export const useConnectStore = defineStore('connect', () => {
     activeProfile,
     connectionState,
     probeStatus,
+    probeLatencyMs,
     actionHint,
     connectPending,
     error,
