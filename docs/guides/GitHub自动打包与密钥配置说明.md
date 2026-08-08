@@ -107,9 +107,9 @@ flowchart LR
 
 | 端 | 用户可见版本 | 版本码 | 改哪里 |
 |----|--------------|--------|--------|
-| **Android / Windows / macOS / Linux** | `1.2.10` | `130` | **统一**：`apps/tauri/package.json`、`src-tauri/tauri.conf.json`、`src/lib/app-meta.ts`；`Cargo.toml` 一并 |
-| **iPhone** | `1.2.10` | `130` | `apps/tauri/platforms/ios/project.yml` |
-| **发版 Tag** | `v1.2.10` | — | 仅 Git Tag |
+| **Android / Windows / macOS / Linux** | `1.2.11` | `131` | **统一**：`apps/tauri/package.json`、`src-tauri/tauri.conf.json`、`src/lib/app-meta.ts`；`Cargo.toml` 一并 |
+| **iPhone** | `1.2.11` | `131` | `apps/tauri/platforms/ios/project.yml` |
+| **发版 Tag** | `v1.2.11` | — | 仅 Git Tag |
 
 > **`apps/android` 已存档**：不再改其 `build.gradle.kts` 发版。CI Android APK 来自 `apps/tauri`。
 

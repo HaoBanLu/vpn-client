@@ -7,6 +7,7 @@
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
+| 发版 1.2.11 / code 131 | ✅ | 2026-08-08 | 含安卓卡启动修复、Logo 统一、PC 黑窗、桌面去独立 Splash；Tag `v1.2.11` |
 | 桌面去掉独立 Splash（隐藏主窗就绪再 show） | ✅ | 2026-08-08 | `tauri.conf` 单 main `visible:false`；删 `splash.html`；`boot_reveal_main` 仅 show |
 | 修 Android 卡 splash + Logo 不一致 + PC 连接黑窗 | ✅ | 2026-08-08 | `tauri.android.conf.json` 直进 `index.html`；品牌图覆盖 Android mipmap；`kill_switch` netsh 加 `CREATE_NO_WINDOW`；桌面独立 splash 已于同日改为隐藏主窗方案 |
 | 发版铁律/踩坑写入打包手册 | ✅ | 2026-08-08 | [`GitHub自动打包与密钥配置说明.md`](guides/GitHub自动打包与密钥配置说明.md) §0/§9；Android 检查清单同步 |
