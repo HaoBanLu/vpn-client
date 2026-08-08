@@ -1,12 +1,9 @@
 <template>
-  <KyTabPage
-    title="我的"
-    :on-refresh="refresh"
-    :loading="account.loading"
-  >
+  <KyTabPage :on-refresh="refresh" :loading="account.loading">
     <template #before>
-      <KyCard v-if="account.user" class="account-bar" highlight>
-        <div class="account-bar__row">
+      <div v-if="account.user" class="account-bar">
+        <div class="account-bar__identity">
+          <UserOutlined class="account-bar__avatar" />
           <div class="account-bar__copy">
             <div class="account-bar__name-row">
               <p class="account-bar__email">{{ account.user.email }}</p>
@@ -14,14 +11,31 @@
             </div>
             <p class="account-bar__meta">
               <button type="button" class="account-bar__scenario" @click="openScenario">
-                场景：{{ connect.connectionScenarioLabel }}
+                {{ connect.connectionScenarioLabel }}
               </button>
-              <span v-if="expiresLabel">到期 {{ expiresLabel }}</span>
+              <span v-if="expiresLabel">到期: {{ expiresLabel }}</span>
             </p>
           </div>
-          <KyButton size="small" @click="router.push({ name: 'Devices' })">设备</KyButton>
         </div>
-      </KyCard>
+        <div class="account-bar__menu-wrap">
+          <button
+            type="button"
+            class="account-bar__menu-btn"
+            aria-label="账户菜单"
+            @click="accountMenuOpen = !accountMenuOpen"
+          >
+            <MoreOutlined />
+          </button>
+          <div v-if="accountMenuOpen" class="account-bar__menu" role="menu">
+            <button type="button" role="menuitem" @click="goMenu('Devices')">查看设备</button>
+            <button type="button" role="menuitem" @click="goMenu('Recharge')">充值</button>
+            <button type="button" role="menuitem" @click="goMenu('ChangePassword')">修改密码</button>
+            <button type="button" role="menuitem" class="account-bar__menu-danger" @click="logoutFromMenu">
+              退出登录
+            </button>
+          </div>
+        </div>
+      </div>
 
       <KyCard
         v-for="item in recentNotifications"
@@ -135,10 +149,12 @@ import {
   FileTextOutlined,
   FilterOutlined,
   LockOutlined,
+  MoreOutlined,
   ProfileOutlined,
   QuestionCircleOutlined,
   SettingOutlined,
   ShoppingOutlined,
+  UserOutlined,
   WalletOutlined,
 } from '@ant-design/icons-vue'
 import type { Component } from 'vue'
@@ -161,6 +177,7 @@ const account = useAccountStore()
 const connect = useConnectStore()
 const router = useRouter()
 const scenarioOpen = ref(false)
+const accountMenuOpen = ref(false)
 const isAndroid = detectClientPlatform() === 'android'
 
 const recentNotifications = computed(() => account.notifications.slice(-2).reverse())
@@ -257,7 +274,18 @@ const scenarioOptions: Array<{ value: ConnectionScenarioValue; label: string; hi
 ]
 
 function openScenario() {
+  accountMenuOpen.value = false
   scenarioOpen.value = true
+}
+
+function goMenu(routeName: string) {
+  accountMenuOpen.value = false
+  router.push({ name: routeName })
+}
+
+async function logoutFromMenu() {
+  accountMenuOpen.value = false
+  await logout()
 }
 
 function onConnectItem(item: MenuItem) {
@@ -294,11 +322,26 @@ onMounted(refresh)
 </script>
 
 <style scoped>
-.account-bar__row {
+.account-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ky-space-md);
+  gap: var(--ky-space-sm);
+  padding: 4px 2px 2px;
+}
+
+.account-bar__identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.account-bar__avatar {
+  flex-shrink: 0;
+  font-size: 28px;
+  color: var(--ky-accent);
 }
 
 .account-bar__copy {
@@ -334,7 +377,7 @@ onMounted(refresh)
 }
 
 .account-bar__meta {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -347,9 +390,69 @@ onMounted(refresh)
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--ky-accent-soft);
+  color: var(--ky-accent-deep);
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
+}
+
+:root.dark .account-bar__scenario,
+html .account-bar__scenario {
+  color: var(--ky-accent-soft);
+}
+
+.account-bar__menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.account-bar__menu-btn {
+  appearance: none;
+  border: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ky-radius-full);
+  background: transparent;
+  color: var(--ky-text-secondary);
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.account-bar__menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  min-width: 148px;
+  padding: 6px;
+  border-radius: var(--ky-radius-md);
+  background: var(--ky-bg-elevated);
+  border: 1px solid var(--ky-border);
+  box-shadow: var(--ky-shadow-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.account-bar__menu button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ky-text);
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: var(--ky-font-sm);
+  cursor: pointer;
+}
+
+.account-bar__menu button:hover {
+  background: var(--ky-bg-card-hover);
+}
+
+.account-bar__menu-danger {
+  color: var(--ky-danger) !important;
 }
 
 .package-name {

@@ -1,5 +1,12 @@
 <template>
-  <div class="brand-header" :class="{ 'brand-header--large': large, 'brand-header--auth': auth }">
+  <div
+    class="brand-header"
+    :class="{
+      'brand-header--large': large,
+      'brand-header--auth': auth,
+      'brand-header--tab': tab,
+    }"
+  >
     <div class="brand-logo">
       <KuayunCloudIcon :size="large ? 'lg' : 'md'" />
     </div>
@@ -24,17 +31,19 @@ withDefaults(
     subtitle?: string
     large?: boolean
     auth?: boolean
+    /** 主 Tab 页头：更紧凑，对齐 Compose KuayunMainTabBrandHeader */
+    tab?: boolean
     showBrand?: boolean
     showVersion?: boolean
   }>(),
-  { large: false, auth: false, showBrand: true, showVersion: false },
+  { large: false, auth: false, tab: false, showBrand: true, showVersion: false },
 )
 </script>
 
 <style scoped>
 .brand-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--ky-space-md);
   margin-bottom: var(--ky-space-md);
 }
@@ -43,6 +52,31 @@ withDefaults(
   width: 100%;
   max-width: 420px;
   margin-bottom: var(--ky-space-lg);
+}
+
+.brand-header--tab {
+  align-items: center;
+  margin-bottom: 2px;
+  padding: 2px 0 6px;
+}
+
+.brand-header--tab .brand-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.brand-header--tab .brand-title {
+  margin-top: 1px;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.brand-header--tab .brand-subtitle {
+  margin-top: 6px;
+  font-size: var(--ky-font-sm);
+  color: var(--ky-text-secondary);
 }
 
 .brand-header--large {

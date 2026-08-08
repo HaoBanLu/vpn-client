@@ -1,6 +1,7 @@
 <template>
   <KyTabPage
-    title="套餐"
+    title="加速套餐"
+    subtitle="选择适合你的流量方案，余额支付即时生效"
     :on-refresh="load"
     :loading="loading"
   >

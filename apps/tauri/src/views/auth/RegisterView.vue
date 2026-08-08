@@ -1,6 +1,6 @@
 <template>
   <KyPage center>
-    <KuayunBrandHeader title="创建账户" subtitle="注册跨云，畅享全球加速" large />
+    <KuayunBrandHeader title="创建账户" subtitle="注册跨云，畅享全球加速" auth show-version />
     <KyCard>
       <KyForm @finish="onSubmit">
         <KyFormItem label="邮箱">

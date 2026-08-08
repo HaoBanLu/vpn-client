@@ -1,6 +1,6 @@
 <template>
   <KyPage center>
-    <KuayunBrandHeader title="找回密码" subtitle="通过邮箱验证码重置登录密码" large />
+    <KuayunBrandHeader title="找回密码" subtitle="通过邮箱验证码重置登录密码" auth show-version />
     <KyCard>
       <KyForm @finish="onSubmit">
         <KyFormItem label="邮箱">

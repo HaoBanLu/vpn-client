@@ -1,11 +1,16 @@
 <template>
   <KyPage :class="pageClass">
-    <div v-if="showMobileBrandHeader" class="ky-tab-brand">
-      <h1 class="ky-tab-brand__title">{{ title }}</h1>
-    </div>
+    <KuayunBrandHeader
+      v-if="showMobileBrandHeader"
+      class="ky-tab-brand"
+      :title="title"
+      :subtitle="subtitle"
+      show-version
+      tab
+    />
     <KyPullRefresh :on-refresh="onRefresh" :disabled="refreshDisabled">
       <slot name="before" />
-      <KySpin :spinning="loading">
+      <KySpin :spinning="loading" :overlay="spinOverlay">
         <KyStack :gap="stackGap" :desktop-larger="desktopLarger">
           <slot />
         </KyStack>
@@ -20,6 +25,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import KyPage from '@/components/KyPage.vue'
 import KyPullRefresh from '@/components/KyPullRefresh.vue'
 import KyStack from '@/components/KyStack.vue'
+import KuayunBrandHeader from '@/components/KuayunBrandHeader.vue'
 import { KySpin } from '@/components/ky'
 import { shouldUseDesktopLayout } from '@/lib/layout'
 
@@ -30,6 +36,8 @@ const props = withDefaults(
     subtitle?: string
     onRefresh: () => Promise<void> | void
     loading?: boolean
+    /** 有内容时仅半透明遮罩，避免连接页大圈下再叠一层转圈 */
+    spinOverlay?: boolean
     refreshDisabled?: boolean
     pageClass?: string
     stackGap?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
@@ -37,6 +45,7 @@ const props = withDefaults(
   }>(),
   {
     loading: false,
+    spinOverlay: true,
     refreshDisabled: false,
     stackGap: 'md',
     desktopLarger: true,
@@ -62,14 +71,6 @@ onUnmounted(() => {
 
 <style scoped>
 .ky-tab-brand {
-  padding: 4px 0 10px;
-}
-
-.ky-tab-brand__title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--ky-text);
-  letter-spacing: 0.02em;
+  margin-bottom: 4px;
 }
 </style>

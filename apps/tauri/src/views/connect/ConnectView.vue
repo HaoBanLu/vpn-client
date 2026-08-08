@@ -5,7 +5,8 @@
     stack-gap="sm"
     :desktop-larger="false"
     :on-refresh="onRefresh"
-    :loading="store.loading"
+    :loading="store.loading && !store.subscription"
+    :spin-overlay="false"
     :refresh-disabled="store.isConnecting || store.isSwitching"
   >
     <template v-if="!store.subscription">

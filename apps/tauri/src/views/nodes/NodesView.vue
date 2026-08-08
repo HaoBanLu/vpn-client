@@ -1,5 +1,11 @@
 <template>
-  <KyTabPage title="节点选择" page-class="nodes-page" :on-refresh="load" :loading="loading">
+  <KyTabPage
+    title="节点选择"
+    subtitle="点「连接」上网；需要延迟时再批量测速"
+    page-class="nodes-page"
+    :on-refresh="load"
+    :loading="loading"
+  >
     <KyAlert v-if="loadError" type="error" :message="loadError" />
 
     <KySelectedBanner
