@@ -1,14 +1,24 @@
 <template>
   <KyPage sub>
-    <PageHeader title="连接与隐私" subtitle="系统代理下可调整重连、托盘与隐私自检" />
+    <PageHeader :title="pageTitle" :subtitle="pageSubtitle" />
 
     <KyCard title="连接方式">
-      <p class="mode-desc">
-        当前使用 <strong>系统代理</strong>（本地混合端口 + 系统 HTTP/HTTPS），无需管理员权限。
-      </p>
-      <p class="mode-desc muted">
-        TUN 全隧道、Kill Switch、系统加固为 Android 能力，桌面端不提供。
-      </p>
+      <template v-if="isAndroid">
+        <p class="mode-desc">
+          当前使用 <strong>系统 VPN（TUN）</strong>，由跨云接管设备流量，对齐原生 Android 体验。
+        </p>
+        <p class="mode-desc muted">
+          断网保护（Kill Switch）、开机自连、分应用直连等高级项将在后续版本开放。
+        </p>
+      </template>
+      <template v-else>
+        <p class="mode-desc">
+          当前使用 <strong>系统代理</strong>（本地混合端口 + 系统 HTTP/HTTPS），无需管理员权限。
+        </p>
+        <p class="mode-desc muted">
+          TUN 全隧道、Kill Switch、系统加固为 Android 能力，桌面端不提供。
+        </p>
+      </template>
     </KyCard>
 
     <KyCard title="连接设置">
@@ -60,9 +70,7 @@
     </KyCard>
 
     <KyCard flat title="说明">
-      <p class="hint">
-        关闭窗口时若已开启「关闭时最小化到托盘」，VPN 连接会保持；可在托盘图标右键断开或退出。
-      </p>
+      <p class="hint">{{ footerHint }}</p>
     </KyCard>
   </KyPage>
 </template>
@@ -87,6 +95,7 @@ import {
 } from '@/lib/vpn/privacy-leak-probe'
 import { loadDesktopSettings, saveDesktopSettings } from '@/lib/vpn/desktop-settings'
 import { setTrayHideOnClose } from '@/lib/desktop/tray'
+import { detectClientPlatform } from '@/lib/app-meta'
 import { useConnectStore } from '@/stores/connect'
 import { storeToRefs } from 'pinia'
 import { appendDebugLog } from '@/lib/debug/app-debug-log'
@@ -94,6 +103,17 @@ import { message } from '@/lib/ui/message'
 
 const connect = useConnectStore()
 const { isConnected } = storeToRefs(connect)
+const isAndroid = detectClientPlatform() === 'android'
+
+const pageTitle = '连接与隐私'
+const pageSubtitle = computed(() =>
+  isAndroid ? '防泄露默认开启；可调整重连与隐私检测' : '系统代理下可调整重连、托盘与隐私自检',
+)
+const footerHint = computed(() =>
+  isAndroid
+    ? '断线自动重连开启后，切网/断网恢复将尝试完整重连。系统 VPN 授权与省电白名单请在系统设置中确认。'
+    : '关闭窗口时若已开启「关闭时最小化到托盘」，VPN 连接会保持；可在托盘图标右键断开或退出。',
+)
 
 const settings = reactive(loadDesktopSettings())
 const probeRunning = ref(false)
@@ -135,7 +155,7 @@ async function runPrivacyProbe() {
 
 type ToggleKey = 'autoReconnect' | 'hideOnClose' | 'restoreSession'
 
-const toggleItems: Array<{ key: ToggleKey; title: string; desc: string }> = [
+const allToggleItems: Array<{ key: ToggleKey; title: string; desc: string; desktopOnly?: boolean }> = [
   {
     key: 'autoReconnect',
     title: '意外断线自动重连',
@@ -145,18 +165,25 @@ const toggleItems: Array<{ key: ToggleKey; title: string; desc: string }> = [
     key: 'hideOnClose',
     title: '关闭窗口时最小化到托盘',
     desc: '点击窗口关闭按钮时隐藏到系统托盘，不断开 VPN',
+    desktopOnly: true,
   },
   {
     key: 'restoreSession',
     title: '启动时恢复上次连接',
-    desc: '应用启动后若上次异常退出且仍登录，将尝试自动连接',
+    desc: isAndroid
+      ? '应用启动后若上次仍登录且有会话，将尝试自动连接'
+      : '应用启动后若上次异常退出且仍登录，将尝试自动连接',
   },
 ]
+
+const toggleItems = computed(() =>
+  allToggleItems.filter((item) => !(item.desktopOnly && isAndroid)),
+)
 
 async function setSetting(key: ToggleKey, value: boolean) {
   settings[key] = value
   saveDesktopSettings({ [key]: value })
-  if (key === 'hideOnClose') {
+  if (key === 'hideOnClose' && !isAndroid) {
     await setTrayHideOnClose(value)
   }
   message.success('设置已保存')
@@ -165,7 +192,7 @@ async function setSetting(key: ToggleKey, value: boolean) {
 watch(
   () => settings.hideOnClose,
   (enabled) => {
-    void setTrayHideOnClose(enabled)
+    if (!isAndroid) void setTrayHideOnClose(enabled)
   },
   { immediate: true },
 )

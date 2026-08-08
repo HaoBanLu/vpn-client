@@ -9,7 +9,7 @@
     <h2 class="connect-hero__title" :class="`connect-hero__title--${copy.titleTone}`">
       {{ copy.title }}
     </h2>
-    <p class="connect-hero__subtitle">{{ copy.subtitle }}</p>
+    <p v-if="copy.subtitle" class="connect-hero__subtitle">{{ copy.subtitle }}</p>
   </section>
 </template>
 

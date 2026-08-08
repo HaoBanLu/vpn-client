@@ -72,9 +72,10 @@ export function resolveConnectHeroCopy(input: {
   }
 
   if (connected) {
+    // 节点详情在会话卡；Hero 副标题留空，避免重复
     return {
       title: '已保护',
-      subtitle: nodeLabel,
+      subtitle: latencyHint || '',
       buttonLabel: '断开',
       variant: 'connected',
       titleTone: 'success',

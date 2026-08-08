@@ -23,3 +23,37 @@ export function displaySceneTags(
     filterRegion?.toLowerCase() === 'cn' || filterRegion?.toLowerCase() === 'china'
   return hideReturnHome ? raw.filter((t) => t !== '适合回国') : raw
 }
+
+/** 有延迟的节点按延迟升序；未测速的排后面，保持相对稳定。 */
+export function sortNodesByLatency<T extends { id: number }>(
+  nodes: T[],
+  latencyMap: Record<number, number | undefined>,
+): T[] {
+  return [...nodes].sort((a, b) => {
+    const la = latencyMap[a.id]
+    const lb = latencyMap[b.id]
+    const aHas = typeof la === 'number' && la > 0
+    const bHas = typeof lb === 'number' && lb > 0
+    if (aHas && bHas) return (la as number) - (lb as number)
+    if (aHas) return -1
+    if (bHas) return 1
+    return 0
+  })
+}
+
+/** 延迟最低的节点 id；无有效测速则 null。 */
+export function findFastestNodeId(
+  nodes: Array<{ id: number }>,
+  latencyMap: Record<number, number | undefined>,
+): number | null {
+  let bestId: number | null = null
+  let bestMs = Number.POSITIVE_INFINITY
+  for (const node of nodes) {
+    const ms = latencyMap[node.id]
+    if (typeof ms === 'number' && ms > 0 && ms < bestMs) {
+      bestMs = ms
+      bestId = node.id
+    }
+  }
+  return bestId
+}

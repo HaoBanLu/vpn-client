@@ -32,7 +32,7 @@
 
     <KyGrid2 v-else class="nodes-grid">
       <KyNodeCard
-        v-for="item in connectableNodes"
+        v-for="item in sortedConnectableNodes"
         :key="item.id"
         :node="item"
         :filter-region="region"
@@ -40,6 +40,8 @@
         :selected="connect.selectedNode === item.name"
         :selected-status-text="selectedStatusText"
         :latency-ms="latencyMap[item.id]"
+        :latency-pending="batchTesting && latencyMap[item.id] === undefined"
+        :fastest="fastestNodeId === item.id"
         :action-label="connect.isConnected ? '切换' : '连接'"
         :action-loading="connect.isSwitching"
         :action-disabled="connect.isSwitching"
@@ -84,6 +86,7 @@ import {
   parseLatencyEndpoint,
   probeTcpLatency,
 } from '@/lib/vpn/client-latency-probe'
+import { findFastestNodeId, sortNodesByLatency } from '@/lib/vpn/node-list-display'
 import { useConnectStore } from '@/stores/connect'
 
 const router = useRouter()
@@ -102,6 +105,8 @@ const filteredNodes = computed(() => {
 
 const connectableNodes = computed(() => filteredNodes.value.filter((node) => isAppConnectable(node)))
 const unsupportedNodes = computed(() => filteredNodes.value.filter((node) => !isAppConnectable(node)))
+const sortedConnectableNodes = computed(() => sortNodesByLatency(connectableNodes.value, latencyMap))
+const fastestNodeId = computed(() => findFastestNodeId(connectableNodes.value, latencyMap))
 
 const regionItems = computed(() => [
   { label: '全部', value: null },

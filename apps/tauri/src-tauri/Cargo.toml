@@ -1,7 +1,7 @@
 [package]
 name = "vpn-tauri"
-version = "1.2.12"
-description = "跨云 Tauri 跨端客户�?
+version = "1.2.13"
+description = "跨云 Tauri 跨端客户�?
 authors = ["vpn"]
 edition = "2021"
 

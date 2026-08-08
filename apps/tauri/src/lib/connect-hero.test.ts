@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { resolveConnectHeroCopy } from '@/lib/connect-hero'
 
 describe('resolveConnectHeroCopy', () => {
-  it('connected shows 已保护 and node only in subtitle', () => {
+  it('connected shows 已保护 without repeating node in subtitle', () => {
     const copy = resolveConnectHeroCopy({
       connectionState: 'connected',
       selectedNode: '武汉',
@@ -10,9 +10,10 @@ describe('resolveConnectHeroCopy', () => {
       entryLatencyMs: 2,
     })
     expect(copy.title).toBe('已保护')
-    expect(copy.subtitle).toBe('武汉')
+    expect(copy.subtitle).toContain('入口 2ms')
+    expect(copy.subtitle).toContain('隧道 120ms')
     expect(copy.connected).toBe(true)
-    expect(copy.subtitle).not.toContain('ms')
+    expect(copy.subtitle).not.toContain('武汉')
   })
 
   it('failed shows 连接失败', () => {

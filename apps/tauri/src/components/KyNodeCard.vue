@@ -5,7 +5,10 @@
         <div class="ky-node-card__body">
           <div class="ky-node-card__head">
             <span class="ky-node-card__name">{{ node.name }}</span>
-            <StatusBadge :text="statusBadge.text" :variant="statusBadge.variant" />
+            <div class="ky-node-card__badges">
+              <StatusBadge v-if="fastest" text="最快" variant="success" />
+              <StatusBadge :text="statusBadge.text" :variant="statusBadge.variant" />
+            </div>
           </div>
           <!-- 对齐 Android：不展示协议；已筛地区时隐藏重复地区行 -->
           <p v-if="showRegionLine" class="ky-node-card__meta">地区 {{ regionLabel }}</p>
@@ -13,11 +16,11 @@
             <span v-for="tag in sceneTags" :key="tag" class="ky-node-card__tag">{{ tag }}</span>
           </div>
           <span
-            v-if="variant === 'connectable' && latencyMs !== undefined"
+            v-if="variant === 'connectable'"
             class="ky-node-card__latency"
-            :style="{ color: latencyColor(latencyMs) }"
+            :style="{ color: latencyDisplayColor }"
           >
-            {{ latencyMs }}ms
+            {{ latencyLabel }}
           </span>
           <p v-if="variant === 'unsupported' && unsupportedText" class="ky-node-card__unsupported">
             {{ unsupportedText }}
@@ -67,6 +70,9 @@ const props = withDefaults(
     selected?: boolean
     selectedStatusText?: string | null
     latencyMs?: number
+    /** 批量测速进行中且该节点尚无结果 */
+    latencyPending?: boolean
+    fastest?: boolean
     actionLabel?: string
     actionLoading?: boolean
     actionDisabled?: boolean
@@ -80,6 +86,8 @@ const props = withDefaults(
     actionLabel: '使用此节点',
     actionLoading: false,
     actionDisabled: false,
+    latencyPending: false,
+    fastest: false,
   },
 )
 
@@ -90,6 +98,17 @@ const showRegionLine = computed(() =>
   shouldShowRegionLine(props.filterRegion, props.node.region),
 )
 const sceneTags = computed(() => displaySceneTags(props.node.scene_tags, props.filterRegion))
+
+const latencyLabel = computed(() => {
+  if (typeof props.latencyMs === 'number' && props.latencyMs > 0) return `${props.latencyMs}ms`
+  if (props.latencyPending) return '测速中…'
+  return '未测速'
+})
+
+const latencyDisplayColor = computed(() => {
+  if (typeof props.latencyMs === 'number' && props.latencyMs > 0) return latencyColor(props.latencyMs)
+  return 'var(--ky-text-muted)'
+})
 
 const statusBadge = computed(() => {
   if (props.variant === 'unsupported') {
@@ -138,6 +157,14 @@ const statusBadge = computed(() => {
   font-weight: 600;
   color: var(--ky-text);
   word-break: break-word;
+}
+
+.ky-node-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .ky-node-card__meta {

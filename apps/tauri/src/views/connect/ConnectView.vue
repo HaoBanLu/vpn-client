@@ -56,16 +56,6 @@
           <KyButton type="link" size="small" @click="goSupport">联系客服</KyButton>
         </div>
       </KyCard>
-
-      <KyButton
-        v-if="store.connectionState === 'failed' && store.subscription && showConnectError"
-        type="primary"
-        block
-        size="large"
-        @click="startConnect"
-      >
-        重试连接
-      </KyButton>
     </template>
   </KyTabPage>
 </template>
@@ -110,6 +100,7 @@ const heroCopy = computed(() =>
     connectPending: store.connectPending || (store.isConnecting && !store.isConnected),
     isSwitching: store.isSwitching,
     selectedNode: store.selectedNode,
+    tunnelLatencyMs: store.probeLatencyMs,
   }),
 )
 

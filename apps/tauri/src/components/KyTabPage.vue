@@ -1,5 +1,8 @@
 <template>
   <KyPage :class="pageClass">
+    <div v-if="showMobileBrandHeader" class="ky-tab-brand">
+      <h1 class="ky-tab-brand__title">{{ title }}</h1>
+    </div>
     <KyPullRefresh :on-refresh="onRefresh" :disabled="refreshDisabled">
       <slot name="before" />
       <KySpin :spinning="loading">
@@ -13,14 +16,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import KyPage from '@/components/KyPage.vue'
 import KyPullRefresh from '@/components/KyPullRefresh.vue'
 import KyStack from '@/components/KyStack.vue'
 import { KySpin } from '@/components/ky'
+import { shouldUseDesktopLayout } from '@/lib/layout'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
-    /** 保留兼容；主 Tab 页不再展示页头，侧栏已有品牌区 */
+    /** 移动端主 Tab 展示品牌页头（对齐 Compose KuayunMainTabBrandHeader） */
     title?: string
     subtitle?: string
     onRefresh: () => Promise<void> | void
@@ -37,4 +42,34 @@ withDefaults(
     desktopLarger: true,
   },
 )
+
+const isDesktop = ref(typeof window !== 'undefined' && shouldUseDesktopLayout(window.innerWidth))
+
+function updateLayout() {
+  isDesktop.value = shouldUseDesktopLayout(window.innerWidth)
+}
+
+const showMobileBrandHeader = computed(() => !!props.title && !isDesktop.value)
+
+onMounted(() => {
+  updateLayout()
+  window.addEventListener('resize', updateLayout)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateLayout)
+})
 </script>
+
+<style scoped>
+.ky-tab-brand {
+  padding: 4px 0 10px;
+}
+
+.ky-tab-brand__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ky-text);
+  letter-spacing: 0.02em;
+}
+</style>

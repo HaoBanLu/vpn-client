@@ -1,9 +1,9 @@
 {
   "name": "vpn-tauri",
-  "version": "1.2.12",
+  "version": "1.2.13",
   "private": true,
   "type": "module",
-  "description": "跨云 Tauri 跨端客户�?,
+  "description": "?? Tauri ?????",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
