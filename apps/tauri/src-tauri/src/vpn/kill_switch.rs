@@ -75,10 +75,18 @@ pub fn is_engaged() -> bool {
 #[cfg(target_os = "windows")]
 mod windows {
     use super::{KillSwitchError, RULE_BLOCK};
+    use crate::vpn::desktop_process::CREATE_NO_WINDOW;
+    use std::os::windows::process::CommandExt;
     use std::process::Command;
 
+    fn netsh_command() -> Command {
+        let mut command = Command::new("netsh");
+        command.creation_flags(CREATE_NO_WINDOW);
+        command
+    }
+
     fn run_netsh(args: &[&str]) -> Result<(), KillSwitchError> {
-        let output = Command::new("netsh")
+        let output = netsh_command()
             .args(args)
             .output()
             .map_err(|e| KillSwitchError::Command(e.to_string()))?;
@@ -126,7 +134,7 @@ mod windows {
     }
 
     pub fn is_engaged() -> bool {
-        Command::new("netsh")
+        netsh_command()
             .args([
                 "advfirewall",
                 "firewall",

@@ -35,4 +35,43 @@ $bmp.Dispose()
 Write-Host "Generated $pngPath"
 npx tauri icon $pngPath
 if ($LASTEXITCODE -ne 0) { throw "tauri icon failed" }
-Write-Host "Tauri icons updated under src-tauri/icons"
+
+# tauri icon 的 Android mipmap 偶发产出纯色坏图；用品牌源图覆盖各密度
+Add-Type -AssemblyName System.Drawing
+$src = [System.Drawing.Image]::FromFile($pngPath)
+$androidRoot = Join-Path $Root "src-tauri\icons\android"
+$legacy = @{ "mipmap-mdpi" = 48; "mipmap-hdpi" = 72; "mipmap-xhdpi" = 96; "mipmap-xxhdpi" = 144; "mipmap-xxxhdpi" = 192 }
+$fg = @{ "mipmap-mdpi" = 108; "mipmap-hdpi" = 162; "mipmap-xhdpi" = 216; "mipmap-xxhdpi" = 324; "mipmap-xxxhdpi" = 432 }
+function Save-Resized([System.Drawing.Image]$image, [int]$size, [string]$path) {
+  $bmp = New-Object System.Drawing.Bitmap $size, $size
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+  $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+  $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+  $g.Clear([System.Drawing.Color]::Transparent)
+  $g.DrawImage($image, 0, 0, $size, $size)
+  $g.Dispose()
+  $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+  $bmp.Dispose()
+}
+foreach ($dir in $legacy.Keys) {
+  $folder = Join-Path $androidRoot $dir
+  New-Item -ItemType Directory -Force -Path $folder | Out-Null
+  Save-Resized $src $legacy[$dir] (Join-Path $folder "ic_launcher.png")
+  Save-Resized $src $legacy[$dir] (Join-Path $folder "ic_launcher_round.png")
+}
+foreach ($dir in $fg.Keys) {
+  Save-Resized $src $fg[$dir] (Join-Path (Join-Path $androidRoot $dir) "ic_launcher_foreground.png")
+}
+$src.Dispose()
+$bgXml = @"
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="ic_launcher_background">#1B4DFF</color>
+</resources>
+"@
+$valuesDir = Join-Path $androidRoot "values"
+New-Item -ItemType Directory -Force -Path $valuesDir | Out-Null
+Set-Content -Path (Join-Path $valuesDir "ic_launcher_background.xml") -Value $bgXml -Encoding UTF8
+
+Write-Host "Tauri icons updated under src-tauri/icons (Android mipmap synced)"

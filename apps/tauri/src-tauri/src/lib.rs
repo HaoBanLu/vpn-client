@@ -21,8 +21,6 @@ mod tray {
 }
 
 use tauri::Manager;
-#[cfg(desktop)]
-use tauri::{WebviewUrl, WebviewWindowBuilder};
 use vpn::VpnState;
 
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
@@ -45,7 +43,7 @@ fn vpn_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .build()
 }
 
-/// 启动完成：先显示主窗口并抢焦点，再关闭 splash，减少切换空隙闪桌面。
+/// 前端就绪后显示主窗口（配置里 visible:false，避免启动白闪）。
 #[tauri::command]
 fn boot_reveal_main(app: tauri::AppHandle) -> Result<(), String> {
     #[cfg(desktop)]
@@ -56,10 +54,6 @@ fn boot_reveal_main(app: tauri::AppHandle) -> Result<(), String> {
             let _ = main.center();
             main.show().map_err(|e| e.to_string())?;
             let _ = main.set_focus();
-        }
-        // 主窗已显示后再关 splash（splash 为 alwaysOnTop，顺序可避免露桌面）
-        if let Some(splash) = app.get_webview_window("splash") {
-            let _ = splash.close();
         }
     }
     #[cfg(mobile)]
@@ -87,23 +81,12 @@ pub fn run() {
         .setup(|app| {
             #[cfg(desktop)]
             {
-                // 主窗口延后创建且默认不可见：配置里只放 splash，避免启动时黑窗闪现
-                let main = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                    .title("跨云")
-                    // 侧栏(~200) + 主内容(~640) + 边距；比 1200×800 更紧凑，避免两侧大块留白
-                    .inner_size(980.0, 680.0)
-                    .min_inner_size(860.0, 600.0)
-                    .resizable(true)
-                    .maximizable(false)
-                    .visible(false)
-                    .focused(false)
-                    .skip_taskbar(true)
-                    .build()?;
-
-                let icon = tauri::include_image!("icons/32x32.png");
-                let _ = main.set_icon(icon);
-                let _ = main.hide();
-
+                // 主窗由 tauri.conf.json 创建（visible:false）；此处只补图标与托盘
+                if let Some(main) = app.get_webview_window("main") {
+                    let icon = tauri::include_image!("icons/32x32.png");
+                    let _ = main.set_icon(icon);
+                    let _ = main.hide();
+                }
                 tray::setup(app.handle())?;
             }
             #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]

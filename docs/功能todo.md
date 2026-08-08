@@ -3,10 +3,12 @@
 > **单一事实来源**：本文件记录功能实现状态，与路由、页面、节点协议、订阅类型保持一致。  
 > 状态：`✅ 已完成` · `🚧 开发中/需联调` · `📋 待开发` · `❌ 未集成`
 
-最后核对：**2026-08-08**（版本线 `1.2.8` / code `128`；App Release 已绿）
+最后核对：**2026-08-08**（版本线 `1.2.10` / code 以 `app-meta` 为准）
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
+| 桌面去掉独立 Splash（隐藏主窗就绪再 show） | ✅ | 2026-08-08 | `tauri.conf` 单 main `visible:false`；删 `splash.html`；`boot_reveal_main` 仅 show |
+| 修 Android 卡 splash + Logo 不一致 + PC 连接黑窗 | ✅ | 2026-08-08 | `tauri.android.conf.json` 直进 `index.html`；品牌图覆盖 Android mipmap；`kill_switch` netsh 加 `CREATE_NO_WINDOW`；桌面独立 splash 已于同日改为隐藏主窗方案 |
 | 发版铁律/踩坑写入打包手册 | ✅ | 2026-08-08 | [`GitHub自动打包与密钥配置说明.md`](guides/GitHub自动打包与密钥配置说明.md) §0/§9；Android 检查清单同步 |
 | 修复 Android CI 找不到 universal APK | ✅ | 2026-08-07 | 构建已成功产出 `app-universal-release-unsigned.apk`；收集脚本兼容 universal/arm64；发版 `v1.2.8` |
 | 修复 Android Manifest minSdk 冲突 | ✅ | 2026-08-07 | Tauri 默认 24 < mihomo-core 26；`bundle.android.minSdkVersion=26`；发版 `v1.2.7` |
@@ -89,7 +91,7 @@
 | 桌面上下行偶发显示 — | ✅ | 2026-07-25 | `formatDisplaySpeed` 对齐 Android；EMA 平滑；`secret: ""` 保证 `/connections` 可读；JSON 总量支持 float；优先 Mihomo `/traffic` 瞬时速率 |
 | 桌面连接后窗口无响应 | ✅ | 2026-07-25 | Win 系统代理补 `ProxyOverride` 绕过 localhost（避免 WebView/Vite 回环）；探测总预算 ≤12s、优先 curl 且静默 PowerShell；`vpn_connect`/`vpn_probe` 走 `spawn_blocking` |
 | 桌面节点选完即连 + 上下行流量修复 | ✅ | 2026-07-25 | 节点页对齐 Android 选完即连；`desktop_traffic` 支持 HTTP chunked，失败打日志并回退上次会话字节；误导文案「下次连接」已改 |
-| Tauri 启动 Splash 打磨（方案1 已落地） | ✅ | 2026-07-25 | 删 Vue `SplashView`；`splash.html`+`splash-logo.png`；`MIN_BOOT_MS=400`；文档 §0.5；`tauri` release exe 构建成功（本机策略可能拦截自动冷启，需人工点开确认无白屏） |
+| Tauri 启动 Splash 打磨（方案1 已落地） | ❌ 已替代 | 2026-08-08 | 原独立 `splash.html` 方案；现改为「主窗 visible:false → 就绪 show」 |
 | Tauri↔Android 对齐缺口清单回写 | ✅ | 2026-07-24 | [`Tauri-Android功能对齐.md`](product/Tauri-Android功能对齐.md) §6：P0 系统代理 E2E + iOS xcframework；P1 失败反馈/设置文案/updater/Splash；刻意不对齐收口；Splash 标 redirect |
 | Tauri 桌面冒烟（dev + 浏览器） | ✅ | 2026-07-24 | `luban7733@gmail.com`：登录/四 Tab/套餐/充值/订单/流量/工单客服帮助/设备/规则直连/连接与隐私/诊断/关于均可用；选节点+地区筛选 OK；帮助可生成 Clash；**VPN 真连仍须 Tauri 窗口人工验** |
 | 文档与代码对齐（Vision / 入口证书 / Tauri 版本文案） | ✅ | 2026-07-24 | 功能 todo 废弃「不再强制 Vision」历史结论；入口 `ensureCertificates` 标代码已修；Tauri 打包说明与 lock 对齐 1.1.0；对齐清单刷新同步日期 |

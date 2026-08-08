@@ -74,7 +74,7 @@ apps/tauri/
 
 | 页面 / 路由 | 原生 Android | Tauri 桌面 / Tauri Android Vue | iPhone |
 |-------------|--------------|--------------------------------|--------|
-| 启动页 | splash | 原生 splash + redirect | ✅ |
+| 启动页 | splash | 桌面：主窗隐藏就绪再 show；Android：直进 index | ✅ |
 | 隐私同意 | 静默基线 | `/privacy` | ✅ |
 | 登录 / 注册 / 找回 | ✅ | ✅ | ✅ |
 | 连接 / 节点 / 套餐 / 我的 | ✅ | ✅ | ✅ |

@@ -22,7 +22,7 @@ async function revealUi() {
 
 void revealUi()
 
-// 兜底：避免启动窗一直挂起
+// 兜底：避免主窗一直隐藏
 window.setTimeout(() => {
   void revealAppWindow()
 }, 12000)

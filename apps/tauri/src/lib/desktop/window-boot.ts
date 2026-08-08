@@ -1,7 +1,3 @@
-const BOOT_STARTED_AT = Date.now()
-/** 最短展示 splash，避免主界面就绪过快时闪一下；生产冷启动通常已够快 */
-const MIN_BOOT_MS = 400
-
 let revealed = false
 
 function isTauri(): boolean {
@@ -9,17 +5,12 @@ function isTauri(): boolean {
 }
 
 /**
- * 主界面就绪后通知 Rust：显示主窗口并关闭启动 Loading。
- * 主窗口在配置里 visible:false，启动过程中用户只会看到 Loading 小窗。
+ * 主界面就绪后通知 Rust：显示主窗口。
+ * 主窗口在配置里 visible:false，避免 WebView 未渲染完时出现白闪。
  */
 export async function revealAppWindow(): Promise<void> {
   if (revealed) return
   revealed = true
-
-  const remain = MIN_BOOT_MS - (Date.now() - BOOT_STARTED_AT)
-  if (remain > 0) {
-    await new Promise((r) => setTimeout(r, remain))
-  }
 
   if (!isTauri()) return
 

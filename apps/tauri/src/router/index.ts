@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 // 首屏同步导入 Login/Main/Connect，避免启动后再串行拉分包。
-// 启动 Loading 由原生 splash 窗（public/splash.html）负责，不是 Vue 路由。
+// 桌面启动：主窗 visible:false，Vue 就绪后 boot_reveal_main 再 show。
 import LoginView from '@/views/auth/LoginView.vue'
 import MainShell from '@/layouts/MainShell.vue'
 import ConnectView from '@/views/connect/ConnectView.vue'
@@ -91,7 +91,7 @@ const router = createRouter({
       redirect: () => ({ name: homeRouteName() }),
     },
     {
-      // 兼容旧深链；真正启动门面是原生 splash 窗，此处仅按登录态跳转
+      // 兼容旧深链；按登录态跳转
       path: '/splash',
       redirect: () => ({ name: homeRouteName() }),
     },
