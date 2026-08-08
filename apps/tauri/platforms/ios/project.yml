@@ -1,4 +1,4 @@
-ï»¿name: KuayunVPN
+name: KuayunVPN
 options:
   bundleIdPrefix: com.vpn.kuayun
   deploymentTarget:
@@ -8,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.2.11"
-    CURRENT_PROJECT_VERSION: "131"
+    MARKETING_VERSION: "1.2.12"
+    CURRENT_PROJECT_VERSION: "132"
 
 targets:
   KuayunVPN:
@@ -21,7 +21,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.vpn.kuayun.app
-        INFOPLIST_KEY_CFBundleDisplayName: è·¨äº‘ VPN
+        INFOPLIST_KEY_CFBundleDisplayName: ¿çÔÆ VPN
         INFOPLIST_KEY_API_BASE_URL: https://vpn.example.com/api/v1
         CODE_SIGN_ENTITLEMENTS: KuayunVPN/KuayunVPN.entitlements
     entitlements:

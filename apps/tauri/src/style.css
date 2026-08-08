@@ -18,8 +18,8 @@
   /* 文字 */
   --ky-text: #e8edf5;
   --ky-text-secondary: #c5d0e0;
-  --ky-text-muted: #9aa8bc;
-  --ky-text-hint: #6b7d96;
+  --ky-text-muted: #a8b6c9;
+  --ky-text-hint: #7d8fa8;
 
   /* 主色 */
   --ky-accent: #00d4ff;
@@ -50,10 +50,10 @@
   --ky-space-xl: 24px;
   --ky-space-2xl: 32px;
 
-  /* 字号 */
-  --ky-font-xs: 11px;
+  /* 字号 — 手机上 xs 至少 12px，避免次要文案糊成一团 */
+  --ky-font-xs: 12px;
   --ky-font-sm: 14px;
-  --ky-font-md: 14px;
+  --ky-font-md: 15px;
   --ky-font-lg: 16px;
   --ky-font-xl: 24px;
   --ky-font-2xl: 26px;
@@ -129,7 +129,10 @@ html {
   flex: 1;
   min-height: 0;
   padding: var(--ky-space-md);
-  padding-bottom: calc(var(--ky-bottom-nav-height) + var(--ky-space-lg));
+  padding-top: calc(var(--ky-space-md) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(
+    var(--ky-bottom-nav-height) + var(--ky-space-lg) + env(safe-area-inset-bottom, 0px)
+  );
   max-width: var(--ky-page-max-width);
   margin: 0 auto;
   width: 100%;
@@ -278,7 +281,8 @@ html {
   bottom: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  height: var(--ky-bottom-nav-height);
+  height: calc(var(--ky-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--ky-bg-overlay);
   border-top: 1px solid var(--ky-border);
   backdrop-filter: blur(16px);

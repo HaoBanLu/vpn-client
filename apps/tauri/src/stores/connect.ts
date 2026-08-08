@@ -38,6 +38,7 @@ import {
   type ConnectionScenarioValue,
 } from '@/lib/vpn/connection-scenario'
 import { injectDirectBypassRules } from '@/lib/vpn/direct-bypass-rule'
+import { waitForVpnReady } from '@/lib/vpn/wait-for-vpn-ready'
 import { recordProbeFailure, recordProbeSuccess } from '@/lib/vpn/node-failover'
 import { savePrivacyBaselineIp } from '@/lib/vpn/privacy-leak-probe'
 import {
@@ -668,6 +669,18 @@ export const useConnectStore = defineStore('connect', () => {
       connectionMode: mode,
     })
     if (!isConnectGenerationCurrent(token)) return
+    // Android 原生 connect 异步返回 CONNECTING，需轮询到 connected/failed，避免秒报「VPN 未就绪」
+    const ready = await waitForVpnReady({
+      getStatus: getVpnStatus,
+      isCurrent: () => isConnectGenerationCurrent(token),
+    })
+    if (!isConnectGenerationCurrent(token) || ready.kind === 'cancelled') return
+    if (ready.kind === 'failed') {
+      throw new Error(ready.error)
+    }
+    if (ready.kind === 'timeout') {
+      throw new Error('VPN 启动超时，请重试')
+    }
     await syncStatusAndProbe()
     if (!isConnectGenerationCurrent(token)) return
     if (connectionState.value !== 'connected') {
@@ -837,6 +850,17 @@ export const useConnectStore = defineStore('connect', () => {
         connectionMode: effectiveConnectionMode(),
       })
       if (!isConnectGenerationCurrent(token)) return
+      const ready = await waitForVpnReady({
+        getStatus: getVpnStatus,
+        isCurrent: () => isConnectGenerationCurrent(token),
+      })
+      if (!isConnectGenerationCurrent(token) || ready.kind === 'cancelled') return
+      if (ready.kind === 'failed') {
+        throw new Error(ready.error)
+      }
+      if (ready.kind === 'timeout') {
+        throw new Error('切换节点超时，请重试')
+      }
       await syncStatusAndProbe()
       connectPending.value = false
     } catch (e: unknown) {

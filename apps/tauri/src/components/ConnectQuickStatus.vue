@@ -51,8 +51,8 @@ const subscriptionLine = computed(() => {
 
 .quick-status__meta {
   margin: 0;
-  font-size: var(--ky-font-xs);
-  color: var(--ky-text-muted);
+  font-size: var(--ky-font-sm);
+  color: var(--ky-text-secondary);
 }
 
 .quick-status__node {
@@ -83,8 +83,8 @@ const subscriptionLine = computed(() => {
 }
 
 .quick-status__label {
-  font-size: var(--ky-font-xs);
-  color: var(--ky-text-muted);
+  font-size: var(--ky-font-sm);
+  color: var(--ky-text-secondary);
 }
 
 .quick-status__value {

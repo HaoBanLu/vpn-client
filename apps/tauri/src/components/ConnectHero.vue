@@ -60,7 +60,7 @@ defineEmits<{ click: [] }>()
   padding: 0 var(--ky-space-xl);
   font-size: var(--ky-font-sm);
   line-height: 1.45;
-  color: var(--ky-text-muted);
+  color: var(--ky-text-secondary);
   text-align: center;
 }
 </style>
