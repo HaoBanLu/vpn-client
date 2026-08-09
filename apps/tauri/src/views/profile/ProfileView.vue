@@ -313,9 +313,17 @@ const helpItems = computed<MenuItem[]>(() => {
 })
 
 const scenarioOptions: Array<{ value: ConnectionScenarioValue; label: string; hint: string }> = [
-  { value: CONNECTION_SCENARIO.AUTO, label: '自动', hint: '按节点地区智能选择画像' },
-  { value: CONNECTION_SCENARIO.RETURN_HOME, label: '回国加速', hint: '优先国内可达线路' },
-  { value: CONNECTION_SCENARIO.OVERSEAS, label: '海外访问', hint: '优先出海访问线路' },
+  { value: CONNECTION_SCENARIO.AUTO, label: '自动', hint: '按所选节点地区/专线类型智能选择画像' },
+  {
+    value: CONNECTION_SCENARIO.RETURN_HOME,
+    label: '回国加速',
+    hint: '访问国内站；请选武汉/贵州等「回国专线」节点',
+  },
+  {
+    value: CONNECTION_SCENARIO.OVERSEAS,
+    label: '海外访问',
+    hint: '访问外网；请选新加坡/香港等「海外直连」节点',
+  },
 ]
 
 function openScenario() {

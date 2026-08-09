@@ -6,6 +6,10 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager.NameNotFoundException
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -32,6 +36,9 @@ class VpnTunnelService : VpnService() {
     private var userInitiatedDisconnect = false
     private var autoReconnectAttempts = 0
     private var notificationJob: Job? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    /** native 已持有 fd 时为 true，cleanup 不可再 close PFD，防 double-close。 */
+    private var tunFdDetached = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -125,8 +132,19 @@ class VpnTunnelService : VpnService() {
     private fun applySelectedNode(nodeName: String) {
         val node = nodeName.trim()
         if (node.isBlank() || !LineAcquireNode.isAcquirable(node)) return
-        if (!Clash.patchSelector("GLOBAL", node)) {
-            Clash.patchSelector("手动选择", node)
+        val ok =
+            ClashSelectorPatcher.apply(node) { group, selection ->
+                val patched = Clash.patchSelector(group, selection)
+                if (patched) {
+                    Log.i(TAG, "patchSelector $group -> $selection")
+                } else if (group != "海外直连") {
+                    // 回国专线不含海外节点时失败属预期；其余失败记 warn
+                    Log.w(TAG, "patchSelector failed group=$group selection=$selection")
+                }
+                patched
+            }
+        if (!ok) {
+            error("android: patchSelector failed for $node")
         }
     }
 
@@ -145,6 +163,15 @@ class VpnTunnelService : VpnService() {
             builder.setMetered(false)
         }
 
+        // 对齐 Compose：声明底层物理网，避免「VPN 已连但系统不走隧道 / 没网」。
+        runCatching {
+            val cm = getSystemService(ConnectivityManager::class.java) ?: return@runCatching
+            val physical = findBestPhysicalNetwork(cm)
+            if (physical != null) {
+                builder.setUnderlyingNetworks(arrayOf(physical))
+            }
+        }
+
         try {
             builder.addDisallowedApplication(packageName)
         } catch (e: NameNotFoundException) {
@@ -152,28 +179,106 @@ class VpnTunnelService : VpnService() {
         }
 
         val pfd = builder.establish() ?: error("android: the application is not prepared or is revoked")
-        tunInterface?.close()
-        tunInterface = pfd
+        // fd 交给 native 后须 detach，否则 stopTun + PFD.close 会 double-close。
+        val fd = pfd.detachFd()
+        pfd.close()
+        tunInterface = null
+        tunFdDetached = true
 
         Clash.startTun(
-            fd = pfd.fd,
+            fd = fd,
             stack = "system",
             gateway = "$TUN_GATEWAY/$TUN_SUBNET_PREFIX",
             portal = TUN_PORTAL,
             dns = TUN_DNS,
-            markSocket = { fd -> protect(fd) },
+            markSocket = { socketFd -> protect(socketFd) },
             querySocketUid = { _, _, _ -> -1 },
         )
+
+        registerNetworkCallback()
+        rebindUnderlyingNetworks("after_start_tun")
+    }
+
+    private fun findBestPhysicalNetwork(cm: ConnectivityManager): Network? {
+        val active = cm.activeNetwork
+        val activeCaps = active?.let { cm.getNetworkCapabilities(it) }
+        if (
+            active != null &&
+                activeCaps != null &&
+                !activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                activeCaps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        ) {
+            return active
+        }
+        return cm.allNetworks.firstOrNull { network ->
+            val caps = cm.getNetworkCapabilities(network) ?: return@firstOrNull false
+            !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }
+    }
+
+    /** 切网后若不更新 underlying，系统 VPN 路径易僵死（Compose 同款注释）。 */
+    private fun rebindUnderlyingNetworks(reason: String) {
+        runCatching {
+            val cm = getSystemService(ConnectivityManager::class.java) ?: return@runCatching
+            val physical = findBestPhysicalNetwork(cm)
+            if (physical != null) {
+                setUnderlyingNetworks(arrayOf(physical))
+                Log.i(TAG, "rebindUnderlyingNetworks ok reason=$reason network=$physical")
+            } else {
+                setUnderlyingNetworks(null)
+                Log.w(TAG, "rebindUnderlyingNetworks no physical reason=$reason")
+            }
+        }.onFailure { e ->
+            Log.e(TAG, "rebindUnderlyingNetworks failed reason=$reason", e)
+        }
+    }
+
+    private fun registerNetworkCallback() {
+        unregisterNetworkCallback()
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return
+        val callback =
+            object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    if (running) rebindUnderlyingNetworks("onAvailable")
+                }
+
+                override fun onLost(network: Network) {
+                    if (running) rebindUnderlyingNetworks("onLost")
+                }
+
+                override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                    if (running) rebindUnderlyingNetworks("onCapabilitiesChanged")
+                }
+            }
+        val request =
+            NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+        runCatching { cm.registerNetworkCallback(request, callback) }
+            .onSuccess { networkCallback = callback }
+            .onFailure { e -> Log.e(TAG, "registerNetworkCallback failed", e) }
+    }
+
+    private fun unregisterNetworkCallback() {
+        val callback = networkCallback ?: return
+        networkCallback = null
+        runCatching {
+            getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(callback)
+        }
     }
 
     private fun stopMihomo() {
         runCatching { Clash.stopTun() }
-        tunInterface?.close()
+        if (!tunFdDetached) {
+            runCatching { tunInterface?.close() }
+        }
         tunInterface = null
+        tunFdDetached = false
     }
 
     private fun disconnect() {
-        if (!running && tunInterface == null) {
+        if (!running && tunInterface == null && !tunFdDetached) {
             stopSelf()
             return
         }
@@ -185,6 +290,7 @@ class VpnTunnelService : VpnService() {
 
     private fun cleanup() {
         running = false
+        unregisterNetworkCallback()
         stopNotificationUpdater()
         stopMihomo()
         runCatching { Clash.reset() }

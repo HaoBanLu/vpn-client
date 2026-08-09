@@ -37,6 +37,7 @@ import {
   resolveConnectionConfig,
   type ConnectionScenarioValue,
 } from '@/lib/vpn/connection-scenario'
+import { scenarioMismatchHint } from '@/lib/vpn/node-access-hint'
 import { injectDirectBypassRules } from '@/lib/vpn/direct-bypass-rule'
 import { waitForVpnReady } from '@/lib/vpn/wait-for-vpn-ready'
 import { recordProbeFailure, recordProbeSuccess } from '@/lib/vpn/node-failover'
@@ -287,6 +288,13 @@ export const useConnectStore = defineStore('connect', () => {
         pref.connection_scenario_label ?? connectionScenarioLabel(normalized)
       applyResolvedConnectionConfig()
       message.success('使用场景已更新')
+      const nodes = await clientApi.getNodes().then((r) => r.data.nodes).catch(() => [] as NodeItem[])
+      const current = nodes.find((n) => n.name === selectedNode.value)
+      const mismatch = scenarioMismatchHint(normalized, current?.access_mode)
+      if (mismatch) {
+        actionHint.value = mismatch
+        message.warning(mismatch)
+      }
       if (shouldAutoReconnect()) {
         await reconnect('正在应用使用场景…')
       }
@@ -895,12 +903,17 @@ export const useConnectStore = defineStore('connect', () => {
     saveRegion(node.region)
     applyResolvedConnectionConfig(node.access_mode)
     error.value = null
+    const mismatch = scenarioMismatchHint(connectionScenario.value, node.access_mode)
+    if (mismatch) {
+      message.warning(mismatch)
+    }
 
     if (wasConnected) {
       await reconnect(`正在切换到 ${node.name}…`)
       if (connectionState.value === 'connected') {
         message.success(`已切换到 ${node.name}`)
       }
+      if (mismatch) actionHint.value = mismatch
       return connectionState.value === 'connected'
     }
 
@@ -909,20 +922,23 @@ export const useConnectStore = defineStore('connect', () => {
       // 无套餐也走 connect()，由 need_package 引导购买；勿静默「只选中」
       if (!subscription.value) {
         clearConnectPending()
-        actionHint.value = `已选择 ${node.name}，购买套餐后可连接`
+        actionHint.value = mismatch ?? `已选择 ${node.name}，购买套餐后可连接`
         message.success(`已选择 ${node.name}`)
       } else {
         beginConnectPending(node.name)
         message.success(`正在连接 ${node.name}`)
       }
       const result = await connect()
+      if (mismatch && connectionState.value === 'connected') actionHint.value = mismatch
       return result === 'done' && isConnected.value
     }
 
     clearConnectPending()
-    actionHint.value = subscription.value
-      ? `已选择 ${node.name}`
-      : `已选择 ${node.name}，购买套餐后可连接`
+    actionHint.value =
+      mismatch ??
+      (subscription.value
+        ? `已选择 ${node.name}`
+        : `已选择 ${node.name}，购买套餐后可连接`)
     message.success(`已选择 ${node.name}`)
     return true
   }

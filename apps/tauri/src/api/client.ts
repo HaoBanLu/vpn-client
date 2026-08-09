@@ -1,5 +1,6 @@
 import request from './request'
 import type { ClientConfigData } from '@/lib/vpn/types'
+import { detectClientPlatform } from '@/lib/app-meta'
 
 export interface ApiResponse<T> {
   code: number
@@ -7,6 +8,17 @@ export interface ApiResponse<T> {
   data: T
   app_code?: string
   trace_id?: string
+}
+
+function authDeviceFields() {
+  const platform = detectClientPlatform()
+  if (platform === 'android') {
+    return { device_type: 'android', platform: 'android', client_platform: 'android' }
+  }
+  if (platform === 'ios') {
+    return { device_type: 'ios', platform: 'ios', client_platform: 'ios' }
+  }
+  return { device_type: 'desktop', platform: 'tauri', client_platform: 'tauri' }
 }
 
 export interface AuthData {
@@ -246,8 +258,7 @@ export const clientApi = {
     request.post<AuthData>('/v1/auth/login', {
       email,
       password,
-      device_type: 'desktop',
-      platform: 'tauri',
+      ...authDeviceFields(),
     }),
 
   getRegistrationConfig: () =>
@@ -262,12 +273,15 @@ export const clientApi = {
     email_code?: string
     device_type?: string
     client_platform?: string
-  }) =>
-    request.post<AuthData>('/v1/auth/register', {
+  }) => {
+    const defaults = authDeviceFields()
+    return request.post<AuthData>('/v1/auth/register', {
       ...body,
-      device_type: body.device_type || 'desktop',
-      client_platform: body.client_platform || 'tauri',
-    }),
+      device_type: body.device_type || defaults.device_type,
+      client_platform: body.client_platform || defaults.client_platform,
+      platform: defaults.platform,
+    })
+  },
 
   forgotPassword: (email: string) =>
     request.post<unknown>('/v1/auth/forgot-password', { email }),

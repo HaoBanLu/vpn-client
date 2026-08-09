@@ -12,10 +12,12 @@ import { spawnSync } from 'node:child_process'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
 const svgPath = join(root, 'assets', 'app-icon.svg')
+const fgSvgPath = join(root, 'assets', 'app-icon-foreground.svg')
 const pngPath = join(root, 'assets', 'app-icon.png')
 const splashPath = join(root, 'public', 'splash-logo.png')
 
 const svg = readFileSync(svgPath)
+const fgSvg = readFileSync(fgSvgPath)
 const resvg = new Resvg(svg, {
   fitTo: { mode: 'width', value: 1024 },
   background: 'rgba(0,0,0,0)',
@@ -35,8 +37,8 @@ if (icon.status !== 0) {
 copyFileSync(join(root, 'src-tauri', 'icons', '128x128.png'), splashPath)
 console.log('synced', splashPath)
 
-function resizePng(size) {
-  const r = new Resvg(svg, {
+function resizePng(sourceSvg, size) {
+  const r = new Resvg(sourceSvg, {
     fitTo: { mode: 'width', value: size },
     background: 'rgba(0,0,0,0)',
   })
@@ -62,14 +64,15 @@ const fg = {
 for (const [dir, size] of Object.entries(legacy)) {
   const folder = join(androidRoot, dir)
   mkdirSync(folder, { recursive: true })
-  const buf = resizePng(size)
+  const buf = resizePng(svg, size)
   writeFileSync(join(folder, 'ic_launcher.png'), buf)
   writeFileSync(join(folder, 'ic_launcher_round.png'), buf)
 }
 for (const [dir, size] of Object.entries(fg)) {
   const folder = join(androidRoot, dir)
   mkdirSync(folder, { recursive: true })
-  writeFileSync(join(folder, 'ic_launcher_foreground.png'), resizePng(size))
+  // Adaptive：透明底 + 白云；避免把整块圆角渐变图再嵌进系统遮罩（会显得 logo「不对」）
+  writeFileSync(join(folder, 'ic_launcher_foreground.png'), resizePng(fgSvg, size))
 }
 
 const valuesDir = join(androidRoot, 'values')
