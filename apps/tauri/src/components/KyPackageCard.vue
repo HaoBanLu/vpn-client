@@ -1,32 +1,35 @@
 <template>
-  <KyCard :highlight="highlight">
-    <div class="ky-package-card">
-      <div class="ky-package-card__head">
-        <span class="ky-package-card__name">{{ name }}</span>
-        <StatusBadge v-if="badgeText" :text="badgeText" :variant="badgeVariant" />
-      </div>
-      <p class="ky-package-card__price">{{ price }}</p>
-      <p v-if="description" class="ky-package-card__desc">{{ description }}</p>
-      <div class="ky-package-card__chips">
-        <span class="ky-package-card__chip">时长 {{ durationDays }} 天</span>
-        <span class="ky-package-card__chip ky-package-card__chip--highlight">流量 {{ trafficGb }} GB</span>
-      </div>
-      <KyButton
-        type="primary"
-        block
-        class="ky-package-card__action"
-        :loading="loading"
-        :disabled="disabled"
-        @click="$emit('action')"
-      >
-        {{ actionLabel }}
-      </KyButton>
+  <div class="ky-package-card" :class="{ 'ky-package-card--tint': highlight }">
+    <div class="ky-package-card__head">
+      <span class="ky-package-card__name">{{ name }}</span>
+      <StatusBadge v-if="badgeText" :text="badgeText" :variant="badgeVariant" :dot="false" />
     </div>
-  </KyCard>
+    <p class="ky-package-card__price">{{ price }}</p>
+    <p v-if="description" class="ky-package-card__desc">{{ description }}</p>
+    <div class="ky-package-card__chips">
+      <div class="ky-package-card__stat">
+        <span class="ky-package-card__stat-label">时长</span>
+        <span class="ky-package-card__stat-value">{{ durationDays }} 天</span>
+      </div>
+      <div class="ky-package-card__stat ky-package-card__stat--hl">
+        <span class="ky-package-card__stat-label">流量</span>
+        <span class="ky-package-card__stat-value">{{ trafficGb }} GB</span>
+      </div>
+    </div>
+    <KyButton
+      type="primary"
+      block
+      class="ky-package-card__action"
+      :loading="loading"
+      :disabled="disabled"
+      @click="$emit('action')"
+    >
+      {{ actionLabel }}
+    </KyButton>
+  </div>
 </template>
 
 <script setup lang="ts">
-import KyCard from '@/components/KyCard.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { KyButton } from '@/components/ky'
 import type { StatusBadgeVariant } from '@/components/StatusBadge.vue'
@@ -55,8 +58,16 @@ defineEmits<{ action: [] }>()
 .ky-package-card {
   display: flex;
   flex-direction: column;
-  gap: var(--ky-space-xs);
-  min-height: 100%;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(232, 238, 248, 0.55);
+  border: 1px solid var(--ky-border-soft);
+}
+
+.ky-package-card--tint {
+  background: rgba(214, 228, 255, 0.55);
+  border-color: rgba(27, 77, 255, 0.12);
 }
 
 .ky-package-card__head {
@@ -68,16 +79,16 @@ defineEmits<{ action: [] }>()
 
 .ky-package-card__name {
   font-size: var(--ky-font-md);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ky-text);
   line-height: 1.35;
 }
 
 .ky-package-card__price {
-  margin: var(--ky-space-xs) 0 0;
-  font-size: var(--ky-font-xl);
+  margin: 0;
+  font-size: 28px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--ky-accent);
 }
 
@@ -90,28 +101,45 @@ defineEmits<{ action: [] }>()
 
 .ky-package-card__chips {
   display: flex;
-  gap: var(--ky-space-sm);
+  gap: 8px;
   flex-wrap: wrap;
-  margin-top: var(--ky-space-sm);
+  margin-top: 4px;
 }
 
-.ky-package-card__chip {
-  padding: 4px 10px;
-  border-radius: var(--ky-radius-sm);
-  font-size: var(--ky-font-xs);
-  background: rgba(255, 255, 255, 0.06);
+.ky-package-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 88px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.ky-package-card__stat--hl {
+  background: rgba(27, 77, 255, 0.1);
+}
+
+.ky-package-card__stat-label {
+  font-size: 11px;
   color: var(--ky-text-muted);
 }
 
-.ky-package-card__chip--highlight {
-  background: var(--ky-accent-bg);
+.ky-package-card__stat-value {
+  font-size: var(--ky-font-sm);
+  font-weight: 700;
+  color: var(--ky-text);
+}
+
+.ky-package-card__stat--hl .ky-package-card__stat-value {
   color: var(--ky-accent);
 }
 
 .ky-package-card__action {
-  margin-top: var(--ky-space-md);
+  margin-top: 4px;
   height: 40px;
   font-size: var(--ky-font-sm);
-  font-weight: 600;
+  font-weight: 650;
+  border-radius: 12px !important;
 }
 </style>

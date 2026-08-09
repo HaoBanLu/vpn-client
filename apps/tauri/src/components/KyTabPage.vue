@@ -9,13 +9,15 @@
       tab
     />
     <KyPullRefresh :on-refresh="onRefresh" :disabled="refreshDisabled">
-      <slot name="before" />
-      <KySpin :spinning="loading" :overlay="spinOverlay">
-        <KyStack :gap="stackGap" :desktop-larger="desktopLarger">
-          <slot />
-        </KyStack>
-      </KySpin>
-      <slot name="after" />
+      <div class="ky-tab-body" :class="[`ky-tab-body--gap-${stackGap}`, { 'ky-tab-body--desktop-lg': desktopLarger }]">
+        <slot name="before" />
+        <KySpin :spinning="loading" :overlay="spinOverlay">
+          <KyStack :gap="stackGap" :desktop-larger="desktopLarger">
+            <slot />
+          </KyStack>
+        </KySpin>
+        <slot name="after" />
+      </div>
     </KyPullRefresh>
   </KyPage>
 </template>
@@ -36,7 +38,7 @@ const props = withDefaults(
     subtitle?: string
     onRefresh: () => Promise<void> | void
     loading?: boolean
-    /** 有内容时仅半透明遮罩，避免连接页大圈下再叠一层转圈 */
+    /** 有内容时浅色轻遮罩；默认 true 避免整页变暗闪烁 */
     spinOverlay?: boolean
     refreshDisabled?: boolean
     pageClass?: string
@@ -72,5 +74,27 @@ onUnmounted(() => {
 <style scoped>
 .ky-tab-brand {
   margin-bottom: 4px;
+}
+
+/* 与 Android spacedBy(16.dp) 对齐：before / 内容 / after 同一套间隙 */
+.ky-tab-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.ky-tab-body--gap-xs { gap: var(--ky-space-xs); }
+.ky-tab-body--gap-sm { gap: var(--ky-space-sm); }
+.ky-tab-body--gap-md { gap: var(--ky-space-md); }
+.ky-tab-body--gap-lg { gap: var(--ky-space-lg); }
+.ky-tab-body--gap-xl { gap: var(--ky-space-xl); }
+
+@media (min-width: 768px) {
+  .ky-tab-body--desktop-lg.ky-tab-body--gap-md {
+    gap: var(--ky-space-lg);
+  }
+  .ky-tab-body--desktop-lg.ky-tab-body--gap-lg {
+    gap: var(--ky-space-xl);
+  }
 }
 </style>

@@ -63,6 +63,11 @@ const profileChildRoutes = [
     component: () => import('@/views/profile/StabilitySettingsView.vue'),
   },
   {
+    path: 'app-direct-connect',
+    name: 'AppDirectConnect',
+    component: () => import('@/views/profile/AppDirectConnectView.vue'),
+  },
+  {
     path: 'direct-bypass-rules',
     name: 'DirectBypassRules',
     component: () => import('@/views/profile/DirectBypassRulesView.vue'),

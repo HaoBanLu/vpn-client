@@ -119,25 +119,40 @@ impl Default for VpnState {
 
 impl VpnState {
     pub fn update_status<R: Runtime>(&self, app: &AppHandle<R>, status: VpnConnectionStatus) {
+        let prev = self
+            .inner
+            .lock()
+            .map(|g| g.state.clone())
+            .unwrap_or(VpnConnectionState::Disconnected);
         if let Ok(mut guard) = self.inner.lock() {
             *guard = status.clone();
         }
-        if status.state == VpnConnectionState::Connected {
-            if let Ok(mut at) = self.connected_at_ms.lock() {
-                *at = Some(
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map(|d| d.as_millis())
-                        .unwrap_or(0),
-                );
+        // 仅在「进入 Connected」时记起点；Android 每秒 sync 会反复推 Connected，不可重置。
+        match status.state {
+            VpnConnectionState::Connected => {
+                if prev != VpnConnectionState::Connected {
+                    if let Ok(mut at) = self.connected_at_ms.lock() {
+                        *at = Some(
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_millis())
+                                .unwrap_or(0),
+                        );
+                    }
+                }
             }
-        }
-        if matches!(
-            status.state,
-            VpnConnectionState::Disconnected | VpnConnectionState::Failed
-        ) {
-            if let Ok(mut at) = self.connected_at_ms.lock() {
-                *at = None;
+            VpnConnectionState::Connecting => {
+                // 已连接后切节点/重连：清空会话计时，等再次 Connected
+                if prev == VpnConnectionState::Connected {
+                    if let Ok(mut at) = self.connected_at_ms.lock() {
+                        *at = None;
+                    }
+                }
+            }
+            VpnConnectionState::Disconnected | VpnConnectionState::Failed => {
+                if let Ok(mut at) = self.connected_at_ms.lock() {
+                    *at = None;
+                }
             }
         }
         let _ = app.emit("vpn://status", status);

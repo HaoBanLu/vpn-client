@@ -2,7 +2,7 @@
   <KyPage sub>
     <PageHeader title="在线客服" subtitle="问题反馈与人工协助" />
 
-    <KySpin :spinning="loading">
+    <KySpin :spinning="loading" overlay>
       <KyStack gap="md">
         <KyAlert
           v-if="loadError"

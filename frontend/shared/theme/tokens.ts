@@ -1,22 +1,27 @@
 /**
- * 跨云设计 Token（与 Android KuayunTheme、apps/tauri/src/style.css 对齐）
+ * 跨云设计 Token（与 Android KuayunTheme LightColors、apps/tauri/src/style.css 对齐）
  * 视觉以 style.css 中 :root CSS 变量为准；此处供 TS 逻辑（断点、布局判断）使用。
  */
 export const kyTokens = {
   color: {
-    bg: '#0a0e17',
-    bgElevated: '#141b2d',
-    bgCard: '#1a2338',
-    bgCardHover: '#202a42',
-    bgInput: '#0f1726',
-    border: '#2a3548',
-    text: '#e8edf5',
-    textMuted: '#9aa8bc',
-    accent: '#00d4ff',
+    bg: '#f4f7fc',
+    bgElevated: '#ffffff',
+    bgCard: '#ffffff',
+    bgCardHover: '#eef3fb',
+    bgInput: '#ffffff',
+    surfaceVariant: '#e8eef8',
+    onPrimaryContainer: '#0a2463',
+    border: '#c5d0e0',
+    text: '#0f1729',
+    textMuted: '#5a6b82',
+    accent: '#1b4dff',
+    accentSoft: '#4f7cff',
     accentDeep: '#1b4dff',
-    success: '#4ade80',
-    warning: '#fbbf24',
-    danger: '#f87171',
+    accentCyan: '#00d4ff',
+    success: '#2e7d32',
+    warning: '#f57c00',
+    danger: '#d32f2f',
+    onAccent: '#ffffff',
   },
   radius: {
     sm: 8,

@@ -22,7 +22,7 @@
         </KyForm>
       </KyCard>
 
-      <KySpin :spinning="loading">
+      <KySpin :spinning="loading" overlay>
         <KyEmpty v-if="!loading && tickets.length === 0 && !showCreate" description="暂无工单，点击右上角新建">
           <KyButton type="primary" @click="showCreate = true">新建工单</KyButton>
         </KyEmpty>

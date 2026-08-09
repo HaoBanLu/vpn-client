@@ -59,6 +59,13 @@ export interface SubscriptionActive {
   package?: { name: string; devices?: number; level?: number; traffic_gb?: number; duration_days?: number }
 }
 
+/** 与 Android ActiveSubscriptionData 一致：/subscription/active 包一层 subscription */
+export interface ActiveSubscriptionData {
+  subscription?: SubscriptionActive | null
+  effective_bandwidth_mbps?: number
+  bandwidth_display?: string
+}
+
 export interface SubscriptionUsage {
   used: number
   total: number
@@ -284,8 +291,18 @@ export const clientApi = {
 
   getMe: () => request.get<UserBrief>('/v1/users/me'),
 
-  getActiveSubscription: () =>
-    request.get<SubscriptionActive | null>('/v1/subscription/active'),
+  getActiveSubscription: async () => {
+    const res = await request.get<ActiveSubscriptionData | SubscriptionActive | null>(
+      '/v1/subscription/active',
+    )
+    const raw = res.data
+    if (!raw) return { ...res, data: null as SubscriptionActive | null }
+    if ('subscription' in raw) {
+      return { ...res, data: raw.subscription ?? null }
+    }
+    // 兼容旧版扁平 SubscriptionActive
+    return { ...res, data: raw as SubscriptionActive }
+  },
 
   getUsage: () => request.get<SubscriptionUsage>('/v1/subscription/usage'),
 

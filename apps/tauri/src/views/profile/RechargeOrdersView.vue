@@ -2,7 +2,7 @@
   <KyPage sub>
     <KyPullRefresh :on-refresh="load">
       <PageHeader title="充值记录" subtitle="查看 USDT 充值进度与驳回原因" />
-      <KySpin :spinning="loading">
+      <KySpin :spinning="loading" overlay>
         <KyEmpty v-if="!loading && orders.length === 0" description="暂无充值记录">
           <KyButton type="primary" size="large" @click="router.push({ name: 'Recharge' })">去充值</KyButton>
         </KyEmpty>

@@ -1,5 +1,15 @@
 <template>
-  <button type="button" class="ky-list-item" :class="{ 'ky-list-item--disabled': disabled }" :disabled="disabled" @click="$emit('click')">
+  <button
+    type="button"
+    class="ky-list-item"
+    :class="{
+      'ky-list-item--disabled': disabled,
+      'ky-list-item--compact': compact,
+      'ky-list-item--bare-icon': bareIcon,
+    }"
+    :disabled="disabled"
+    @click="$emit('click')"
+  >
     <div v-if="icon || $slots.icon" class="ky-list-item__icon">
       <slot name="icon">
         <component :is="icon" v-if="icon" />
@@ -22,14 +32,21 @@
 import { RightOutlined } from '@ant-design/icons-vue'
 import type { Component } from 'vue'
 
-defineProps<{
-  title: string
-  subtitle?: string
-  icon?: Component
-  trailing?: string
-  arrow?: boolean
-  disabled?: boolean
-}>()
+withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    icon?: Component
+    trailing?: string
+    arrow?: boolean
+    disabled?: boolean
+    /** 对齐 Android ProfileMenuRow：更紧的行高 */
+    compact?: boolean
+    /** 图标无底色方块，仅着色（原生菜单） */
+    bareIcon?: boolean
+  }>(),
+  { arrow: false, disabled: false, compact: false, bareIcon: false },
+)
 
 defineEmits<{ click: [] }>()
 </script>
@@ -49,8 +66,18 @@ defineEmits<{ click: [] }>()
   transition: background 0.15s ease;
 }
 
+.ky-list-item--compact {
+  gap: 10px;
+  padding: 10px 0;
+}
+
 .ky-list-item:not(:disabled):hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ky-accent-bg);
+}
+
+.ky-list-item--compact:not(:disabled):hover {
+  background: transparent;
+  opacity: 0.88;
 }
 
 .ky-list-item--disabled {
@@ -71,6 +98,14 @@ defineEmits<{ click: [] }>()
   font-size: 16px;
 }
 
+.ky-list-item--bare-icon .ky-list-item__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent;
+  font-size: 18px;
+}
+
 .ky-list-item__content {
   flex: 1;
   min-width: 0;
@@ -81,13 +116,15 @@ defineEmits<{ click: [] }>()
   font-size: var(--ky-font-md);
   font-weight: 600;
   color: var(--ky-text);
+  line-height: 1.35;
 }
 
 .ky-list-item__subtitle {
   display: block;
   margin-top: 2px;
-  font-size: var(--ky-font-sm);
+  font-size: var(--ky-font-xs);
   color: var(--ky-text-muted);
+  line-height: 1.35;
 }
 
 .ky-list-item__trailing {
@@ -103,7 +140,7 @@ defineEmits<{ click: [] }>()
 }
 
 .ky-list-item__arrow {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--ky-text-hint);
 }
 </style>

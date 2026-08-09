@@ -87,6 +87,30 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         invoke.resolve(statusObject(status.state, status.error))
     }
 
+    /** 连接页会话流量：与通知栏共用 VpnSessionStatsTracker。 */
+    @Command
+    fun getStats(invoke: Invoke) {
+        val status = VpnConnectionBus.status.value
+        val ret = JSObject()
+        if (status.state != ConnectionState.CONNECTED) {
+            ret.put("uploadBytes", 0L)
+            ret.put("downloadBytes", 0L)
+            ret.put("durationMs", 0L)
+            ret.put("uploadBps", 0L)
+            ret.put("downloadBps", 0L)
+            invoke.resolve(ret)
+            return
+        }
+        val snap = VpnSessionStatsTracker.snapshot()
+        val rates = VpnSessionStatsTracker.sampleRates(snap)
+        ret.put("uploadBytes", snap.uploadBytes)
+        ret.put("downloadBytes", snap.downloadBytes)
+        ret.put("durationMs", snap.durationMs)
+        ret.put("uploadBps", rates.uploadBps)
+        ret.put("downloadBps", rates.downloadBps)
+        invoke.resolve(ret)
+    }
+
     @Command
     fun probe(invoke: Invoke) {
         scope.launch {

@@ -48,30 +48,31 @@
 }
 
 .ky-btn--primary {
-  background: linear-gradient(135deg, var(--ky-accent-deep), var(--ky-accent));
+  background: var(--ky-accent);
   border-color: transparent;
-  color: #041018;
+  color: var(--ky-on-accent);
   font-weight: 600;
+  border-radius: var(--ky-radius-md);
 }
 
 .ky-btn--primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--ky-accent-deep), var(--ky-accent));
+  background: var(--ky-accent-soft);
   border-color: transparent;
-  color: #041018;
-  filter: brightness(1.08);
+  color: var(--ky-on-accent);
+  filter: none;
 }
 
 .ky-btn--danger {
   background: var(--ky-danger-bg);
-  border-color: rgba(248, 113, 113, 0.35);
+  border-color: rgba(211, 47, 47, 0.28);
   color: var(--ky-danger);
 }
 
 .ky-btn--danger:hover:not(:disabled) {
   background: var(--ky-danger-bg);
-  border-color: rgba(248, 113, 113, 0.5);
+  border-color: rgba(211, 47, 47, 0.45);
   color: var(--ky-danger);
-  filter: brightness(1.06);
+  filter: brightness(0.98);
 }
 
 .ky-btn--link,
@@ -85,7 +86,7 @@
 
 .ky-btn--link:hover:not(:disabled),
 .ky-btn--text:hover:not(:disabled) {
-  background: rgba(0, 212, 255, 0.08);
+  background: var(--ky-accent-bg);
 }
 
 .ky-btn--loading {
@@ -200,7 +201,7 @@
   font-weight: 600;
   border: 1px solid var(--ky-border);
   color: var(--ky-text-muted);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ky-surface-variant);
 }
 
 .ky-tag--success { color: var(--ky-success); border-color: rgba(74, 222, 128, 0.35); background: var(--ky-success-bg); }
@@ -224,10 +225,10 @@
   line-height: 1.5;
 }
 
-.ky-alert--info { background: var(--ky-accent-bg); border-color: var(--ky-border-strong); color: var(--ky-text); }
-.ky-alert--success { background: var(--ky-success-bg); border-color: rgba(74, 222, 128, 0.3); }
-.ky-alert--warning { background: var(--ky-warning-bg); border-color: rgba(251, 191, 36, 0.3); }
-.ky-alert--error { background: var(--ky-danger-bg); border-color: rgba(248, 113, 113, 0.3); }
+.ky-alert--info { background: var(--ky-accent-bg); border-color: var(--ky-border-strong); color: var(--ky-on-primary-container); }
+.ky-alert--success { background: var(--ky-success-bg); border-color: rgba(46, 125, 50, 0.28); color: var(--ky-success); }
+.ky-alert--warning { background: var(--ky-warning-bg); border-color: rgba(245, 124, 0, 0.28); color: var(--ky-warning); }
+.ky-alert--error { background: var(--ky-danger-bg); border-color: rgba(211, 47, 47, 0.28); color: var(--ky-danger); }
 
 /* ── Empty ── */
 .ky-empty {
@@ -241,42 +242,9 @@
   font-size: var(--ky-font-sm);
 }
 
-/* ── Spin ── */
+/* ── Spin：样式以 KySpin.vue scoped 为准，此处仅兜底，禁止深色压暗 ── */
 .ky-spin {
   position: relative;
-}
-
-.ky-spin--spinning .ky-spin__content {
-  opacity: 0.45;
-  pointer-events: none;
-}
-
-.ky-spin__indicator {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-}
-
-.ky-spin__ring {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--ky-accent-bg);
-  border-top-color: var(--ky-accent);
-  border-radius: 50%;
-  animation: ky-spin 0.8s linear infinite;
-}
-
-.ky-spin--inline .ky-spin__ring {
-  width: 20px;
-  height: 20px;
-  border-width: 2px;
-}
-
-@keyframes ky-spin {
-  to { transform: rotate(360deg); }
 }
 
 /* ── Switch ── */
@@ -463,7 +431,7 @@
 }
 
 .ky-menu-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--ky-accent-bg);
 }
 
 .ky-menu-divider {
@@ -475,7 +443,7 @@
 /* ── Progress ── */
 .ky-progress {
   height: 6px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--ky-surface-variant);
   border-radius: var(--ky-radius-full);
   overflow: hidden;
 }
@@ -491,32 +459,41 @@
   background: var(--ky-danger);
 }
 
-/* ── Radio / Checkbox ── */
+/* ── Radio / Checkbox（浅色 Material 对齐） ── */
 .ky-radio,
 .ky-checkbox {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   cursor: pointer;
   font-size: var(--ky-font-sm);
   color: var(--ky-text);
+  user-select: none;
 }
 
 .ky-radio__dot,
 .ky-checkbox__box {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--ky-border);
+  width: 20px;
+  height: 20px;
+  border: 2px solid #8a9bb0;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #fff;
+  box-sizing: border-box;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .ky-checkbox__box {
-  border-radius: 4px;
+  border-radius: 5px;
+}
+
+.ky-checkbox:hover .ky-checkbox__box,
+.ky-radio:hover .ky-radio__dot {
+  border-color: var(--ky-accent);
+  box-shadow: 0 0 0 3px var(--ky-accent-bg);
 }
 
 .ky-radio--checked .ky-radio__dot {
@@ -525,8 +502,8 @@
 
 .ky-radio--checked .ky-radio__dot::after {
   content: '';
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--ky-accent);
 }
@@ -534,13 +511,17 @@
 .ky-checkbox--checked .ky-checkbox__box {
   border-color: var(--ky-accent);
   background: var(--ky-accent);
+  box-shadow: none;
 }
 
 .ky-checkbox--checked .ky-checkbox__box::after {
-  content: '✓';
-  color: #041018;
-  font-size: 12px;
-  font-weight: 700;
+  content: '';
+  width: 5px;
+  height: 9px;
+  margin-top: -2px;
+  border: solid var(--ky-on-accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* ── Collapse ── */
@@ -553,7 +534,7 @@
 .ky-collapse-panel__header {
   width: 100%;
   border: 0;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--ky-surface-variant);
   color: var(--ky-text);
   text-align: left;
   padding: 12px 14px;

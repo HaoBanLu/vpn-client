@@ -2,7 +2,9 @@
   <div class="app-shell" :class="{ 'app-shell--desktop': isDesktop }">
     <aside v-if="isDesktop" class="side-nav">
       <div class="side-nav__brand">
-        <KuayunCloudIcon size="md" />
+        <div class="side-nav__logo">
+          <KuayunCloudIcon size="md" />
+        </div>
         <div class="side-nav__brand-copy">
           <span class="side-nav__brand-name">跨云</span>
           <span class="side-nav__brand-version">v{{ APP_VERSION_NAME }}</span>
@@ -29,7 +31,12 @@
     <div class="app-main">
       <main class="app-content">
         <div class="app-route-view">
-          <RouterView />
+          <!-- keep-alive：Tab 切换保留页面，避免反复整页加载闪烁 -->
+          <RouterView v-slot="{ Component, route: r }">
+            <KeepAlive :include="tabKeepAliveNames">
+              <component :is="Component" :key="r.name" />
+            </KeepAlive>
+          </RouterView>
         </div>
       </main>
     </div>
@@ -90,6 +97,9 @@ const tabs: Array<{ name: string; label: string; icon: Component }> = [
   { name: 'Packages', label: '套餐', icon: ShoppingCartOutlined },
   { name: 'Profile', label: '我的', icon: UserOutlined },
 ]
+
+/** 与路由 name / 组件 name 对齐，供 KeepAlive include */
+const tabKeepAliveNames = ['ConnectView', 'NodesView', 'PackagesView', 'ProfileView']
 
 const isDesktop = ref(typeof window !== 'undefined' && shouldUseDesktopLayout(window.innerWidth))
 const UPDATE_DISMISSED_KEY = 'tauri_update_dismissed_version'
@@ -242,6 +252,17 @@ watch(
   align-items: baseline;
   gap: 6px;
   min-width: 0;
+}
+
+.side-nav__logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--ky-accent-deep) 0%, var(--ky-accent-cyan) 100%);
+  box-shadow: var(--ky-shadow-sm);
 }
 
 .side-nav__brand-name {

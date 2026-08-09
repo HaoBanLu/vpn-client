@@ -1,6 +1,7 @@
 ﻿package com.vpn.kuayun.vpn
 
 import android.net.TrafficStats
+import android.os.Build
 import android.os.Process
 import java.net.NetworkInterface
 
@@ -29,9 +30,9 @@ object VpnSessionStatsTracker {
     fun reset() {
         vpnInterfaceName = findVpnInterfaceName()
         val interfaceName = vpnInterfaceName
-        if (interfaceName != null) {
-            baselineRx = TrafficStats.getRxBytes(interfaceName).coerceAtLeast(0L)
-            baselineTx = TrafficStats.getTxBytes(interfaceName).coerceAtLeast(0L)
+        if (interfaceName != null && supportsInterfaceTrafficStats()) {
+            baselineRx = readInterfaceRxBytes(interfaceName).coerceAtLeast(0L)
+            baselineTx = readInterfaceTxBytes(interfaceName).coerceAtLeast(0L)
         } else {
             resetUidBaseline()
         }
@@ -53,9 +54,9 @@ object VpnSessionStatsTracker {
         val interfaceName = vpnInterfaceName ?: findVpnInterfaceName().also { vpnInterfaceName = it }
         val currentRx: Long
         val currentTx: Long
-        if (interfaceName != null) {
-            currentRx = TrafficStats.getRxBytes(interfaceName).coerceAtLeast(0L)
-            currentTx = TrafficStats.getTxBytes(interfaceName).coerceAtLeast(0L)
+        if (interfaceName != null && supportsInterfaceTrafficStats()) {
+            currentRx = readInterfaceRxBytes(interfaceName).coerceAtLeast(0L)
+            currentTx = readInterfaceTxBytes(interfaceName).coerceAtLeast(0L)
         } else {
             val uid = Process.myUid()
             currentRx = TrafficStats.getUidRxBytes(uid).coerceAtLeast(0L)
@@ -83,6 +84,23 @@ object VpnSessionStatsTracker {
         prevSampleMs = now
         return VpnTrafficRates(uploadBps = lastUploadBps, downloadBps = lastDownloadBps)
     }
+
+    /** getRxBytes(String)/getTxBytes(String) 自 API 31 才有，低版本会 NoSuchMethodError。 */
+    private fun supportsInterfaceTrafficStats(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+    private fun readInterfaceRxBytes(interfaceName: String): Long =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            TrafficStats.getRxBytes(interfaceName)
+        } else {
+            TrafficStats.UNSUPPORTED.toLong()
+        }
+
+    private fun readInterfaceTxBytes(interfaceName: String): Long =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            TrafficStats.getTxBytes(interfaceName)
+        } else {
+            TrafficStats.UNSUPPORTED.toLong()
+        }
 
     private fun findVpnInterfaceName(): String? =
         runCatching {

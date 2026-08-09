@@ -7,8 +7,7 @@
       @click="$emit('switch-node')"
     >
       <span class="session-card__switch-value">{{ nodeLabel }}</span>
-      <span class="session-card__switch-action">切换</span>
-      <span class="session-card__chevron" aria-hidden="true">›</span>
+      <span class="session-card__switch-action">切换 ›</span>
     </button>
 
     <!-- 对齐 Android CompactSpeedAndDurationRow：下载 | 上传 | 时长 同行 -->
@@ -116,13 +115,10 @@ function formatSessionBytes(bytes: number): string {
 
 <style scoped>
 .session-card {
-  border: 1px solid rgba(74, 222, 128, 0.22);
   border-radius: 18px;
-  background: linear-gradient(
-    135deg,
-    rgba(74, 222, 128, 0.1) 0%,
-    rgba(0, 212, 255, 0.05) 100%
-  );
+  background: var(--ky-bg-card);
+  border: 1px solid var(--ky-border-soft);
+  box-shadow: var(--ky-shadow-sm);
 }
 
 .session-card :deep(.ky-card__body) {
@@ -140,14 +136,14 @@ function formatSessionBytes(bytes: number): string {
   padding: 10px 12px;
   border: 0;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 41, 0.04);
   color: inherit;
   cursor: pointer;
   text-align: left;
 }
 
 .session-card__switch:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 41, 0.07);
 }
 
 .session-card__switch-value {
@@ -174,7 +170,7 @@ function formatSessionBytes(bytes: number): string {
   gap: 6px;
   padding: 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 41, 0.04);
 }
 
 .session-card__speed-item {
@@ -247,7 +243,7 @@ function formatSessionBytes(bytes: number): string {
   width: 1px;
   height: 32px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 41, 0.08);
 }
 
 .session-card__duration {

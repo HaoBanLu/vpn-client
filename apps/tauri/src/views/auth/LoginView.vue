@@ -7,19 +7,19 @@
       show-version
     />
 
-    <KyCard class="login-card">
+    <KyCard class="login-card" soft>
       <KyAlert
         v-if="loginBanner"
-        type="info"
+        type="error"
         :message="loginBanner"
-        style="margin-bottom: 16px"
+        class="login-banner"
       />
 
       <KyAlert
         v-if="errorText"
         type="error"
         :message="errorText"
-        style="margin-bottom: 16px"
+        class="login-banner"
       />
 
       <KyForm @finish="onSubmit">
@@ -37,12 +37,16 @@
 
         <KyButton type="primary" html-type="submit" block size="large" :loading="loading">登录</KyButton>
       </KyForm>
-
-      <KyAuthFooter split>
-        <KyButton type="link" @click="router.push({ name: 'Register' })">没有账号？去注册</KyButton>
-        <KyButton type="link" @click="router.push({ name: 'ForgotPassword' })">忘记密码？</KyButton>
-      </KyAuthFooter>
     </KyCard>
+
+    <div class="login-footer">
+      <KyButton type="link" class="login-footer__secondary" @click="router.push({ name: 'Register' })">
+        没有账号？去注册
+      </KyButton>
+      <KyButton type="link" class="login-footer__forgot" @click="router.push({ name: 'ForgotPassword' })">
+        忘记密码？
+      </KyButton>
+    </div>
   </KyPage>
 </template>
 
@@ -51,7 +55,6 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import KyPage from '@/components/KyPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import KyAuthFooter from '@/components/KyAuthFooter.vue'
 import KuayunBrandHeader from '@/components/KuayunBrandHeader.vue'
 import { KyAlert, KyButton, KyCheckbox, KyForm, KyFormItem, KyInput } from '@/components/ky'
 import { useAuthStore } from '@/stores/auth'
@@ -103,5 +106,24 @@ async function onSubmit() {
 .login-card {
   width: 100%;
   max-width: 420px;
+}
+
+.login-banner {
+  margin-bottom: 16px;
+}
+
+.login-footer {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.login-footer__secondary,
+.login-footer__forgot {
+  font-weight: 600;
 }
 </style>

@@ -3,22 +3,21 @@
     title="加速套餐"
     subtitle="选择适合你的流量方案，余额支付即时生效"
     :on-refresh="load"
-    :loading="loading"
+    :loading="loading && packages.length === 0"
   >
     <KySubscriptionSummary
       v-if="account.subscription"
+      label="当前套餐"
       :package-name="account.subscription.package?.name || '当前套餐'"
-      :status-text="statusLabel"
-      :status-variant="statusBadgeVariant"
-      :progress-percent="trafficPct"
-      :usage-text="usageText"
+      :remaining-gb="account.usage?.remaining ?? null"
+      :expires-at="account.subscription.expires_at"
     />
 
     <KyEmpty v-if="!loading && packages.length === 0" description="暂无可用套餐，请稍后重试">
       <KyButton type="primary" @click="load">重新加载</KyButton>
     </KyEmpty>
 
-    <KyGrid2 v-else>
+    <div v-else class="packages-list">
       <KyPackageCard
         v-for="(item, index) in packages"
         :key="item.id"
@@ -35,17 +34,17 @@
         :action-label="buyingId === item.id ? '处理中…' : buttonState(item).label"
         @action="buy(item)"
       />
-    </KyGrid2>
+    </div>
   </KyTabPage>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+defineOptions({ name: 'PackagesView' })
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Modal } from '@/lib/ui/confirm'
 import { message } from '@/lib/ui/message'
 import KyTabPage from '@/components/KyTabPage.vue'
-import KyGrid2 from '@/components/KyGrid2.vue'
 import KyPackageCard from '@/components/KyPackageCard.vue'
 import KySubscriptionSummary from '@/components/KySubscriptionSummary.vue'
 import { KyButton, KyEmpty } from '@/components/ky'
@@ -58,8 +57,6 @@ import {
   isCurrentPackage,
   purchaseButtonState,
   purchaseSuccessMessage,
-  subscriptionStatusLabel,
-  trafficProgress,
 } from '@/lib/subscription'
 import { useConnectStore } from '@/stores/connect'
 import { useAccountStore } from '@/stores/account'
@@ -70,19 +67,6 @@ const account = useAccountStore()
 const loading = ref(false)
 const packages = ref<PackageItem[]>([])
 const buyingId = ref<number | null>(null)
-
-const statusLabel = computed(() => subscriptionStatusLabel(account.subscription, account.usage))
-const statusBadgeVariant = computed((): StatusBadgeVariant => {
-  if (statusLabel.value === '流量不足') return 'error'
-  if (statusLabel.value === '即将到期') return 'warning'
-  return 'success'
-})
-const trafficPct = computed(() => Math.round(trafficProgress(account.usage) * 100))
-const usageText = computed(() => {
-  if (!account.usage) return ''
-  const expiry = account.subscription?.expires_at?.slice(0, 10) || '-'
-  return `剩余 ${account.usage.remaining.toFixed(1)} GB / ${account.usage.total.toFixed(0)} GB · ${expiry} 到期`
-})
 
 function packageBadgeText(item: PackageItem, index: number) {
   if (isCurrentPackage(account.subscription, item)) return '当前套餐'
@@ -174,3 +158,11 @@ async function buy(item: PackageItem) {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.packages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+</style>

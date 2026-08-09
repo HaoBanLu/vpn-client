@@ -1,7 +1,7 @@
 <template>
   <KyPage center>
     <KuayunBrandHeader title="找回密码" subtitle="通过邮箱验证码重置登录密码" auth show-version />
-    <KyCard>
+    <KyCard soft>
       <KyForm @finish="onSubmit">
         <KyFormItem label="邮箱">
           <KyInput v-model="email" placeholder="you@example.com" size="large" />
@@ -24,10 +24,10 @@
           重置密码
         </KyButton>
       </KyForm>
-      <KyAuthFooter>
-        <KyButton type="link" @click="router.push({ name: 'Login' })">返回登录</KyButton>
-      </KyAuthFooter>
     </KyCard>
+    <div class="auth-footer">
+      <KyButton type="link" @click="router.push({ name: 'Login' })">返回登录</KyButton>
+    </div>
   </KyPage>
 </template>
 
@@ -37,7 +37,6 @@ import { useRouter } from 'vue-router'
 import { message } from '@/lib/ui/message'
 import KyPage from '@/components/KyPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import KyAuthFooter from '@/components/KyAuthFooter.vue'
 import KuayunBrandHeader from '@/components/KuayunBrandHeader.vue'
 import { KyButton, KyForm, KyFormItem, KyInput } from '@/components/ky'
 import { clientApi } from '@/api/client'
@@ -128,5 +127,10 @@ onUnmounted(() => {
 
 .code-input {
   flex: 1;
+}
+
+.auth-footer {
+  margin-top: 12px;
+  text-align: center;
 }
 </style>

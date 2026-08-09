@@ -1,7 +1,7 @@
 <template>
   <KyPage center>
     <KuayunBrandHeader title="创建账户" subtitle="注册跨云，畅享全球加速" auth show-version />
-    <KyCard>
+    <KyCard soft>
       <KyForm @finish="onSubmit">
         <KyFormItem label="邮箱">
           <KyInput v-model="email" placeholder="you@example.com" size="large" />
@@ -31,10 +31,10 @@
           注册
         </KyButton>
       </KyForm>
-      <KyAuthFooter>
-        <KyButton type="link" @click="router.push({ name: 'Login' })">已有账号？去登录</KyButton>
-      </KyAuthFooter>
     </KyCard>
+    <div class="auth-footer">
+      <KyButton type="link" @click="router.push({ name: 'Login' })">已有账号？去登录</KyButton>
+    </div>
   </KyPage>
 </template>
 
@@ -44,7 +44,6 @@ import { useRouter } from 'vue-router'
 import { message } from '@/lib/ui/message'
 import KyPage from '@/components/KyPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import KyAuthFooter from '@/components/KyAuthFooter.vue'
 import KuayunBrandHeader from '@/components/KuayunBrandHeader.vue'
 import { KyButton, KyCheckbox, KyForm, KyFormItem, KyInput } from '@/components/ky'
 import { clientApi } from '@/api/client'
@@ -129,5 +128,10 @@ onUnmounted(() => {
 
 .code-input {
   flex: 1;
+}
+
+.auth-footer {
+  margin-top: 12px;
+  text-align: center;
 }
 </style>

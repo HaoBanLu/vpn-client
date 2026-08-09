@@ -1,53 +1,57 @@
 <template>
-  <KyCard highlight>
-    <div class="ky-subscription-summary">
-      <div class="ky-subscription-summary__head">
-        <div>
-          <p class="ky-subscription-summary__label">{{ label }}</p>
-          <p class="ky-subscription-summary__name">{{ packageName }}</p>
-        </div>
-        <StatusBadge v-if="statusText" :text="statusText" :variant="statusVariant" />
-      </div>
-      <div v-if="showProgress" class="ky-subscription-summary__progress">
-        <div class="ky-subscription-summary__bar">
-          <div class="ky-subscription-summary__fill" :style="{ width: `${progressPercent}%` }" />
-        </div>
-        <p class="ky-subscription-summary__usage">{{ usageText }}</p>
-      </div>
-    </div>
-  </KyCard>
+  <!-- 对齐 Android CurrentSubscriptionSummaryBar：单行摘要，无进度条 -->
+  <div class="ky-subscription-summary">
+    <p class="ky-subscription-summary__label">{{ label }}</p>
+    <p class="ky-subscription-summary__line">{{ summaryLine }}</p>
+  </div>
 </template>
 
 <script setup lang="ts">
-import KyCard from '@/components/KyCard.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
-import type { StatusBadgeVariant } from '@/components/StatusBadge.vue'
+import { computed } from 'vue'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     packageName: string
     label?: string
-    statusText?: string | null
-    statusVariant?: StatusBadgeVariant
-    progressPercent?: number
-    usageText?: string
-    showProgress?: boolean
+    remainingGb?: number | null
+    expiresAt?: string | null
   }>(),
   {
-    label: '我使用的套餐',
-    statusVariant: 'success',
-    progressPercent: 0,
-    showProgress: true,
+    label: '当前套餐',
+    remainingGb: null,
+    expiresAt: null,
   },
+)
+
+const remainingText = computed(() => {
+  if (typeof props.remainingGb === 'number' && Number.isFinite(props.remainingGb)) {
+    return `${props.remainingGb.toFixed(1)}GB`
+  }
+  return '-'
+})
+
+const expiryText = computed(() => {
+  if (!props.expiresAt) return '-'
+  const date = new Date(props.expiresAt)
+  if (Number.isNaN(date.getTime())) return props.expiresAt.slice(0, 10)
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+})
+
+const summaryLine = computed(
+  () => `${props.packageName} · 剩余 ${remainingText.value} · ${expiryText.value} 到期`,
 )
 </script>
 
 <style scoped>
-.ky-subscription-summary__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--ky-space-sm);
+.ky-subscription-summary {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--ky-bg-card);
+  border: 1px solid var(--ky-border-soft);
 }
 
 .ky-subscription-summary__label {
@@ -56,33 +60,11 @@ withDefaults(
   color: var(--ky-text-muted);
 }
 
-.ky-subscription-summary__name {
-  margin: var(--ky-space-xs) 0 0;
-  font-size: var(--ky-font-lg);
-  font-weight: 700;
-  color: var(--ky-text);
-}
-
-.ky-subscription-summary__progress {
-  margin-top: var(--ky-space-md);
-}
-
-.ky-subscription-summary__bar {
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-
-.ky-subscription-summary__fill {
-  height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--ky-accent-deep), var(--ky-accent));
-}
-
-.ky-subscription-summary__usage {
-  margin: var(--ky-space-sm) 0 0;
+.ky-subscription-summary__line {
+  margin: 4px 0 0;
   font-size: var(--ky-font-sm);
-  color: var(--ky-text-muted);
+  font-weight: 600;
+  color: var(--ky-text);
+  line-height: 1.45;
 }
 </style>

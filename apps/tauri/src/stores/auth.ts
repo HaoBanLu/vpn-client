@@ -11,11 +11,20 @@ import { saveLoginCredentials } from '@/lib/login-credentials'
 const TOKEN_KEY = 'tauri_token'
 const USER_KEY = 'tauri_user'
 
+function readStoredUser(): UserBrief | null {
+  const raw = localStorage.getItem(USER_KEY)
+  if (!raw || raw === 'undefined' || raw === 'null') return null
+  try {
+    return JSON.parse(raw) as UserBrief
+  } catch {
+    localStorage.removeItem(USER_KEY)
+    return null
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
-  const user = ref<UserBrief | null>(
-    localStorage.getItem(USER_KEY) ? JSON.parse(localStorage.getItem(USER_KEY)!) : null,
-  )
+  const user = ref<UserBrief | null>(readStoredUser())
 
   const isAuthenticated = computed(() => !!token.value)
 
@@ -23,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = session.token
     user.value = session.user
     localStorage.setItem(TOKEN_KEY, session.token)
-    localStorage.setItem(USER_KEY, JSON.stringify(session.user))
+    localStorage.setItem(USER_KEY, JSON.stringify(session.user ?? null))
   }
 
   async function login(email: string, password: string, rememberLogin = true) {

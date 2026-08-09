@@ -21,7 +21,7 @@ defineProps<{
   min-width: 0;
   padding: var(--ky-space-md);
   border-radius: var(--ky-radius-md);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ky-surface-variant);
   border: 1px solid var(--ky-border-soft);
 }
 

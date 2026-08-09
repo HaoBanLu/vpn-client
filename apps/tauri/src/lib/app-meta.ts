@@ -1,14 +1,14 @@
-export const APP_VERSION_NAME = '1.2.15'
-export const APP_VERSION_CODE = 135
+export const APP_VERSION_NAME = '1.2.16'
+export const APP_VERSION_CODE = 136
 export const PRIVACY_ACCEPTED_KEY = 'tauri_privacy_accepted'
 
-/** 注册勾选条款后调用，对�?Android AppRepository.acceptPrivacy�?*/
+/** 注册勾选条款后调用，对齐 Android AppRepository.acceptPrivacy */
 export function acceptPrivacy() {
   if (localStorage.getItem(PRIVACY_ACCEPTED_KEY)) return
   localStorage.setItem(PRIVACY_ACCEPTED_KEY, '1')
 }
 
-/** 已登录老用户迁移：补写隐私同意，不�?UI�?*/
+/** 已登录老用户迁移：补写隐私同意，不弹 UI */
 export function ensurePrivacyAcceptedIfLoggedIn(isLoggedIn: boolean) {
   if (!isLoggedIn || localStorage.getItem(PRIVACY_ACCEPTED_KEY)) return
   acceptPrivacy()

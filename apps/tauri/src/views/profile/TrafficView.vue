@@ -1,7 +1,7 @@
 <template>
   <KyPage sub>
     <PageHeader title="流量统计" subtitle="最近 30 天使用情况" />
-    <KySpin :spinning="loading">
+    <KySpin :spinning="loading" overlay>
       <div v-if="summary" class="metric-row">
         <KyMetricCard label="总流量" :value="`${summary.total_mb.toFixed(1)} MB`" highlight />
         <KyMetricCard label="上传" :value="`${summary.total_up_mb.toFixed(1)} MB`" />

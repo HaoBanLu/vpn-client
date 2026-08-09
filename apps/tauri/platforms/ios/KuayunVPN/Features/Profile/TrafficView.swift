@@ -10,13 +10,9 @@ struct TrafficView: View {
         List {
             if let summary {
                 Section("汇总") {
-                    if let used = summary.usedGb, let total = summary.totalGb {
-                        LabeledContent("已用", value: String(format: "%.2f GB", used))
-                        LabeledContent("总量", value: String(format: "%.2f GB", total))
-                    }
-                    if let remaining = summary.remainingGb {
-                        LabeledContent("剩余", value: String(format: "%.2f GB", remaining))
-                    }
+                    LabeledContent("总流量", value: String(format: "%.2f GB", summary.usedGb))
+                    LabeledContent("上传", value: String(format: "%.2f GB", summary.uploadGb))
+                    LabeledContent("下载", value: String(format: "%.2f GB", summary.downloadGb))
                 }
             }
             Section("近 30 天") {
@@ -24,7 +20,7 @@ struct TrafficView: View {
                     HStack {
                         Text(item.date)
                         Spacer()
-                        Text(String(format: "%.2f GB", item.usedGb ?? 0))
+                        Text(String(format: "%.2f GB", item.usedGb))
                             .foregroundStyle(.secondary)
                     }
                 }

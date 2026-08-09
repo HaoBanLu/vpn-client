@@ -38,8 +38,9 @@ export const useAccountStore = defineStore('account', () => {
       user.value = me.data
       subscription.value = sub.data
       usage.value = subscription.value ? (await clientApi.getUsage()).data : null
-      orders.value = orderRes.data.orders
-      knownRechargeStatuses = rechargeRes.data.orders.reduce<Record<number, string>>((acc, order) => {
+      orders.value = orderRes.data.orders ?? []
+      const rechargeOrders = rechargeRes.data.orders ?? []
+      knownRechargeStatuses = rechargeOrders.reduce<Record<number, string>>((acc, order) => {
         acc[order.id] = order.status
         return acc
       }, {})
@@ -80,8 +81,9 @@ export const useAccountStore = defineStore('account', () => {
   async function pollRechargeNotifications() {
     try {
       const rechargeRes = await clientApi.getRechargeOrders()
-      const changes = detectRechargeChanges(rechargeRes.data.orders)
-      knownRechargeStatuses = rechargeRes.data.orders.reduce<Record<number, string>>((acc, order) => {
+      const rechargeOrders = rechargeRes.data.orders ?? []
+      const changes = detectRechargeChanges(rechargeOrders)
+      knownRechargeStatuses = rechargeOrders.reduce<Record<number, string>>((acc, order) => {
         acc[order.id] = order.status
         return acc
       }, {})

@@ -49,19 +49,27 @@
     </template>
 
     <template #after>
-      <KyCard v-if="showConnectError" flat>
-        <p class="error-text">{{ store.error || '网络异常，请检查节点或稍后重试' }}</p>
-        <div class="error-actions">
-          <KyButton type="primary" size="small" @click="startConnect">重试连接</KyButton>
-          <KyButton size="small" @click="goNodes">切换节点</KyButton>
-          <KyButton type="link" size="small" @click="goSupport">联系客服</KyButton>
-        </div>
-      </KyCard>
+      <!-- 对齐 Android：失败区仅错误文案 + 重试连接 -->
+      <template v-if="showConnectError">
+        <KyCard flat class="error-card">
+          <p class="error-text">{{ store.error || '网络异常，请检查节点或稍后重试' }}</p>
+        </KyCard>
+        <KyButton
+          v-if="store.subscription && store.connectionState === 'failed'"
+          type="primary"
+          block
+          size="large"
+          @click="startConnect"
+        >
+          重试连接
+        </KyButton>
+      </template>
     </template>
   </KyTabPage>
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'ConnectView' })
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import KyTabPage from '@/components/KyTabPage.vue'
@@ -71,6 +79,7 @@ import ConnectQuickStatus from '@/components/ConnectQuickStatus.vue'
 import ConnectSessionCard from '@/components/ConnectSessionCard.vue'
 import { KyButton } from '@/components/ky'
 import { resolveConnectHeroCopy } from '@/lib/connect-hero'
+import { getEntryLatencyMs } from '@/lib/vpn/entry-latency-cache'
 import { useConnectStore } from '@/stores/connect'
 import { probeHint } from '@/lib/vpn/probe'
 import {
@@ -95,6 +104,8 @@ const showConnectError = computed(() => {
   return !store.error.includes(NODE_REQUIRED_HINT)
 })
 
+const entryLatencyMs = computed(() => getEntryLatencyMs(store.selectedNode))
+
 const heroCopy = computed(() =>
   resolveConnectHeroCopy({
     connectionState: store.connectionState,
@@ -102,6 +113,7 @@ const heroCopy = computed(() =>
     isSwitching: store.isSwitching,
     selectedNode: store.selectedNode,
     tunnelLatencyMs: store.probeLatencyMs,
+    entryLatencyMs: entryLatencyMs.value,
   }),
 )
 
@@ -203,10 +215,6 @@ function goNodes() {
   router.push({ name: 'Nodes' })
 }
 
-function goSupport() {
-  router.push({ name: 'Support' })
-}
-
 async function onRefresh() {
   await store.refresh()
 }
@@ -237,16 +245,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 连接页内容垂直居中；桌面由 style.css 补齐 flex 高度链 */
+/* 对齐 Android：顶对齐可滚动，不做垂直居中 */
 :deep(.connect-page) {
   gap: 8px;
-  justify-content: center;
-}
-
-@media (min-width: 768px) {
-  :deep(.connect-page) {
-    min-height: calc(100dvh - var(--ky-space-xl) - var(--ky-space-2xl));
-  }
+  justify-content: flex-start;
 }
 
 .renewal-hint {
@@ -278,15 +280,13 @@ onMounted(async () => {
   color: var(--ky-text-muted);
 }
 
-.error-text {
-  margin: 0 0 var(--ky-space-md);
-  font-size: var(--ky-font-sm);
-  color: var(--ky-danger);
+.error-card {
+  margin-bottom: 8px;
 }
 
-.error-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ky-space-sm);
+.error-text {
+  margin: 0;
+  font-size: var(--ky-font-sm);
+  color: var(--ky-danger);
 }
 </style>

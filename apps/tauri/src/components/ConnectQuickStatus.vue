@@ -1,5 +1,5 @@
 <template>
-  <KyCard flat class="quick-status">
+  <KyCard class="quick-status">
     <p v-if="subscriptionLine" class="quick-status__meta">{{ subscriptionLine }}</p>
 
     <button type="button" class="quick-status__node" @click="$emit('pick-node')">
@@ -46,13 +46,21 @@ const subscriptionLine = computed(() => {
 .quick-status {
   display: flex;
   flex-direction: column;
-  gap: var(--ky-space-sm);
+  gap: 10px;
+  border-radius: 16px !important;
+  background: var(--ky-bg-card) !important;
+  border: 1px solid var(--ky-border-soft) !important;
+  box-shadow: var(--ky-shadow-sm);
+}
+
+.quick-status :deep(.ky-card__body) {
+  padding: 14px 16px;
 }
 
 .quick-status__meta {
   margin: 0;
-  font-size: var(--ky-font-sm);
-  color: var(--ky-text-secondary);
+  font-size: var(--ky-font-xs);
+  color: var(--ky-text-muted);
 }
 
 .quick-status__node {

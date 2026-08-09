@@ -6,31 +6,41 @@
       </template>
     </PageHeader>
 
-    <KySpin :spinning="loading">
-      <KyCard highlight>
+    <KySpin :spinning="loading && !usdtConfig" overlay>
+      <div class="balance-hero">
         <p class="label">当前余额</p>
         <p class="balance">{{ formatMoney(account.user?.balance ?? 0) }}</p>
         <div v-if="usdtConfig" class="rate-tags">
-          <KyTag color="blue">汇率 1U = ¥{{ usdtConfig.exchange_rate }}</KyTag>
-          <KyTag color="cyan">预计到账 {{ formatMoney(amountUsdt * usdtConfig.exchange_rate) }}</KyTag>
-          <KyTag :color="isAutoMode ? 'green' : 'orange'">{{ isAutoMode ? '自动确认' : '人工审核' }}</KyTag>
+          <span class="pill pill--info">汇率 1U = ¥{{ usdtConfig.exchange_rate }}</span>
+          <span class="pill pill--info">预计到账 {{ formatMoney(amountUsdt * usdtConfig.exchange_rate) }}</span>
+          <span class="pill" :class="isAutoMode ? 'pill--ok' : 'pill--warn'">
+            {{ isAutoMode ? '自动确认' : '人工审核' }}
+          </span>
         </div>
-      </KyCard>
+      </div>
 
       <KyAlert v-if="!usdtEnabled" type="warning" message="USDT 充值暂未开放" show-icon />
 
       <template v-else-if="!activeOrder">
-        <KyCard title="选择充值金额">
-          <KySpace wrap>
-            <KyButton
+        <div class="network-notice network-notice--compact">
+          <p class="network-notice__title">仅支持 TRC20（USDT-TRON）</p>
+          <p class="network-notice__body">请确保钱包选择 TRC20 网络</p>
+        </div>
+
+        <div class="amount-card">
+          <p class="amount-card__title">选择充值金额</p>
+          <div class="preset-row">
+            <button
               v-for="amount in quickAmounts"
               :key="amount"
-              :type="Math.abs(amountUsdt - amount) < 0.01 ? 'primary' : 'default'"
+              type="button"
+              class="preset-btn"
+              :class="{ 'preset-btn--active': Math.abs(amountUsdt - amount) < 0.01 }"
               @click="amountUsdt = amount"
             >
               {{ amount }} U
-            </KyButton>
-          </KySpace>
+            </button>
+          </div>
           <div class="amount-input-row">
             <KyInputNumber
               v-model="amountUsdt"
@@ -40,36 +50,78 @@
             />
             <span class="amount-suffix">USDT</span>
           </div>
-          <KyButton type="primary" block size="large" style="margin-top: var(--ky-space-lg)" :loading="submitting" @click="createOrder">
+          <KyButton type="primary" block size="large" class="create-btn" :loading="submitting" @click="createOrder">
             创建充值单
           </KyButton>
-        </KyCard>
+        </div>
       </template>
 
       <template v-else>
-        <KyCard title="充值进度">
-          <KyTag color="processing">{{ rechargeStatusLabel(activeOrder.status, activeOrder.chain_auto_confirmed, isAutoMode) }}</KyTag>
-          <p class="muted">{{ statusHint }}</p>
+        <!-- OrderStatusStrip -->
+        <div class="order-status-strip">
+          <div class="order-status-strip__top">
+            <div>
+              <p class="order-status-strip__label">订单状态</p>
+              <p class="order-status-strip__status">
+                {{ rechargeStatusLabel(activeOrder.status, activeOrder.chain_auto_confirmed, isAutoMode) }}
+              </p>
+            </div>
+            <span class="network-chip">TRC20</span>
+          </div>
+          <div class="order-status-strip__divider" />
           <p class="muted">单号 {{ activeOrder.order_no }}</p>
-        </KyCard>
+          <p v-if="activeOrder.expired_at" class="expire-row">
+            <span class="expire-icon" aria-hidden="true">⏱</span>
+            请在 {{ formatExpireShort(activeOrder.expired_at) }} 前完成转账
+          </p>
+          <p v-if="isAutoMode && activeOrder.status === 'pending_transfer'" class="auto-hint">
+            转账完成后无需操作，系统将自动确认入账
+          </p>
+          <p v-if="statusHint" class="muted">{{ statusHint }}</p>
+        </div>
 
-        <KyCard title="第 1 步 · 转账">
-          <p class="muted">向以下 TRC20 地址转账 {{ activeOrder.requested_usdt }} USDT</p>
+        <!-- TransferHeroCard -->
+        <div class="transfer-hero">
+          <p class="transfer-hero__label">应付金额</p>
+          <p class="transfer-hero__amount">{{ formatUsdtAmount(activeOrder.requested_usdt) }} USDT</p>
+          <p class="transfer-hero__cny">
+            预计到账 {{ formatMoney((activeOrder.requested_usdt || 0) * (usdtConfig?.exchange_rate || 0)) }}
+          </p>
+          <p class="transfer-hero__tip">
+            {{ isAutoMode ? '请按此金额转账，系统将自动匹配' : '请按此金额转账后提交凭证' }}
+          </p>
+        </div>
+
+        <!-- NetworkNoticeCard -->
+        <div class="network-notice">
+          <p class="network-notice__title">仅支持 TRC20（USDT-TRON）</p>
+          <ul class="network-notice__bullets">
+            <li>必须使用 TRC20 网络，勿用 ERC20 / BEP20 等其他链</li>
+            <li>仅转入 USDT，其他币种或网络将无法找回</li>
+            <li>转账金额须与订单金额一致（允许极小误差）</li>
+          </ul>
+          <p v-if="usdtConfig?.confirm_tips" class="network-notice__custom">{{ usdtConfig.confirm_tips }}</p>
+        </div>
+
+        <!-- Address + QR -->
+        <div class="address-card">
+          <p class="amount-card__title">收款地址</p>
+          <div v-if="qrDataUrl" class="qr-wrap">
+            <img :src="qrDataUrl" alt="USDT 收款二维码" class="qr-img" width="180" height="180" />
+            <p class="muted">使用钱包扫描二维码转账</p>
+          </div>
           <p class="mono">{{ activeOrder.receive_address }}</p>
-          <KyButton block size="large" class="ky-btn-block" style="margin-top: var(--ky-space-sm)" @click="copyAddress">
-            复制收款地址
-          </KyButton>
-          <p v-if="usdtConfig?.confirm_tips" class="muted" style="margin-top: var(--ky-space-sm)">{{ usdtConfig.confirm_tips }}</p>
-        </KyCard>
+          <KyButton block size="large" class="copy-btn" @click="copyAddress">复制收款地址</KyButton>
+        </div>
 
         <template v-if="activeOrder.status === 'pending_transfer' && isAutoMode">
-          <KyCard title="等待自动确认">
+          <div class="wait-card">
             <KySpin inline />
-            <p style="margin-top: var(--ky-space-sm)">
+            <p class="wait-card__title">等待自动确认</p>
+            <p class="muted">
               转账后系统约每 {{ scanIntervalSeconds }} 秒检测链上到账，无需上传截图。
             </p>
-            <p class="muted">到账后余额将自动增加，可在「充值记录」查看结果。</p>
-          </KyCard>
+          </div>
           <KyCollapse style="background: transparent">
             <KyCollapsePanel header="选填：加速匹配（地址 / txid / 截图）">
               <KyInput
@@ -97,7 +149,8 @@
           <KyButton type="link" block @click="cancelOrder">取消充值单</KyButton>
         </template>
 
-        <KyCard v-else-if="activeOrder.status === 'pending_transfer'" title="第 2 步 · 提交凭证">
+        <div v-else-if="activeOrder.status === 'pending_transfer'" class="amount-card">
+          <p class="amount-card__title">第 2 步 · 提交凭证</p>
           <p class="muted">转账后上传截图，并填写付款钱包地址</p>
           <KyInput
             v-model="fromAddress"
@@ -122,9 +175,9 @@
             提交审核
           </KyButton>
           <KyButton type="link" block @click="cancelOrder">取消充值单</KyButton>
-        </KyCard>
+        </div>
 
-        <KyCard v-else>
+        <div v-else class="amount-card">
           <template v-if="activeOrder.status === 'submitted'">
             <p>{{ isAutoMode ? '正在确认到账，可在「充值记录」查看结果' : '等待人工审核，可在「充值记录」查看结果' }}</p>
           </template>
@@ -133,27 +186,39 @@
               {{ activeOrder.chain_auto_confirmed ? '已自动确认到账' : '已到账' }}
               {{ formatMoney(activeOrder.credited_cny) }}
             </p>
-            <p v-if="activeOrder.paid_at" class="muted">到账时间：{{ activeOrder.paid_at }}</p>
+            <p v-if="activeOrder.paid_at" class="muted">到账时间：{{ formatExpireShort(activeOrder.paid_at) }}</p>
           </template>
           <template v-else-if="activeOrder.status === 'rejected'">
             <KyAlert type="error" :message="activeOrder.reject_reason || '充值被驳回'" show-icon />
-            <KyButton type="primary" block size="large" style="margin-top: var(--ky-space-md)" @click="restart">重新发起充值</KyButton>
+            <KyButton type="primary" block size="large" style="margin-top: var(--ky-space-md)" @click="restart">
+              重新发起充值
+            </KyButton>
           </template>
           <template v-else>
             <p>{{ rechargeStatusLabel(activeOrder.status, activeOrder.chain_auto_confirmed, isAutoMode) }}</p>
+            <KyButton
+              v-if="['expired', 'cancelled'].includes(activeOrder.status)"
+              type="primary"
+              block
+              size="large"
+              style="margin-top: var(--ky-space-md)"
+              @click="restart"
+            >
+              重新发起充值
+            </KyButton>
           </template>
-        </KyCard>
+        </div>
       </template>
     </KySpin>
   </KyPage>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import QRCode from 'qrcode'
 import { message } from '@/lib/ui/message'
 import KyPage from '@/components/KyPage.vue'
-import KyCard from '@/components/KyCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import {
   KyAlert,
@@ -162,12 +227,10 @@ import {
   KyCollapsePanel,
   KyInput,
   KyInputNumber,
-  KySpace,
   KySpin,
-  KyTag,
 } from '@/components/ky'
 import { clientApi, type RechargeOrderItem, type USDTConfig } from '@/api/client'
-import { formatMoney, rechargeStatusLabel } from '@/lib/format'
+import { formatExpireShort, formatMoney, formatUsdtAmount, rechargeStatusLabel } from '@/lib/format'
 import { useAccountStore } from '@/stores/account'
 
 const router = useRouter()
@@ -185,9 +248,10 @@ const txid = ref('')
 const proofImageUrl = ref<string | null>(null)
 const proofFileName = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const qrDataUrl = ref<string | null>(null)
 let pollTimer: number | null = null
 
-const quickAmounts = computed(() => usdtConfig.value?.quick_amounts_usdt || [10, 20, 50, 100, 200])
+const quickAmounts = computed(() => usdtConfig.value?.quick_amounts_usdt || [10, 50, 100, 200])
 
 const isAutoMode = computed(() => {
   if (!usdtConfig.value) return true
@@ -209,6 +273,24 @@ const statusHint = computed(() => {
   }
   return ''
 })
+
+watch(
+  () => activeOrder.value?.receive_address,
+  async (address) => {
+    qrDataUrl.value = null
+    if (!address) return
+    try {
+      qrDataUrl.value = await QRCode.toDataURL(address, {
+        width: 180,
+        margin: 1,
+        color: { dark: '#0f1729', light: '#ffffff' },
+      })
+    } catch {
+      qrDataUrl.value = null
+    }
+  },
+  { immediate: true },
+)
 
 function shouldPoll(order: RechargeOrderItem | null) {
   if (!order) return false
@@ -376,6 +458,14 @@ onUnmounted(stopPolling)
 </script>
 
 <style scoped>
+.balance-hero {
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(214, 228, 255, 0.95), rgba(232, 238, 248, 0.9));
+  border: 1px solid rgba(27, 77, 255, 0.08);
+  margin-bottom: 14px;
+}
+
 .label {
   margin: 0;
   color: var(--ky-text-muted);
@@ -383,24 +473,93 @@ onUnmounted(stopPolling)
 }
 
 .balance {
-  margin: var(--ky-space-xs) 0 0;
-  font-size: var(--ky-font-2xl);
+  margin: 4px 0 0;
+  font-size: 32px;
   font-weight: 700;
   color: var(--ky-accent);
+  line-height: 1.15;
 }
 
 .rate-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ky-space-sm);
-  margin-top: var(--ky-space-md);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.pill--info {
+  background: rgba(27, 77, 255, 0.1);
+  color: var(--ky-accent);
+}
+
+.pill--ok {
+  background: rgba(76, 175, 80, 0.14);
+  color: #2e7d32;
+}
+
+.pill--warn {
+  background: rgba(255, 152, 0, 0.16);
+  color: #e65100;
+}
+
+.amount-card,
+.address-card,
+.wait-card,
+.order-status-strip {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--ky-bg-card);
+  border: 1px solid var(--ky-border-soft);
+  margin-bottom: 12px;
+}
+
+.amount-card__title {
+  margin: 0 0 12px;
+  font-size: var(--ky-font-md);
+  font-weight: 700;
+  color: var(--ky-text);
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preset-btn {
+  appearance: none;
+  min-width: 68px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--ky-border);
+  background: #fff;
+  color: var(--ky-text);
+  font-size: var(--ky-font-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preset-btn--active {
+  border-color: transparent;
+  background: var(--ky-accent);
+  color: #fff;
 }
 
 .amount-input-row {
   display: flex;
   align-items: center;
   gap: var(--ky-space-sm);
-  margin-top: var(--ky-space-md);
+  margin-top: 14px;
 }
 
 .amount-input-row :deep(.ky-input-number) {
@@ -412,6 +571,14 @@ onUnmounted(stopPolling)
   font-size: var(--ky-font-sm);
 }
 
+.create-btn,
+.copy-btn {
+  margin-top: 16px;
+  height: 44px !important;
+  border-radius: 12px !important;
+  font-weight: 650;
+}
+
 .muted {
   margin: var(--ky-space-sm) 0 0;
   color: var(--ky-text-muted);
@@ -421,6 +588,166 @@ onUnmounted(stopPolling)
 .mono {
   word-break: break-all;
   font-family: ui-monospace, monospace;
-  margin-top: var(--ky-space-sm);
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--ky-text);
+  line-height: 1.45;
+}
+
+.order-status-strip__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.order-status-strip__label {
+  margin: 0;
+  font-size: var(--ky-font-xs);
+  color: var(--ky-text-muted);
+}
+
+.order-status-strip__status {
+  margin: 2px 0 0;
+  font-size: var(--ky-font-md);
+  font-weight: 650;
+  color: var(--ky-accent);
+}
+
+.order-status-strip__divider {
+  height: 1px;
+  background: var(--ky-border-soft);
+  margin: 10px 0;
+}
+
+.network-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(27, 77, 255, 0.1);
+  color: var(--ky-accent);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.expire-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 0;
+  font-size: var(--ky-font-sm);
+  color: var(--ky-text-muted);
+}
+
+.expire-icon {
+  font-size: 12px;
+}
+
+.auto-hint {
+  margin: 8px 0 0;
+  font-size: var(--ky-font-sm);
+  color: var(--ky-accent);
+}
+
+.transfer-hero {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(214, 228, 255, 0.55);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.transfer-hero__label {
+  margin: 0;
+  font-size: var(--ky-font-sm);
+  font-weight: 600;
+  color: #1a2b5c;
+}
+
+.transfer-hero__amount {
+  margin: 4px 0 0;
+  font-size: 28px;
+  font-weight: 750;
+  color: var(--ky-accent);
+  line-height: 1.2;
+}
+
+.transfer-hero__cny {
+  margin: 4px 0 0;
+  font-size: var(--ky-font-sm);
+  color: #1a2b5c;
+}
+
+.transfer-hero__tip {
+  margin: 8px 0 0;
+  font-size: var(--ky-font-xs);
+  color: rgba(26, 43, 92, 0.85);
+}
+
+.network-notice {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.12);
+  margin-bottom: 12px;
+}
+
+.network-notice--compact {
+  margin-bottom: 14px;
+}
+
+.network-notice__title {
+  margin: 0;
+  font-size: var(--ky-font-sm);
+  font-weight: 700;
+  color: var(--ky-danger);
+}
+
+.network-notice__body {
+  margin: 4px 0 0;
+  font-size: var(--ky-font-xs);
+  color: var(--ky-text-muted);
+}
+
+.network-notice__bullets {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: var(--ky-font-xs);
+  color: var(--ky-text);
+  line-height: 1.55;
+}
+
+.network-notice__custom {
+  margin: 8px 0 0;
+  font-size: var(--ky-font-xs);
+  color: var(--ky-text-muted);
+}
+
+.qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.qr-img {
+  border-radius: 12px;
+  border: 1px solid var(--ky-border-soft);
+  background: #fff;
+}
+
+.wait-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.wait-card__title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ky-text);
 }
 </style>

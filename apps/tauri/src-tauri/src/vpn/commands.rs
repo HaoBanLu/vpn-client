@@ -348,6 +348,43 @@ pub async fn vpn_stats<R: Runtime>(app: AppHandle<R>) -> VpnSessionStats {
             }
         }
     }
+    #[cfg(target_os = "android")]
+    {
+        use super::state::VpnConnectionState;
+        let connected =
+            app.state::<VpnState>().snapshot_status().state == VpnConnectionState::Connected;
+        if connected {
+            if let Ok(value) = app
+                .state::<MobileVpnHandle<R>>()
+                .0
+                .run_mobile_plugin::<serde_json::Value>("getStats", ())
+            {
+                fn json_u64(value: &serde_json::Value, key: &str) -> Option<u64> {
+                    value.get(key).and_then(|x| {
+                        x.as_u64()
+                            .or_else(|| x.as_i64().map(|v| v.max(0) as u64))
+                            .or_else(|| x.as_f64().map(|v| v.max(0.0) as u64))
+                    })
+                }
+                if let Some(v) = json_u64(&value, "uploadBytes") {
+                    stats.upload_bytes = v;
+                }
+                if let Some(v) = json_u64(&value, "downloadBytes") {
+                    stats.download_bytes = v;
+                }
+                // 优先用原生会话时长（VpnSessionStatsTracker），避免与 Rust 计时漂移
+                if let Some(v) = json_u64(&value, "durationMs") {
+                    stats.duration_ms = v;
+                }
+                if let Some(v) = json_u64(&value, "uploadBps") {
+                    stats.upload_bps = v;
+                }
+                if let Some(v) = json_u64(&value, "downloadBps") {
+                    stats.download_bps = v;
+                }
+            }
+        }
+    }
     stats
 }
 

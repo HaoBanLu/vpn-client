@@ -4,82 +4,75 @@
     subtitle="点「连接」上网；需要延迟时再批量测速"
     page-class="nodes-page"
     :on-refresh="load"
-    :loading="loading"
+    :loading="loading && nodes.length === 0"
   >
     <KyAlert v-if="loadError" type="error" :message="loadError" />
 
-    <KySelectedBanner
-      v-if="connect.selectedNode"
-      label="当前节点"
-      :value="connect.selectedNode"
-      :clear-disabled="connect.isSwitching"
-      @clear="clearNode"
-    />
-
-    <KyStack gap="md">
+    <div class="nodes-toolbar">
       <KyChipGroup :model-value="region" :items="regionItems" @update:model-value="setRegion" />
 
       <KyButton
+        type="primary"
         block
-        class="ky-btn-block nodes-batch-btn"
-        size="large"
+        class="nodes-batch-btn"
         :loading="batchTesting"
         :disabled="connectableNodes.length === 0"
         @click="batchTest"
       >
         {{ batchTesting ? '测速中…' : '批量测速' }}
       </KyButton>
-    </KyStack>
+    </div>
 
     <KyEmpty
       v-if="!loading && connectableNodes.length === 0 && unsupportedNodes.length === 0"
-      description="当前地区暂无节点"
+      description="当前地区暂无在线节点"
     />
 
-    <KyGrid2 v-else class="nodes-grid">
-      <KyNodeCard
-        v-for="item in sortedConnectableNodes"
-        :key="item.id"
-        :node="item"
-        :filter-region="region"
-        :highlight="connect.selectedNode === item.name"
-        :selected="connect.selectedNode === item.name"
-        :selected-status-text="selectedStatusText"
-        :latency-ms="latencyMap[item.id]"
-        :latency-pending="batchTesting && latencyMap[item.id] === undefined"
-        :fastest="fastestNodeId === item.id"
-        :action-label="connect.isConnected ? '切换' : '连接'"
-        :action-loading="connect.isSwitching"
-        :action-disabled="connect.isSwitching"
-        @action="selectNode(item)"
-      />
-
-      <template v-if="unsupportedNodes.length > 0">
-        <p class="unsupported-title">以下节点需使用官方客户端，App 内不可选</p>
+    <div v-else-if="sortedConnectableNodes.length > 0" class="nodes-list-card">
+      <template v-for="(item, index) in sortedConnectableNodes" :key="item.id">
+        <div v-if="index > 0" class="nodes-list-divider" aria-hidden="true" />
         <KyNodeCard
-          v-for="item in unsupportedNodes"
-          :key="`unsupported-${item.id}`"
           :node="item"
           :filter-region="region"
-          variant="unsupported"
-          :unsupported-text="unsupportedReason(item)"
+          :is-active="isNodeActive(item)"
+          :selected="isNodeSelected(item)"
+          :latency-ms="latencyMap[item.id]"
+          :latency-pending="batchTesting && latencyMap[item.id] === undefined"
+          :fastest="fastestNodeId === item.id"
+          :action-label="connect.isConnected ? '切换' : '连接'"
+          :action-loading="isNodeConnecting(item)"
+          :action-disabled="connect.isSwitching"
+          @action="selectNode(item)"
         />
       </template>
-    </KyGrid2>
-    <!-- 显式占位：避免 flex/滚动裁切导致末卡贴底 -->
+    </div>
+
+    <template v-if="unsupportedNodes.length > 0">
+      <p class="unsupported-title">以下节点需使用官方客户端，App 内不可选</p>
+      <div class="nodes-list-card nodes-list-card--muted">
+        <template v-for="(item, index) in unsupportedNodes" :key="`unsupported-${item.id}`">
+          <div v-if="index > 0" class="nodes-list-divider" aria-hidden="true" />
+          <KyNodeCard
+            :node="item"
+            :filter-region="region"
+            variant="unsupported"
+            :unsupported-text="unsupportedReason(item)"
+          />
+        </template>
+      </div>
+    </template>
+
     <div class="nodes-bottom-spacer" aria-hidden="true" />
   </KyTabPage>
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'NodesView' })
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from '@/lib/ui/message'
 import KyTabPage from '@/components/KyTabPage.vue'
-import KyGrid2 from '@/components/KyGrid2.vue'
-import KyStack from '@/components/KyStack.vue'
 import KyNodeCard from '@/components/KyNodeCard.vue'
-import KySelectedBanner from '@/components/KySelectedBanner.vue'
 import KyChipGroup from '@/components/KyChipGroup.vue'
 import { KyAlert, KyButton, KyEmpty } from '@/components/ky'
 import { mapApiError } from '@/lib/api-error'
@@ -93,6 +86,7 @@ import {
   probeTcpLatency,
 } from '@/lib/vpn/client-latency-probe'
 import { findFastestNodeId, sortNodesByLatency } from '@/lib/vpn/node-list-display'
+import { saveEntryLatenciesByNodeName } from '@/lib/vpn/entry-latency-cache'
 import { useConnectStore } from '@/stores/connect'
 
 const router = useRouter()
@@ -122,20 +116,25 @@ const regionItems = computed(() => [
   })),
 ])
 
-const selectedStatusText = computed(() => {
-  if (connect.isSwitching) return '正在切换到此节点…'
-  if (connect.isConnecting) return '连接中，可点其他节点切换'
-  if (connect.isConnected) return '✓ 当前使用中'
-  return '✓ 已选中'
-})
+function isNodeActive(item: NodeItem) {
+  return connect.isConnected && connect.selectedNode === item.name
+}
+
+function isNodeSelected(item: NodeItem) {
+  if (isNodeActive(item)) return false
+  return connect.selectedNode === item.name
+}
+
+function isNodeConnecting(item: NodeItem) {
+  return (
+    (connect.isConnecting || connect.isSwitching) &&
+    connect.selectedNode === item.name
+  )
+}
 
 function setRegion(value: string | null) {
   region.value = value
   connect.saveRegion(value)
-}
-
-async function clearNode() {
-  await connect.clearNodeSelection()
 }
 
 async function load() {
@@ -156,7 +155,6 @@ async function load() {
 
 async function selectNode(node: NodeItem) {
   const wasConnected = connect.isConnected
-  // 对齐 Android：未连接时点「连接此节点」即连；套餐未就绪先 refresh，仍无则 connect() 返回 need_package
   if (!wasConnected && !connect.subscription) {
     try {
       await connect.refresh()
@@ -165,11 +163,9 @@ async function selectNode(node: NodeItem) {
     }
   }
   const willConnect = shouldConnectAfterNodeSelect(wasConnected)
-  // 跳转前先进入「连接中」UI，避免连接页仍显示「一键连接」而底部已是「正在连接」
   if (willConnect && connect.subscription) {
     connect.beginConnectPending(node.name)
   }
-  // 对齐 Android MainShell：先切到连接 Tab，再发起连接/切换
   if (shouldNavigateToConnectAfterNodeSelect()) {
     await router.push({ name: 'Connect' })
   }
@@ -205,6 +201,12 @@ async function batchTest() {
       const serverMs = details[id]?.entry_latency_ms ?? latency
       latencyMap[nodeId] = mergeLatencyResults(serverMs, clientMap[nodeId] ?? null)
     })
+    saveEntryLatenciesByNodeName(
+      targets.map((node) => ({
+        name: node.name,
+        latencyMs: latencyMap[node.id] ?? 0,
+      })),
+    )
     message.success(`已测试 ${Object.keys(results).length} 个节点`)
   } finally {
     batchTesting.value = false
@@ -215,20 +217,56 @@ onMounted(load)
 </script>
 
 <style scoped>
+/* 对齐 Android：chip 下 10dp 间距、按钮高 40、M3 ExtraLarge 近胶囊 */
+.nodes-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .nodes-batch-btn {
   width: 100%;
+  height: 40px !important;
+  min-height: 40px !important;
+  border-radius: 999px !important;
+  border: 0 !important;
+  background: var(--ky-accent) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  letter-spacing: 0.2px;
+  box-shadow: none !important;
+}
+
+.nodes-batch-btn:not(:disabled):hover {
+  background: var(--ky-accent-soft) !important;
+  color: #fff !important;
+}
+
+.nodes-list-card {
+  margin-top: 2px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.nodes-list-card--muted {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.nodes-list-divider {
+  height: 0;
+  margin: 2px 14px;
+  border-top: 1px dashed rgba(197, 208, 224, 0.7);
 }
 
 .unsupported-title {
-  grid-column: 1 / -1;
-  margin: var(--ky-space-md) 0 0;
+  margin: var(--ky-space-md) 0 var(--ky-space-sm);
   font-size: var(--ky-font-sm);
   font-weight: 600;
   color: var(--ky-text-muted);
-}
-
-.nodes-grid {
-  margin-bottom: 8px;
 }
 
 .nodes-bottom-spacer {

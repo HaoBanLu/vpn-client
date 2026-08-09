@@ -1,39 +1,47 @@
 :root {
-  color-scheme: dark;
+  /* 默认浅色：对齐 Android KuayunTheme LightColors（截图主路径） */
+  color-scheme: light;
   font-family: 'Segoe UI', system-ui, -apple-system, 'PingFang SC', sans-serif;
 
   /* 背景 */
-  --ky-bg: #0a0e17;
-  --ky-bg-elevated: #141b2d;
-  --ky-bg-card: #1a2338;
-  --ky-bg-card-hover: #202a42;
-  --ky-bg-input: #0f1726;
-  --ky-bg-overlay: rgba(10, 15, 26, 0.96);
+  --ky-bg: #f4f7fc;
+  --ky-bg-elevated: #ffffff;
+  --ky-bg-card: #ffffff;
+  --ky-bg-card-hover: #eef3fb;
+  --ky-bg-input: #ffffff;
+  --ky-bg-overlay: rgba(255, 255, 255, 0.96);
+  --ky-bg-hero: #d6e4ff;
+  --ky-bg-hero-soft: rgba(0, 212, 255, 0.12);
+  --ky-surface-variant: #e8eef8;
+  --ky-on-primary-container: #0a2463;
+  --ky-nav-active-pill: #e8eef8;
 
   /* 边框 */
-  --ky-border: #2a3548;
-  --ky-border-strong: rgba(0, 212, 255, 0.35);
-  --ky-border-soft: rgba(255, 255, 255, 0.05);
+  --ky-border: #c5d0e0;
+  --ky-border-strong: rgba(27, 77, 255, 0.35);
+  --ky-border-soft: rgba(15, 23, 41, 0.08);
 
   /* 文字 */
-  --ky-text: #e8edf5;
-  --ky-text-secondary: #c5d0e0;
-  --ky-text-muted: #a8b6c9;
-  --ky-text-hint: #7d8fa8;
+  --ky-text: #0f1729;
+  --ky-text-secondary: #5a6b82;
+  --ky-text-muted: #5a6b82;
+  --ky-text-hint: #8a9bb0;
+  --ky-on-accent: #ffffff;
 
-  /* 主色 */
-  --ky-accent: #00d4ff;
-  --ky-accent-soft: #7deaff;
+  /* 主色：对齐 Android LightColors.primary = KuayunBlue */
+  --ky-accent: #1b4dff;
+  --ky-accent-soft: #4f7cff;
   --ky-accent-deep: #1b4dff;
-  --ky-accent-bg: rgba(0, 212, 255, 0.12);
+  --ky-accent-cyan: #00d4ff;
+  --ky-accent-bg: rgba(27, 77, 255, 0.1);
 
   /* 语义色 */
-  --ky-success: #4ade80;
-  --ky-success-bg: rgba(74, 222, 128, 0.12);
-  --ky-warning: #fbbf24;
-  --ky-warning-bg: rgba(251, 191, 36, 0.12);
-  --ky-danger: #f87171;
-  --ky-danger-bg: rgba(248, 113, 113, 0.12);
+  --ky-success: #2e7d32;
+  --ky-success-bg: rgba(76, 175, 80, 0.14);
+  --ky-warning: #f57c00;
+  --ky-warning-bg: rgba(255, 167, 38, 0.16);
+  --ky-danger: #d32f2f;
+  --ky-danger-bg: rgba(211, 47, 47, 0.1);
 
   /* 圆角 */
   --ky-radius-sm: 8px;
@@ -50,7 +58,7 @@
   --ky-space-xl: 24px;
   --ky-space-2xl: 32px;
 
-  /* 字号 — 手机上 xs 至少 12px，避免次要文案糊成一团 */
+  /* 字号 */
   --ky-font-xs: 12px;
   --ky-font-sm: 14px;
   --ky-font-md: 15px;
@@ -59,9 +67,9 @@
   --ky-font-2xl: 26px;
 
   /* 阴影 */
-  --ky-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --ky-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
-  --ky-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --ky-shadow-sm: 0 1px 3px rgba(15, 23, 41, 0.06);
+  --ky-shadow-md: 0 4px 14px rgba(15, 23, 41, 0.08);
+  --ky-shadow-lg: 0 10px 28px rgba(15, 23, 41, 0.1);
 
   /* 布局 */
   --ky-page-max-width: 460px;
@@ -76,6 +84,7 @@
   line-height: 1.5;
 }
 
+/* 手机端产品视觉以原生浅色截图为准；暂不强跟系统深色，避免 WebView 误判成全黑 */
 * {
   box-sizing: border-box;
 }
@@ -84,7 +93,7 @@ body {
   margin: 0;
   min-height: 100vh;
   height: 100%;
-  background: linear-gradient(180deg, #0a0e17 0%, #141b2d 100%);
+  background: var(--ky-bg);
   color: var(--ky-text);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
@@ -128,7 +137,7 @@ html {
 .app-content {
   flex: 1;
   min-height: 0;
-  padding: var(--ky-space-md);
+  padding: var(--ky-space-md) 20px;
   padding-top: calc(var(--ky-space-md) + env(safe-area-inset-top, 0px));
   padding-bottom: calc(
     var(--ky-bottom-nav-height) + var(--ky-space-lg) + env(safe-area-inset-bottom, 0px)
@@ -149,12 +158,7 @@ html {
   padding-bottom: calc(var(--ky-space-2xl) + var(--ky-space-md));
   display: flex;
   flex-direction: column;
-  background: linear-gradient(
-    180deg,
-    var(--ky-bg) 0%,
-    var(--ky-bg-elevated) 45%,
-    var(--ky-bg) 100%
-  );
+  background: var(--ky-bg);
 }
 
 .app-shell--desktop .app-content .ky-page {
@@ -259,7 +263,7 @@ html {
 }
 
 .side-nav__item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ky-accent-bg);
   color: var(--ky-text);
 }
 
@@ -273,7 +277,7 @@ html {
   font-size: 18px;
 }
 
-/* ── 底部导航 ── */
+/* ── 底部导航（对齐 Compose NavigationBar） ── */
 .bottom-nav {
   position: fixed;
   left: 0;
@@ -283,9 +287,9 @@ html {
   grid-template-columns: repeat(4, 1fr);
   height: calc(var(--ky-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: var(--ky-bg-overlay);
-  border-top: 1px solid var(--ky-border);
-  backdrop-filter: blur(16px);
+  background: var(--ky-bg-elevated);
+  border-top: 1px solid var(--ky-border-soft);
+  box-shadow: 0 -2px 12px rgba(15, 23, 41, 0.04);
   z-index: 100;
 }
 
@@ -300,17 +304,30 @@ html {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
   cursor: pointer;
   transition: color 0.15s ease;
 }
 
 .bottom-nav button .tab-icon {
-  font-size: 21px;
+  font-size: 20px;
+  width: 56px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ky-radius-full);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .bottom-nav button.active {
-  color: var(--ky-accent);
+  color: var(--ky-text);
+  font-weight: 650;
+}
+
+.bottom-nav button.active .tab-icon {
+  background: var(--ky-nav-active-pill);
+  color: var(--ky-text);
 }
 
 /* ── 通用工具类 ── */
@@ -327,12 +344,16 @@ html {
 }
 
 .ky-section-title {
-  margin: 0 0 var(--ky-space-md);
+  margin: 0 0 var(--ky-space-sm);
   font-size: var(--ky-font-sm);
-  font-weight: 600;
-  color: var(--ky-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: 650;
+  color: var(--ky-text);
+  letter-spacing: 0;
+  text-transform: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 /* 桌面双列卡片网格 — 请使用 KyGrid2 组件 */
@@ -441,7 +462,7 @@ html {
 }
 
 .ant-input-number-group-addon {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: var(--ky-surface-variant) !important;
   border-color: var(--ky-border) !important;
   color: var(--ky-text-muted) !important;
 }
@@ -465,17 +486,18 @@ html {
 }
 
 .ant-btn-primary {
-  background: linear-gradient(135deg, var(--ky-accent-deep), var(--ky-accent)) !important;
+  background: var(--ky-accent) !important;
   border-color: transparent !important;
   box-shadow: var(--ky-shadow-sm) !important;
+  color: var(--ky-on-accent) !important;
 }
 
 .ant-btn-primary:not(:disabled):hover {
-  background: linear-gradient(135deg, #0284c7, var(--ky-accent-deep)) !important;
+  background: var(--ky-accent-soft) !important;
 }
 
 .ant-btn-default {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: var(--ky-bg-card) !important;
   border-color: var(--ky-border) !important;
   color: var(--ky-text) !important;
 }
@@ -528,7 +550,7 @@ html {
 }
 
 .ant-tag-default {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: var(--ky-surface-variant) !important;
   color: var(--ky-text-secondary) !important;
 }
 
@@ -659,24 +681,28 @@ html {
 
 /* Progress */
 .ant-progress-inner {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: var(--ky-surface-variant) !important;
 }
 
-/* 深色块按钮 */
-.ky-btn-block {
+/* 次级块按钮 — 仅用于 default；勿覆盖 primary */
+.ky-btn-block:not(.ky-btn--primary):not(.ky-btn--danger) {
   height: var(--ky-btn-height);
   border-radius: var(--ky-radius-md);
   border: 1px solid var(--ky-border) !important;
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: var(--ky-bg-card) !important;
   color: var(--ky-text) !important;
   font-size: var(--ky-font-md) !important;
   font-weight: 600 !important;
 }
 
-.ky-btn-block:not(:disabled):hover {
+.ky-btn-block:not(.ky-btn--primary):not(.ky-btn--danger):not(:disabled):hover {
   background: var(--ky-accent-bg) !important;
   border-color: var(--ky-border-strong) !important;
-  color: var(--ky-accent-soft) !important;
+  color: var(--ky-accent) !important;
+}
+
+.ky-btn--primary.ky-btn-block {
+  width: 100%;
 }
 
 /* 信息面板 */

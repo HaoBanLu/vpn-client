@@ -81,27 +81,41 @@ struct OrdersData: Decodable {
     let orders: [OrderItem]
 }
 
+/// 对齐控制面 `/v1/traffic/summary`：total_*_mb（非 used_gb）。
 struct TrafficSummary: Decodable {
-    let usedGb: Double?
-    let totalGb: Double?
-    let remainingGb: Double?
+    let totalUpMb: Double
+    let totalDownMb: Double
+    let totalMb: Double
+    let count: Int?
 
     enum CodingKeys: String, CodingKey {
-        case usedGb = "used_gb"
-        case totalGb = "total_gb"
-        case remainingGb = "remaining_gb"
+        case totalUpMb = "total_up_mb"
+        case totalDownMb = "total_down_mb"
+        case totalMb = "total_mb"
+        case count
     }
+
+    var usedGb: Double { totalMb / 1024.0 }
+    var uploadGb: Double { totalUpMb / 1024.0 }
+    var downloadGb: Double { totalDownMb / 1024.0 }
 }
 
+/// 对齐 `/v1/traffic/daily`。
 struct DailyTrafficItem: Decodable, Identifiable {
     var id: String { date }
     let date: String
-    let usedGb: Double?
+    let totalUpMb: Double
+    let totalDownMb: Double
+    let totalMb: Double
 
     enum CodingKeys: String, CodingKey {
         case date
-        case usedGb = "used_gb"
+        case totalUpMb = "total_up_mb"
+        case totalDownMb = "total_down_mb"
+        case totalMb = "total_mb"
     }
+
+    var usedGb: Double { totalMb / 1024.0 }
 }
 
 struct UserPreferencesData: Decodable {

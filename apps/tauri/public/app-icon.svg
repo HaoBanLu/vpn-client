@@ -1,11 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- 对齐 Android ic_launcher_background：135° #00D4FF → #1B4DFF -->
+    <linearGradient id="bg" x1="0%" y1="100%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#00D4FF" />
       <stop offset="100%" stop-color="#1B4DFF" />
     </linearGradient>
   </defs>
   <rect width="1024" height="1024" rx="220" fill="url(#bg)" />
+  <!-- 对齐 Android drawable/ic_kuayun_cloud.xml 路径 -->
   <g transform="translate(102 128) scale(6.8)">
     <path
       fill="#FFFFFF"

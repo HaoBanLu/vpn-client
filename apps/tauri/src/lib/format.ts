@@ -16,6 +16,25 @@ export function formatUsdt(value: number): string {
   return `${value.toFixed(2)} USDT`
 }
 
+/** 对齐 Android formatUsdtAmount：整数不带小数 */
+export function formatUsdtAmount(amount: number): string {
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2)
+}
+
+/** 对齐 Android formatExpireTime：MM-dd HH:mm */
+export function formatExpireShort(raw?: string | null): string {
+  if (!raw) return ''
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) {
+    return raw.slice(0, 16).replace('T', ' ')
+  }
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mi = String(date.getMinutes()).padStart(2, '0')
+  return `${mm}-${dd} ${hh}:${mi}`
+}
+
 export function orderStatusLabel(status: string): string {
   const map: Record<string, string> = {
     pending: '待支付',

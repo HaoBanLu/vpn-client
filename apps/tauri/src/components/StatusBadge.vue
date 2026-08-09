@@ -1,8 +1,13 @@
 <template>
-  <span class="ky-status-badge" :class="variant">{{ text }}</span>
+  <span class="ky-status-badge" :class="variant">
+    <span v-if="showDot" class="ky-status-badge__dot" aria-hidden="true" />
+    {{ text }}
+  </span>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 export type StatusBadgeVariant =
   | 'success'
   | 'warning'
@@ -13,60 +18,69 @@ export type StatusBadgeVariant =
   | 'offline'
   | 'recommend'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     text: string
     variant?: StatusBadgeVariant
+    dot?: boolean
   }>(),
-  { variant: 'neutral' },
+  { variant: 'neutral', dot: undefined },
 )
+
+const showDot = computed(() => {
+  if (props.dot != null) return props.dot
+  return props.variant === 'online' || props.variant === 'success' || props.variant === 'offline'
+})
 </script>
 
 <style scoped>
 .ky-status-badge {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   flex-shrink: 0;
-  padding: 3px 9px;
-  border-radius: var(--ky-radius-sm);
+  padding: 3px 10px;
+  border-radius: 20px;
   font-size: var(--ky-font-xs);
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0;
   line-height: 1.3;
-  border: 1px solid transparent;
   white-space: nowrap;
+}
+
+.ky-status-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .ky-status-badge.success,
 .ky-status-badge.online {
-  background: var(--ky-success-bg);
-  border-color: rgba(74, 222, 128, 0.3);
-  color: var(--ky-success);
+  background: rgba(76, 175, 80, 0.14);
+  color: #2e7d32;
 }
 
 .ky-status-badge.warning {
   background: var(--ky-warning-bg);
-  border-color: rgba(251, 191, 36, 0.3);
   color: var(--ky-warning);
 }
 
 .ky-status-badge.error {
   background: var(--ky-danger-bg);
-  border-color: rgba(248, 113, 113, 0.3);
   color: var(--ky-danger);
 }
 
 .ky-status-badge.info,
 .ky-status-badge.recommend {
   background: var(--ky-accent-bg);
-  border-color: var(--ky-border-strong);
-  color: var(--ky-accent-soft);
+  color: var(--ky-accent);
 }
 
 .ky-status-badge.neutral,
 .ky-status-badge.offline {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--ky-border);
-  color: var(--ky-text-secondary);
+  background: var(--ky-surface-variant);
+  color: var(--ky-text-muted);
 }
 </style>

@@ -2,12 +2,13 @@
   <div
     class="ky-spin"
     :class="{
-      'ky-spin--spinning': spinning,
+      'ky-spin--spinning': showIndicator,
       'ky-spin--inline': inline,
-      'ky-spin--overlay': spinning && overlay,
+      'ky-spin--overlay': showIndicator && overlay,
+      'ky-spin--empty': showIndicator && !overlay,
     }"
   >
-    <div v-if="spinning" class="ky-spin__indicator" aria-hidden="true">
+    <div v-if="showIndicator" class="ky-spin__indicator" aria-hidden="true">
       <div class="ky-spin__ring" />
     </div>
     <div class="ky-spin__content">
@@ -17,15 +18,52 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(
+import { onUnmounted, ref, watch } from 'vue'
+
+const props = withDefaults(
   defineProps<{
     spinning?: boolean
     inline?: boolean
-    /** true：内容保留可见，指示器居中半透明（适合已有 Hero 的页面） */
+    /** true：内容保留可见，浅色轻指示（适合已有内容的页面） */
     overlay?: boolean
+    /** 延迟显示，避免快请求闪一下黑框 */
+    delayMs?: number
   }>(),
-  { spinning: false, overlay: false },
+  { spinning: false, overlay: false, delayMs: 180 },
 )
+
+const showIndicator = ref(false)
+let timer: ReturnType<typeof setTimeout> | null = null
+
+function clearTimer() {
+  if (timer != null) {
+    clearTimeout(timer)
+    timer = null
+  }
+}
+
+watch(
+  () => props.spinning,
+  (spinning) => {
+    clearTimer()
+    if (!spinning) {
+      showIndicator.value = false
+      return
+    }
+    const delay = Math.max(0, props.delayMs ?? 0)
+    if (delay === 0) {
+      showIndicator.value = true
+      return
+    }
+    timer = setTimeout(() => {
+      showIndicator.value = true
+      timer = null
+    }, delay)
+  },
+  { immediate: true },
+)
+
+onUnmounted(clearTimer)
 </script>
 
 <style scoped>
@@ -38,14 +76,16 @@ withDefaults(
   min-height: inherit;
 }
 
-.ky-spin--spinning:not(.ky-spin--overlay) .ky-spin__content {
-  opacity: 0.35;
+/* 空态加载：不压暗整页，只留出指示器空间感 */
+.ky-spin--empty.ky-spin--spinning .ky-spin__content {
+  opacity: 0.55;
   pointer-events: none;
+  filter: none;
 }
 
 .ky-spin--overlay.ky-spin--spinning .ky-spin__content {
-  /* 保持可读，避免连接大钮下方再像多出一个「加载中」态 */
   opacity: 1;
+  pointer-events: none;
 }
 
 .ky-spin__indicator {
@@ -57,19 +97,40 @@ withDefaults(
   pointer-events: none;
 }
 
+/* 浅色原生感：轻白蒙层 + 主色环，禁止深色渐变 */
 .ky-spin--overlay .ky-spin__indicator {
-  /* 只盖住下半内容区，别压在电源钮上 */
-  top: 42%;
-  background: linear-gradient(180deg, transparent, rgba(10, 14, 23, 0.35) 28%);
+  background: rgba(244, 247, 252, 0.42);
+  backdrop-filter: blur(1px);
+}
+
+.ky-spin--inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+}
+
+.ky-spin--inline .ky-spin__indicator {
+  position: static;
+  inset: auto;
+  background: transparent;
 }
 
 .ky-spin__ring {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2.5px solid rgba(0, 212, 255, 0.22);
+  border: 2.5px solid rgba(27, 77, 255, 0.16);
   border-top-color: var(--ky-accent);
   animation: ky-spin-rotate 0.7s linear infinite;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ky-spin--inline .ky-spin__ring {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
 }
 
 @keyframes ky-spin-rotate {

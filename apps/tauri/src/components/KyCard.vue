@@ -1,5 +1,5 @@
 <template>
-  <div class="ky-card" :class="{ 'ky-card--highlight': highlight, 'ky-card--flat': flat }">
+  <div class="ky-card" :class="{ 'ky-card--highlight': highlight, 'ky-card--flat': flat, 'ky-card--soft': soft }">
     <div v-if="title || $slots.header" class="ky-card__head">
       <slot name="header">
         <h3 v-if="title" class="ky-card__title">{{ title }}</h3>
@@ -24,24 +24,37 @@ defineProps<{
   subtitle?: string
   highlight?: boolean
   flat?: boolean
+  /** 登录等表单：surfaceVariant 半透明，对齐 Android AuthForm Card */
+  soft?: boolean
 }>()
 </script>
 
 <style scoped>
 .ky-card {
   border-radius: var(--ky-radius-lg);
-  border: 1px solid var(--ky-border);
+  border: 1px solid var(--ky-border-soft);
   background: var(--ky-bg-card);
   overflow: hidden;
+  box-shadow: var(--ky-shadow-sm);
 }
 
 .ky-card--highlight {
-  border-color: var(--ky-border-strong);
-  background: linear-gradient(135deg, var(--ky-bg-card) 0%, var(--ky-bg-elevated) 100%);
+  border-color: transparent;
+  background: linear-gradient(
+    135deg,
+    rgba(214, 228, 255, 0.9) 0%,
+    rgba(232, 238, 248, 0.95) 100%
+  );
 }
 
 .ky-card--flat {
   background: var(--ky-bg-elevated);
+  box-shadow: none;
+}
+
+.ky-card--soft {
+  background: color-mix(in srgb, var(--ky-surface-variant) 55%, #fff);
+  border-color: transparent;
 }
 
 .ky-card__head {

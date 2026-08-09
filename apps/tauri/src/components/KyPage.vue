@@ -35,13 +35,13 @@ withDefaults(
 
 .ky-page--sub {
   min-height: 100vh;
-  padding: var(--ky-space-md);
+  padding: var(--ky-space-md) 20px;
   padding-bottom: var(--ky-space-2xl);
 }
 
 .ky-page--center {
   min-height: 100vh;
   justify-content: center;
-  padding: var(--ky-space-md);
+  padding: var(--ky-space-md) 20px;
 }
 </style>

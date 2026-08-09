@@ -2,7 +2,7 @@
   <KyPage sub>
     <KyPullRefresh :on-refresh="load">
       <PageHeader title="购买记录" subtitle="套餐购买、续费与支付状态" />
-      <KySpin :spinning="loading">
+      <KySpin :spinning="loading" overlay>
         <KyEmpty v-if="!loading && orders.length === 0" description="暂无购买记录">
           <KyButton type="primary" size="large" @click="router.push({ name: 'Packages' })">去购买套餐</KyButton>
         </KyEmpty>

@@ -97,8 +97,9 @@ withDefaults(
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #0ea5e9, #2563eb);
-  box-shadow: var(--ky-shadow-md);
+  /* 对齐 Compose：primary → secondary 渐变 */
+  background: linear-gradient(135deg, var(--ky-accent-deep) 0%, var(--ky-accent-cyan) 100%);
+  box-shadow: var(--ky-shadow-sm);
   flex-shrink: 0;
 }
 
