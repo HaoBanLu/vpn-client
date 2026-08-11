@@ -438,9 +438,16 @@ export const clientApi = {
     }>(`/v1/users/me/sessions/${sessionId}/revoke`),
 
   uploadAppDebugLogs: (body: {
-    entries: Array<{ level: string; category: string; message: string }>
+    entries: Array<{
+      level: string
+      category: string
+      message: string
+      context?: Record<string, string>
+      client_at?: string
+    }>
     device_meta?: Record<string, unknown>
     device_id?: string
+    session_id?: string
   }) => request.post<{ accepted: number }>('/v1/users/me/app-debug-logs', body),
 
   getConnectDashboard: (selectedNode?: string | null) =>

@@ -68,6 +68,15 @@ export function resolveConnectionConfig(
   nodeRegion?: string | null,
   accessMode?: string | null,
 ): ResolvedConnectionConfig {
+  const mode = accessMode?.trim().toLowerCase() ?? ''
+  // 节点接入类型优先：避免「回国加速」场景下仍连新加坡却下发 domestic_return 画像。
+  if (mode === 'direct') {
+    return { profile: CLIENT_PROFILE.OVERSEAS_WEAK, routeMode: APP_ROUTE_MODE.FULL }
+  }
+  if (mode === 'relay') {
+    return { profile: CLIENT_PROFILE.DOMESTIC_RETURN, routeMode: APP_ROUTE_MODE.FULL }
+  }
+
   switch (normalizeConnectionScenario(scenario)) {
     case CONNECTION_SCENARIO.RETURN_HOME:
       return { profile: CLIENT_PROFILE.DOMESTIC_RETURN, routeMode: APP_ROUTE_MODE.FULL }

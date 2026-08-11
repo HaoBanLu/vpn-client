@@ -4,7 +4,7 @@ import { message } from '@/lib/ui/message'
 import { clientApi, type UserBrief } from '@/api/client'
 import { disconnectVpn } from '@/lib/vpn/bridge'
 import { effectiveKillSwitchEnabled } from '@/lib/vpn/desktop-settings'
-import { appendDebugLog } from '@/lib/debug/app-debug-log'
+import { appendDebugLog, configureAppDebug, flushDebugLogs } from '@/lib/debug/app-debug-log'
 import { acceptPrivacy, ensurePrivacyAcceptedIfLoggedIn } from '@/lib/app-meta'
 import { saveLoginCredentials } from '@/lib/login-credentials'
 
@@ -33,6 +33,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = session.user
     localStorage.setItem(TOKEN_KEY, session.token)
     localStorage.setItem(USER_KEY, JSON.stringify(session.user ?? null))
+    configureAppDebug(Boolean(session.user?.app_debug_enabled))
   }
 
   async function login(email: string, password: string, rememberLogin = true) {
@@ -58,11 +59,13 @@ export const useAuthStore = defineStore('auth', () => {
     if (!options?.skipVpn) {
       try {
         appendDebugLog('auth', '用户退出登录', 'info')
+        await flushDebugLogs()
         await disconnectVpn({ userInitiated: false, killSwitchEnabled: effectiveKillSwitchEnabled() })
       } catch {
         // ignore when VPN backend unavailable in browser dev
       }
     }
+    configureAppDebug(false)
     token.value = null
     user.value = null
     localStorage.removeItem(TOKEN_KEY)

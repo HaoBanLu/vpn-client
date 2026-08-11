@@ -3,8 +3,11 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { revealAppWindow } from '@/lib/desktop/window-boot'
+import { bootstrapAppDebugFromStorage } from '@/lib/debug/app-debug-log'
 import './style.css'
 import './styles/ky-ui.css'
+
+bootstrapAppDebugFromStorage()
 
 const app = createApp(App)
 app.use(createPinia())

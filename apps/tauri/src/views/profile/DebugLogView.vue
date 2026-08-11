@@ -1,6 +1,6 @@
 <template>
   <KyPage sub>
-    <PageHeader title="诊断日志" subtitle="本地连接与 VPN 事件记录，可上传供客服排查" />
+    <PageHeader title="诊断日志" subtitle="连接事件会自动上报（需后台开启诊断）；也可手动上传" />
 
     <div class="toolbar">
       <KyButton :loading="uploading" @click="upload">上传日志</KyButton>

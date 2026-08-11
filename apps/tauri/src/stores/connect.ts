@@ -59,7 +59,7 @@ import {
   markVpnSession,
 } from '@/lib/vpn/desktop-settings'
 import { updateTrayTooltip } from '@/lib/desktop/tray'
-import { appendDebugLog } from '@/lib/debug/app-debug-log'
+import { appendDebugLog, flushDebugLogs } from '@/lib/debug/app-debug-log'
 import { shouldIgnoreDisconnectedWhileConnecting } from '@/lib/vpn/connect-inflight'
 
 const REGION_KEY = 'tauri_region'
@@ -399,7 +399,10 @@ export const useConnectStore = defineStore('connect', () => {
     // 全端对齐 Clash Verge：探针只做软诊断（出口 IP / 心跳），不拆隧道、不自动切节点、不刷失败文案
     if (probeFailed) {
       recordProbeFailure()
-      appendDebugLog('probe', '连接后质量探测未通过，保持隧道', 'warn')
+      appendDebugLog('probe', '连接后质量探测未通过，保持隧道', 'warn', {
+        probe: probeStatus.value ?? '',
+      })
+      void flushDebugLogs()
       if (connectionState.value === 'connected') {
         actionHint.value = null
         error.value = null
@@ -508,6 +511,7 @@ export const useConnectStore = defineStore('connect', () => {
       !isSwitching.value
     ) {
       appendDebugLog('connect', '隧道意外中断，触发自动重连', 'warn')
+      void flushDebugLogs()
       void handleUnexpectedTunnelStop()
     }
   }
@@ -634,11 +638,14 @@ export const useConnectStore = defineStore('connect', () => {
 
   async function resolveConnectConfig() {
     let accessMode: string | null = null
+    let nodeRegion: string | null = selectedRegion.value
     if (selectedNode.value) {
       const nodes = (await clientApi.getNodes()).data.nodes
-      accessMode = nodes.find((n) => n.name === selectedNode.value)?.access_mode ?? null
+      const node = nodes.find((n) => n.name === selectedNode.value)
+      accessMode = node?.access_mode ?? null
+      if (node?.region) nodeRegion = node.region
     }
-    return resolveConnectionConfig(connectionScenario.value, selectedRegion.value, accessMode)
+    return resolveConnectionConfig(connectionScenario.value, nodeRegion, accessMode)
   }
 
   async function performConnect(hint?: string | null, generation?: number) {
@@ -670,7 +677,13 @@ export const useConnectStore = defineStore('connect', () => {
     await validateSelectedNode()
     if (!isConnectGenerationCurrent(token)) return
     const mode = effectiveConnectionMode()
-    appendDebugLog('connect', `开始连接 · ${selectedNode.value ?? '智能选路'} · ${mode}`, 'info')
+    appendDebugLog('connect', `开始连接 · ${selectedNode.value ?? '智能选路'} · ${mode}`, 'info', {
+      node: selectedNode.value ?? '智能选路',
+      mode,
+      profile: activeProfile.value,
+      scenario: connectionScenario.value,
+      region: selectedRegion.value ?? '',
+    })
     await connectVpn({
       configJson: patchedConfig,
       nodeName: selectedNode.value ?? '智能选路',
@@ -702,7 +715,11 @@ export const useConnectStore = defineStore('connect', () => {
       setVpnError(status.error ?? null)
       handleConnectionTransition(prev, status.state)
     }
-    appendDebugLog('connect', '连接成功', 'info')
+    appendDebugLog('connect', '连接成功', 'info', {
+      node: selectedNode.value ?? '',
+      profile: activeProfile.value,
+    })
+    void flushDebugLogs()
     try {
       dashboard.value = (await clientApi.getConnectDashboard(selectedNode.value)).data
     } catch {
@@ -726,6 +743,7 @@ export const useConnectStore = defineStore('connect', () => {
     connectPending.value = false
     markVpnSession(false)
     appendDebugLog('connect', '用户中断连接中的隧道', 'info')
+    void flushDebugLogs()
     try {
       await disconnectVpn({ userInitiated: true })
     } catch {
@@ -816,6 +834,7 @@ export const useConnectStore = defineStore('connect', () => {
       const msg = e instanceof Error ? e.message : '连接失败'
       setVpnError(msg)
       appendDebugLog('connect', `连接失败：${msg}`, 'error')
+      void flushDebugLogs()
       actionHint.value = null
       cancelProbe()
       message.error(msg)
@@ -971,6 +990,7 @@ export const useConnectStore = defineStore('connect', () => {
     markVpnSession(false)
     syncTrayTooltip()
     appendDebugLog('connect', '用户手动断开连接', 'info')
+    void flushDebugLogs()
     try {
       await disconnectVpn({ userInitiated: true })
     } catch {
@@ -997,6 +1017,7 @@ export const useConnectStore = defineStore('connect', () => {
     markVpnSession(false)
     syncTrayTooltip()
     appendDebugLog('connect', `鉴权断开：${reason}`, 'warn')
+    void flushDebugLogs()
     try {
       await disconnectVpn({ userInitiated: false, killSwitchEnabled: effectiveKillSwitchEnabled() })
     } catch {

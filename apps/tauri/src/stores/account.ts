@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { message } from '@/lib/ui/message'
 import { clientApi, type OrderItem, type RechargeOrderItem, type SubscriptionActive, type SubscriptionUsage, type UserBrief } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { configureAppDebug } from '@/lib/debug/app-debug-log'
 
 export interface AppNotification {
   id: number
@@ -49,6 +50,7 @@ export const useAccountStore = defineStore('account', () => {
       const auth = useAuthStore()
       auth.user = me.data
       localStorage.setItem('tauri_user', JSON.stringify(me.data))
+      configureAppDebug(Boolean(me.data?.app_debug_enabled))
     } finally {
       loading.value = false
     }
