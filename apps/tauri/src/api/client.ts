@@ -1,4 +1,4 @@
-import request from './request'
+import request, { SKIP_TOAST } from './request'
 import type { ClientConfigData } from '@/lib/vpn/types'
 import { detectClientPlatform } from '@/lib/app-meta'
 
@@ -303,11 +303,12 @@ export const clientApi = {
       new_password: newPassword,
     }),
 
-  getMe: () => request.get<UserBrief>('/v1/users/me'),
+  getMe: () => request.get<UserBrief>('/v1/users/me', SKIP_TOAST),
 
   getActiveSubscription: async () => {
     const res = await request.get<ActiveSubscriptionData | SubscriptionActive | null>(
       '/v1/subscription/active',
+      SKIP_TOAST,
     )
     const raw = res.data
     if (!raw) return { ...res, data: null as SubscriptionActive | null }
@@ -318,15 +319,15 @@ export const clientApi = {
     return { ...res, data: raw as SubscriptionActive }
   },
 
-  getUsage: () => request.get<SubscriptionUsage>('/v1/subscription/usage'),
+  getUsage: () => request.get<SubscriptionUsage>('/v1/subscription/usage', SKIP_TOAST),
 
   getSubscriptionToken: () => request.get<SubscriptionTokenData>('/v1/subscription/token'),
 
-  getRegions: () => request.get<{ regions: RegionItem[] }>('/v1/subscription/regions'),
+  getRegions: () => request.get<{ regions: RegionItem[] }>('/v1/subscription/regions', SKIP_TOAST),
 
-  getNodes: () => request.get<{ nodes: NodeItem[] }>('/v1/nodes'),
+  getNodes: () => request.get<{ nodes: NodeItem[] }>('/v1/nodes', SKIP_TOAST),
 
-  getPackages: () => request.get<{ packages: PackageItem[] }>('/v1/packages'),
+  getPackages: () => request.get<{ packages: PackageItem[] }>('/v1/packages', SKIP_TOAST),
 
   createOrder: (packageId: number) =>
     request.post<{ id: number }>('/v1/orders', {
@@ -339,14 +340,15 @@ export const clientApi = {
   getOrderStatus: (orderId: number) =>
     request.get<OrderStatusData>(`/v1/orders/${orderId}/status`),
 
-  getOrders: () => request.get<{ orders: OrderItem[] }>('/v1/orders'),
+  getOrders: () => request.get<{ orders: OrderItem[] }>('/v1/orders', SKIP_TOAST),
 
   getPaymentMethods: () => request.get<PaymentMethodsData>('/v1/payment-methods'),
 
   createRechargeOrder: (amountUsdt: number) =>
     request.post<CreateRechargeData>('/v1/recharge-orders', { amount_usdt: amountUsdt }),
 
-  getRechargeOrders: () => request.get<{ orders: RechargeOrderItem[] }>('/v1/recharge-orders'),
+  getRechargeOrders: () =>
+    request.get<{ orders: RechargeOrderItem[] }>('/v1/recharge-orders', SKIP_TOAST),
 
   getRechargeOrder: (id: number) => request.get<RechargeOrderItem>(`/v1/recharge-orders/${id}`),
 
@@ -382,6 +384,7 @@ export const clientApi = {
         route_mode: routeMode || undefined,
         profile: profile || undefined,
       },
+      ...SKIP_TOAST,
     }),
 
   testNodeLatency: (nodeId: number) =>
@@ -408,11 +411,12 @@ export const clientApi = {
   addTicketReply: (id: number, content: string) =>
     request.post<TicketReplyItem>(`/v1/tickets/${id}/replies`, { content }),
 
-  getSupportConfig: () => request.get<SupportConfigData>('/v1/support-config'),
+  getSupportConfig: () => request.get<SupportConfigData>('/v1/support-config', SKIP_TOAST),
 
   getClientVersion: (platform: string, versionCode: number, versionName: string) =>
     request.get<ClientVersionData>('/v1/client/version', {
       params: { platform, version_code: versionCode, version_name: versionName },
+      ...SKIP_TOAST,
     }),
 
   sendHeartbeat: (payload: {
@@ -423,7 +427,7 @@ export const clientApi = {
     exit_ip?: string
     exit_country?: string
     exit_city?: string
-  }) => request.post<unknown>('/v1/session/heartbeat', payload),
+  }) => request.post<unknown>('/v1/session/heartbeat', payload, SKIP_TOAST),
 
   getMySessions: () =>
     request.get<{
@@ -448,14 +452,16 @@ export const clientApi = {
     device_meta?: Record<string, unknown>
     device_id?: string
     session_id?: string
-  }) => request.post<{ accepted: number }>('/v1/users/me/app-debug-logs', body),
+  }) => request.post<{ accepted: number }>('/v1/users/me/app-debug-logs', body, SKIP_TOAST),
 
   getConnectDashboard: (selectedNode?: string | null) =>
     request.get<ConnectDashboardData>('/v1/users/me/connect-dashboard', {
       params: { selected_node: selectedNode || undefined },
+      ...SKIP_TOAST,
     }),
 
-  getUserPreferences: () => request.get<UserPreferencesData>('/v1/users/me/preferences'),
+  getUserPreferences: () =>
+    request.get<UserPreferencesData>('/v1/users/me/preferences', SKIP_TOAST),
 
   updateUserPreferences: (body: { ip_binding_mode?: string; connection_scenario?: string }) =>
     request.put<UserPreferencesData>('/v1/users/me/preferences', body),

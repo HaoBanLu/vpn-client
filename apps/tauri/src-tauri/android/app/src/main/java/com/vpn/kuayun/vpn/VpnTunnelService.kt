@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager.NameNotFoundException
+import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -17,6 +18,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.github.kr328.clash.core.Clash
 import com.vpn.kuayun.MainActivity
+import com.vpn.kuayun.R
 import com.vpn.kuayun.vpn.mihomo.MihomoInitializer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,7 +85,7 @@ class VpnTunnelService : VpnService() {
         if (running) return
 
         VpnConnectionBus.update(ConnectionState.CONNECTING, error = null)
-        startForeground(NOTIFICATION_ID, buildNotification())
+        startVpnForeground()
 
         try {
             MihomoInitializer.ensureReady(application)
@@ -112,7 +114,7 @@ class VpnTunnelService : VpnService() {
         }
 
         VpnConnectionBus.update(ConnectionState.CONNECTING, error = null)
-        startForeground(NOTIFICATION_ID, buildNotification())
+        startVpnForeground()
 
         try {
             if (running) {
@@ -386,6 +388,19 @@ class VpnTunnelService : VpnService() {
         notificationJob = null
     }
 
+    private fun startVpnForeground() {
+        val notification = buildNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
     private fun updateNotification() {
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, buildNotification())
@@ -399,18 +414,11 @@ class VpnTunnelService : VpnService() {
             buildString {
                 append(currentNodeName)
                 append(" · ↑ ")
-                append(VpnSessionStatsTracker.formatRate(rates.uploadBps))
+                append(VpnSessionStatsTracker.formatSpeed(rates.uploadBps))
                 append(" ↓ ")
-                append(VpnSessionStatsTracker.formatRate(rates.downloadBps))
-                append(" · 已用 ")
+                append(VpnSessionStatsTracker.formatSpeed(rates.downloadBps))
+                append(" · ")
                 append(VpnSessionStatsTracker.formatDuration(stats.durationMs))
-            }
-        val expandedText =
-            buildString {
-                append("累计 ↑ ")
-                append(VpnSessionStatsTracker.formatBytes(stats.uploadBytes))
-                append(" ↓ ")
-                append(VpnSessionStatsTracker.formatBytes(stats.downloadBytes))
             }
 
         val openIntent =
@@ -418,24 +426,25 @@ class VpnTunnelService : VpnService() {
                 this,
                 0,
                 Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         val disconnectIntent =
             PendingIntent.getService(
                 this,
                 1,
                 Intent(this, VpnTunnelService::class.java).apply { action = ACTION_DISCONNECT },
-                PendingIntent.FLAG_IMMUTABLE,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("跨云已连接")
             .setContentText(contentText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(expandedText))
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
+            .setSmallIcon(R.drawable.ic_kuayun_cloud_small)
             .setContentIntent(openIntent)
             .setOngoing(true)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "断开", disconnectIntent)
+            .setOnlyAlertOnce(true)
+            .addAction(0, "断开", disconnectIntent)
             .build()
     }
 
@@ -448,7 +457,7 @@ class VpnTunnelService : VpnService() {
                     "跨云 VPN",
                     NotificationManager.IMPORTANCE_LOW,
                 ).apply {
-                    description = "显示连接状态、节点与本次连接流量"
+                    description = "显示连接状态、节点、实时速率与连接时长"
                 },
             )
         }
@@ -492,7 +501,7 @@ class VpnTunnelService : VpnService() {
         const val EXTRA_NODE_NAME = "node_name"
         private const val CHANNEL_ID = "vpn_tunnel"
         private const val NOTIFICATION_ID = 1001
-        private const val NOTIFICATION_REFRESH_MS = 2000L
+        private const val NOTIFICATION_REFRESH_MS = 1000L
         private const val TAG = "VpnTunnelService"
 
         private const val TUN_MTU = 9000

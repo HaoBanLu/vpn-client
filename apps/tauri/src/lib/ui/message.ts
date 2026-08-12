@@ -17,7 +17,20 @@ const DEFAULT_DURATION: Record<MessageType, number> = {
   error: 2200,
 }
 
+/** 相同 type+content 短窗内只弹一次，挡住 Promise.all 刷新风暴。 */
+const DEDUPE_WINDOW_MS = 2000
+let lastDedupeKey = ''
+let lastDedupeAt = 0
+
 function push(type: MessageType, content: string, duration?: number) {
+  const key = `${type}:${content}`
+  const now = Date.now()
+  if (key === lastDedupeKey && now - lastDedupeAt < DEDUPE_WINDOW_MS) {
+    return
+  }
+  lastDedupeKey = key
+  lastDedupeAt = now
+
   const id = nextId++
   state.items.push({ id, type, content })
   const ms = duration ?? DEFAULT_DURATION[type]

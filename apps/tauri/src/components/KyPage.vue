@@ -49,4 +49,11 @@ withDefaults(
   justify-content: center;
   padding: var(--ky-space-md) 20px;
 }
+
+@media (max-width: 767px) {
+  .ky-page--center {
+    /* Android 原生 content padding 已避让系统栏 */
+    min-height: 100%;
+  }
+}
 </style>

@@ -929,9 +929,6 @@ export const useConnectStore = defineStore('connect', () => {
 
     if (wasConnected) {
       await reconnect(`正在切换到 ${node.name}…`)
-      if (connectionState.value === 'connected') {
-        message.success(`已切换到 ${node.name}`)
-      }
       if (mismatch) actionHint.value = mismatch
       return connectionState.value === 'connected'
     }
@@ -942,10 +939,8 @@ export const useConnectStore = defineStore('connect', () => {
       if (!subscription.value) {
         clearConnectPending()
         actionHint.value = mismatch ?? `已选择 ${node.name}，购买套餐后可连接`
-        message.success(`已选择 ${node.name}`)
       } else {
         beginConnectPending(node.name)
-        message.success(`正在连接 ${node.name}`)
       }
       const result = await connect()
       if (mismatch && connectionState.value === 'connected') actionHint.value = mismatch
@@ -958,7 +953,6 @@ export const useConnectStore = defineStore('connect', () => {
       (subscription.value
         ? `已选择 ${node.name}`
         : `已选择 ${node.name}，购买套餐后可连接`)
-    message.success(`已选择 ${node.name}`)
     return true
   }
 
@@ -970,13 +964,9 @@ export const useConnectStore = defineStore('connect', () => {
     error.value = null
     if (connectionState.value === 'connected') {
       await reconnect('正在切回智能选路…')
-      if (connectionState.value === 'connected') {
-        message.success('已切回智能选路')
-      }
       return
     }
     actionHint.value = '已切回智能选路，下次连接将自动选路'
-    message.info('已切换为智能选路')
   }
 
   async function disconnect() {

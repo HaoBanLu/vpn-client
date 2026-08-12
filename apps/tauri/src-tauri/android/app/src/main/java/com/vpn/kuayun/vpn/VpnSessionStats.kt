@@ -128,6 +128,13 @@ object VpnSessionStatsTracker {
             else -> "%.1f MB/s".format(bps / (1024.0 * 1024.0))
         }
 
+    /** 对齐 Compose 通知栏速率展示。 */
+    fun formatSpeed(bps: Long): String =
+        when {
+            bps < 1024L * 1024L -> "%.1f KB/s".format(bps / 1024.0)
+            else -> "%.1f Mbps".format(bps * 8.0 / (1024.0 * 1024.0))
+        }
+
     fun formatDuration(durationMs: Long): String {
         val totalSeconds = durationMs / 1000
         val hours = totalSeconds / 3600

@@ -1,20 +1,85 @@
 package com.vpn.kuayun
 
 import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * 浅色 WebView + edge-to-edge：强制深色状态栏/导航栏图标，避免白图标压在浅底上看不见。
- * 内容避让由系统 insets（setDecorFitsSystemWindows=true）负责，比依赖 WebView safe-area 更稳。
+ * 浅色 WebView + edge-to-edge：深色状态栏图标。
+ * 用 content 根布局原生 padding 避让系统栏（不依赖 WebView env/JS，真机更稳），
+ * 同时把 inset 写入 CSS 变量供页面微调。
  */
 class MainActivity : TauriActivity() {
+    private var lastTopPx = -1
+    private var lastBottomPx = -1
+    private var cssInjected = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             isAppearanceLightStatusBars = true
             isAppearanceLightNavigationBars = true
         }
+
+        val root = window.decorView.findViewById<View>(android.R.id.content)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars =
+                insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+                )
+            applySystemBarPadding(v, bars.top, bars.bottom)
+            // 原生已 padding：CSS 变量置 0，避免与 env 叠成双倍空白
+            injectSafeAreaCss(0f, 0f, force = !cssInjected)
+            WindowInsetsCompat.CONSUMED
+        }
+        root.requestApplyInsets()
+
+        listOf(300L, 1000L, 2500L).forEach { delayMs ->
+            root.postDelayed({
+                injectSafeAreaCss(0f, 0f, force = !cssInjected)
+            }, delayMs)
+        }
+    }
+
+    private fun applySystemBarPadding(view: View, topPx: Int, bottomPx: Int) {
+        if (topPx == lastTopPx && bottomPx == lastBottomPx) return
+        lastTopPx = topPx
+        lastBottomPx = bottomPx
+        view.setPadding(view.paddingLeft, topPx, view.paddingRight, bottomPx)
+    }
+
+    private fun injectSafeAreaCss(topDp: Float, bottomDp: Float, force: Boolean) {
+        val webView = findWebView(window.decorView) ?: return
+        if (cssInjected && !force) return
+        val top = "%.1f".format(topDp)
+        val bottom = "%.1f".format(bottomDp)
+        val js =
+            """
+            (function(){
+              var r=document.documentElement;
+              if(!r||!r.style) return;
+              r.style.setProperty('--android-safe-top','${top}px');
+              r.style.setProperty('--android-safe-bottom','${bottom}px');
+            })();
+            """.trimIndent()
+        webView.evaluateJavascript(js) {
+            cssInjected = true
+        }
+    }
+
+    private fun findWebView(view: View): WebView? {
+        if (view is WebView) return view
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findWebView(view.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
     }
 }

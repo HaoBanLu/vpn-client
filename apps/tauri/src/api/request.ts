@@ -11,6 +11,15 @@ import type { ApiResponse } from './client'
 
 export { ApiBusinessError }
 
+/** 列表刷新 / 账户拉取等：错误交给页面，避免全局多条相同 toast。 */
+export const SKIP_TOAST: AxiosRequestConfig = { skipGlobalToast: true }
+
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    skipGlobalToast?: boolean
+  }
+}
+
 const API_BASE = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 
 const service: AxiosInstance = axios.create({
@@ -37,6 +46,10 @@ function requestHadAuth(config?: { headers?: unknown }) {
   if (!headers) return false
   const auth = headers.Authorization || headers.authorization
   return typeof auth === 'string' && auth.trim().length > 0
+}
+
+function shouldSkipGlobalToast(config?: AxiosRequestConfig | null) {
+  return Boolean(config?.skipGlobalToast)
 }
 
 async function showSessionInvalidated(messageText?: string, appCode?: string) {
@@ -104,7 +117,7 @@ service.interceptors.response.use(
           API_BASE,
         )
         // 登录失败展示在表单内，不弹全局 toast
-        if (!path.includes('/auth/login')) {
+        if (!path.includes('/auth/login') && !shouldSkipGlobalToast(response.config)) {
           message.error(mapped)
         }
         return Promise.reject(new ApiBusinessError(mapped, res.app_code, res.trace_id))
@@ -139,7 +152,7 @@ service.interceptors.response.use(
     const pathSkipsToast = path.includes('/auth/login')
     const statusSkipsToast = status === 404 || status === 503
     const mapped = mapApiError(error, '操作失败，请稍后重试', API_BASE)
-    if (!statusSkipsToast && !pathSkipsToast) {
+    if (!statusSkipsToast && !pathSkipsToast && !shouldSkipGlobalToast(error.config)) {
       message.error(mapped)
     }
 

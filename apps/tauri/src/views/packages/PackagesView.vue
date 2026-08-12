@@ -95,6 +95,7 @@ async function load() {
     const [pkgRes] = await Promise.all([clientApi.getPackages(), account.refreshAccount()])
     packages.value = pkgRes.data.packages
   } catch (error) {
+    // 读请求已 skipGlobalToast；此处只展示一次页内/单条 toast
     message.error(mapApiError(error, '套餐加载失败'))
   } finally {
     loading.value = false

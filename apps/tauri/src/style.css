@@ -3,6 +3,10 @@
   color-scheme: light;
   font-family: 'Segoe UI', system-ui, -apple-system, 'PingFang SC', sans-serif;
 
+  /* Android 原生注入的系统栏高度（见 MainActivity）；WebView env 常为 0 */
+  --android-safe-top: 0px;
+  --android-safe-bottom: 0px;
+
   /* 背景 */
   --ky-bg: #f4f7fc;
   --ky-bg-elevated: #ffffff;
@@ -140,9 +144,12 @@ html {
   flex: 1;
   min-height: 0;
   padding: var(--ky-space-md) 20px;
-  padding-top: calc(var(--ky-space-md) + env(safe-area-inset-top, 0px));
+  padding-top: calc(
+    var(--ky-space-md) + max(env(safe-area-inset-top, 0px), var(--android-safe-top, 0px))
+  );
   padding-bottom: calc(
-    var(--ky-bottom-nav-height) + var(--ky-space-lg) + env(safe-area-inset-bottom, 0px)
+    var(--ky-bottom-nav-height) + var(--ky-space-lg) +
+      max(env(safe-area-inset-bottom, 0px), var(--android-safe-bottom, 0px))
   );
   max-width: var(--ky-page-max-width);
   margin: 0 auto;
@@ -158,8 +165,14 @@ html {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    /* 原生 setDecorFitsSystemWindows 已避让状态栏，避免再叠一层 safe-area 空白 */
+    /* Android MainActivity 已对 content 做系统栏原生 padding，此处不再叠 safe-area */
     padding-top: var(--ky-space-md);
+    padding-bottom: calc(var(--ky-bottom-nav-height) + var(--ky-space-lg));
+  }
+
+  .app-shell:not(.app-shell--desktop) .bottom-nav {
+    height: var(--ky-bottom-nav-height);
+    padding-bottom: 0;
   }
 
   .app-shell:not(.app-shell--desktop) .app-route-view {
@@ -306,8 +319,11 @@ html {
   bottom: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  height: calc(var(--ky-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(
+    var(--ky-bottom-nav-height) +
+      max(env(safe-area-inset-bottom, 0px), var(--android-safe-bottom, 0px))
+  );
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--android-safe-bottom, 0px));
   background: var(--ky-bg-elevated);
   border-top: 1px solid var(--ky-border-soft);
   box-shadow: 0 -2px 12px rgba(15, 23, 41, 0.04);
