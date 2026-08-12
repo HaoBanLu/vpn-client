@@ -152,6 +152,25 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
+/* 移动端主壳：整页不滚，由 Tab 内列表区滚动，品牌头/地区筛选可固定 */
+@media (max-width: 767px) {
+  .app-shell:not(.app-shell--desktop) .app-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* 原生 setDecorFitsSystemWindows 已避让状态栏，避免再叠一层 safe-area 空白 */
+    padding-top: var(--ky-space-md);
+  }
+
+  .app-shell:not(.app-shell--desktop) .app-route-view {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 .app-shell--desktop .app-content {
   max-width: none;
   margin: 0;

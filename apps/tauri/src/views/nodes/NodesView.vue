@@ -6,22 +6,24 @@
     :on-refresh="load"
     :loading="loading && nodes.length === 0"
   >
+    <template #sticky>
+      <div class="nodes-toolbar">
+        <KyChipGroup :model-value="region" :items="regionItems" @update:model-value="setRegion" />
+
+        <KyButton
+          type="primary"
+          block
+          class="nodes-batch-btn"
+          :loading="batchTesting"
+          :disabled="connectableNodes.length === 0"
+          @click="batchTest"
+        >
+          {{ batchTesting ? '测速中…' : '批量测速' }}
+        </KyButton>
+      </div>
+    </template>
+
     <KyAlert v-if="loadError" type="error" :message="loadError" />
-
-    <div class="nodes-toolbar">
-      <KyChipGroup :model-value="region" :items="regionItems" @update:model-value="setRegion" />
-
-      <KyButton
-        type="primary"
-        block
-        class="nodes-batch-btn"
-        :loading="batchTesting"
-        :disabled="connectableNodes.length === 0"
-        @click="batchTest"
-      >
-        {{ batchTesting ? '测速中…' : '批量测速' }}
-      </KyButton>
-    </div>
 
     <KyEmpty
       v-if="!loading && connectableNodes.length === 0 && unsupportedNodes.length === 0"

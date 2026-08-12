@@ -174,6 +174,8 @@ class VpnTunnelService : VpnService() {
                 .addAddress(TUN_GATEWAY, TUN_SUBNET_PREFIX)
                 .addRoute("0.0.0.0", 0)
                 .addDnsServer(TUN_PORTAL)
+                // 对齐 Compose/CMFA：TUN fd 必须阻塞，否则 gvisor/system 栈不读包 →「已保护但无网」
+                .setBlocking(true)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             builder.setMetered(false)
@@ -188,13 +190,9 @@ class VpnTunnelService : VpnService() {
             }
         }
 
-        try {
-            builder.addDisallowedApplication(packageName)
-        } catch (e: NameNotFoundException) {
-            Log.e(TAG, "addDisallowedApplication failed", e)
-        }
-
-        // 用户勾选的应用直连：旁路 TUN（暴露真实 IP）
+        // 对齐 Compose：跨云自身不再强制 disallow。
+        // 自身旁路会导致 ConnectivityProbe / 系统 VPN Network 与真实出网不同路，
+        // 出现「mixed-port 通 / 已保护但探测永远失败 / 体感无网」；节点出站仍靠 protect()。
         AppDirectConnectStore.userSelectedPackages(this).forEach { pkg ->
             if (pkg == packageName) return@forEach
             try {
@@ -213,16 +211,62 @@ class VpnTunnelService : VpnService() {
 
         Clash.startTun(
             fd = fd,
-            stack = "system",
+            // 对齐 Compose TunStackMode：海外默认 gvisor；system 在模拟器/部分机型会「已连接无网」
+            stack = "gvisor",
             gateway = "$TUN_GATEWAY/$TUN_SUBNET_PREFIX",
             portal = TUN_PORTAL,
             dns = TUN_DNS,
             markSocket = { socketFd -> protect(socketFd) },
-            querySocketUid = { _, _, _ -> -1 },
+            querySocketUid = { protocol, source, target ->
+                queryConnectionOwnerUid(protocol, source, target)
+            },
         )
 
+        refreshPhysicalDnsUpstream()
         registerNetworkCallback()
         rebindUnderlyingNetworks("after_start_tun")
+    }
+
+    /** 对齐 Compose MihomoEnvironment：把物理网 DNS 同步给核心，避免上游落到 TUN portal。 */
+    private fun refreshPhysicalDnsUpstream() {
+        runCatching {
+            val cm = getSystemService(ConnectivityManager::class.java) ?: return@runCatching
+            val physical = findBestPhysicalNetwork(cm) ?: return@runCatching
+            val dns =
+                cm.getLinkProperties(physical)
+                    ?.dnsServers
+                    ?.mapNotNull { it.hostAddress?.trim() }
+                    ?.filter { addr ->
+                        addr.isNotBlank() &&
+                            addr != "0.0.0.0" &&
+                            addr != "::" &&
+                            !addr.startsWith("172.19.") &&
+                            !addr.startsWith("172.18.") &&
+                            !addr.startsWith("198.18.") &&
+                            !addr.startsWith("fe80:", ignoreCase = true) &&
+                            !addr.startsWith("fec0:", ignoreCase = true) &&
+                            !addr.contains('%') &&
+                            // 模拟器/部分链路会塞入异常 IPv6 DNS，优先只用 IPv4 上游
+                            addr.contains('.')
+                    }
+                    ?.distinct()
+                    .orEmpty()
+            if (dns.isNotEmpty()) {
+                Clash.notifyDnsChanged(dns)
+                Log.i(TAG, "notifyDnsChanged physical=${dns.joinToString()}")
+            }
+        }.onFailure { e ->
+            Log.w(TAG, "refreshPhysicalDnsUpstream failed", e)
+        }
+    }
+
+    private fun queryConnectionOwnerUid(
+        protocol: Int,
+        source: java.net.InetSocketAddress,
+        target: java.net.InetSocketAddress,
+    ): Int {
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return -1
+        return runCatching { cm.getConnectionOwnerUid(protocol, source, target) }.getOrDefault(-1)
     }
 
     private fun findBestPhysicalNetwork(cm: ConnectivityManager): Network? {
@@ -251,6 +295,7 @@ class VpnTunnelService : VpnService() {
             if (physical != null) {
                 setUnderlyingNetworks(arrayOf(physical))
                 Log.i(TAG, "rebindUnderlyingNetworks ok reason=$reason network=$physical")
+                refreshPhysicalDnsUpstream()
             } else {
                 setUnderlyingNetworks(null)
                 Log.w(TAG, "rebindUnderlyingNetworks no physical reason=$reason")

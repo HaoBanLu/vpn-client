@@ -1,5 +1,5 @@
 <template>
-  <KyPage :class="pageClass">
+  <KyPage :class="[pageClass, { 'ky-page--tab-pinned': pinChrome }]">
     <KuayunBrandHeader
       v-if="showMobileBrandHeader"
       class="ky-tab-brand"
@@ -8,8 +8,22 @@
       show-version
       tab
     />
-    <KyPullRefresh :on-refresh="onRefresh" :disabled="refreshDisabled">
-      <div class="ky-tab-body" :class="[`ky-tab-body--gap-${stackGap}`, { 'ky-tab-body--desktop-lg': desktopLarger }]">
+    <div v-if="$slots.sticky && pinChrome" class="ky-tab-sticky">
+      <slot name="sticky" />
+    </div>
+    <KyPullRefresh
+      class="ky-tab-scroll"
+      :class="{ 'ky-tab-scroll--pinned': pinChrome }"
+      :on-refresh="onRefresh"
+      :disabled="refreshDisabled"
+    >
+      <div
+        class="ky-tab-body"
+        :class="[`ky-tab-body--gap-${stackGap}`, { 'ky-tab-body--desktop-lg': desktopLarger }]"
+      >
+        <div v-if="$slots.sticky && !pinChrome" class="ky-tab-sticky-inline">
+          <slot name="sticky" />
+        </div>
         <slot name="before" />
         <KySpin :spinning="loading" :overlay="spinOverlay">
           <KyStack :gap="stackGap" :desktop-larger="desktopLarger">
@@ -61,6 +75,8 @@ function updateLayout() {
 }
 
 const showMobileBrandHeader = computed(() => !!props.title && !isDesktop.value)
+/** 移动端固定品牌头 / sticky 区，列表单独滚动 */
+const pinChrome = computed(() => !isDesktop.value)
 
 onMounted(() => {
   updateLayout()
@@ -74,6 +90,29 @@ onUnmounted(() => {
 <style scoped>
 .ky-tab-brand {
   margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.ky-tab-sticky {
+  flex-shrink: 0;
+  margin-bottom: var(--ky-space-md);
+  background: var(--ky-bg);
+}
+
+.ky-tab-sticky-inline {
+  margin-bottom: var(--ky-space-md);
+}
+
+.ky-page--tab-pinned {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  gap: 0;
+}
+
+.ky-tab-scroll--pinned {
+  flex: 1;
+  min-height: 0;
 }
 
 /* 与 Android spacedBy(16.dp) 对齐：before / 内容 / after 同一套间隙 */

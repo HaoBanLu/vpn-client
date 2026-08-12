@@ -34,7 +34,12 @@ withDefaults(
 }
 
 .ky-page--sub {
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: var(--ky-space-md) 20px;
   padding-bottom: var(--ky-space-2xl);
 }

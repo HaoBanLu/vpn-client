@@ -72,7 +72,8 @@ function canPull(): boolean {
   if (props.disabled || refreshing.value || isDesktop.value) return false
   const el = containerRef.value
   if (!el) return false
-  let node: HTMLElement | null = el
+  if (el.scrollTop > 0) return false
+  let node: HTMLElement | null = el.parentElement
   while (node) {
     if (node.scrollTop > 0) return false
     node = node.parentElement
@@ -131,6 +132,13 @@ onUnmounted(() => {
 .ky-pull-refresh {
   position: relative;
   width: 100%;
+}
+
+.ky-pull-refresh.ky-tab-scroll--pinned {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .ky-pull-refresh__indicator {

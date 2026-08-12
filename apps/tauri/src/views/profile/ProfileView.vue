@@ -270,7 +270,7 @@ const connectItems = computed<MenuItem[]>(() => [
   },
   {
     title: '连接与隐私',
-    subtitle: '防泄露保护、稳定性与隐私检测',
+    subtitle: '重连、Always-on 加固与隐私检测',
     route: 'StabilitySettings',
     icon: SafetyCertificateOutlined,
   },
