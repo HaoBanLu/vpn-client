@@ -5,10 +5,11 @@
     <KyCard title="连接方式">
       <template v-if="isAndroid">
         <p class="mode-desc">
-          当前使用 <strong>系统 VPN（TUN）</strong>，由跨云接管设备流量，对齐原生 Android 体验。
+          当前使用 <strong>系统 VPN（TUN）</strong>，连接后流量默认走隧道。
         </p>
         <p class="mode-desc muted">
-          断网保护（Kill Switch）、开机自连、分应用直连等高级项将在后续版本开放。
+          断网保护不自研 Kill Switch，请用下方「系统级加固」开启 Always-on；分应用直连在「我的 →
+          应用直连」。
         </p>
       </template>
       <template v-else>
@@ -16,7 +17,7 @@
           当前使用 <strong>系统代理</strong>（本地混合端口 + 系统 HTTP/HTTPS），无需管理员权限。
         </p>
         <p class="mode-desc muted">
-          TUN 全隧道、Kill Switch、系统加固为 Android 能力，桌面端不提供。
+          TUN 全隧道、Always-on、分应用直连为 Android 能力，桌面端不提供。
         </p>
       </template>
     </KyCard>
@@ -34,8 +35,43 @@
       </div>
     </KyCard>
 
+    <KyCard v-if="isAndroid" title="系统级加固">
+      <p class="probe-desc">
+        已完成 {{ stability?.hardeningDoneCount ?? 0 }} /
+        {{ stability?.hardeningTotal ?? 3 }} 项。由系统托管 Always-on，避免自研阻断导致断网。
+      </p>
+      <button type="button" class="todo-row" @click="onOpenVpnSettings">
+        <span class="todo-dot" :class="stability?.alwaysOnConfigured ? 'todo-dot--ok' : ''" />
+        <span class="todo-copy">
+          <span class="todo-title">始终开启 VPN</span>
+          <span class="todo-desc">断网后由系统自动重新拉起 VPN</span>
+        </span>
+      </button>
+      <button type="button" class="todo-row" @click="onOpenVpnSettings">
+        <span class="todo-dot" :class="stability?.lockdownConfigured ? 'todo-dot--ok' : ''" />
+        <span class="todo-copy">
+          <span class="todo-title">禁止绕过 VPN</span>
+          <span class="todo-desc">未走 VPN 时禁止上网，降低 IP 泄露</span>
+        </span>
+      </button>
+      <button type="button" class="todo-row" @click="onOpenBatterySettings">
+        <span
+          class="todo-dot"
+          :class="stability?.batteryOptimizationIgnored ? 'todo-dot--ok' : ''"
+        />
+        <span class="todo-copy">
+          <span class="todo-title">关闭电池优化</span>
+          <span class="todo-desc">避免后台被系统杀掉导致掉线</span>
+        </span>
+      </button>
+      <KyButton class="hardening-btn" block @click="onOpenVpnSettings">打开系统 VPN 设置</KyButton>
+      <KyButton block type="default" @click="refreshStability">刷新状态</KyButton>
+    </KyCard>
+
     <KyCard title="隐私自检">
-      <p class="probe-desc">连接 VPN 后检测出口 IP 与 DNS 是否正常，帮助发现泄露风险。</p>
+      <p class="probe-desc">
+        连接 VPN 后做基础检测（出口 IP / DNS / IPv6），帮助发现明显泄露风险；通过不等于绝对无泄露。
+      </p>
       <KyButton
         type="primary"
         block
@@ -44,7 +80,7 @@
         @click="runPrivacyProbe"
       >
         {{
-          probeRunning ? '正在检测…' : isConnected ? '立即隐私检测' : '请先连接 VPN 后再检测'
+          probeRunning ? '正在检测…' : isConnected ? '立即基础检测' : '请先连接 VPN 后再检测'
         }}
       </KyButton>
       <KyAlert
@@ -76,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, onMounted } from 'vue'
+import { computed, reactive, ref, watch, onMounted, onActivated } from 'vue'
 import dayjs from 'dayjs'
 import KyPage from '@/components/KyPage.vue'
 import KyCard from '@/components/KyCard.vue'
@@ -94,6 +130,13 @@ import {
   runPrivacyLeakProbe,
 } from '@/lib/vpn/privacy-leak-probe'
 import { loadDesktopSettings, saveDesktopSettings } from '@/lib/vpn/desktop-settings'
+import {
+  getAndroidStabilityStatus,
+  openBatteryOptimizationSettings,
+  openVpnSettings,
+  setBootAutoConnect,
+  type AndroidStabilityStatus,
+} from '@/lib/vpn/android-stability'
 import { setTrayHideOnClose } from '@/lib/desktop/tray'
 import { detectClientPlatform } from '@/lib/app-meta'
 import { useConnectStore } from '@/stores/connect'
@@ -107,11 +150,13 @@ const isAndroid = detectClientPlatform() === 'android'
 
 const pageTitle = '连接与隐私'
 const pageSubtitle = computed(() =>
-  isAndroid ? '防泄露默认开启；可调整重连与隐私检测' : '系统代理下可调整重连、托盘与隐私自检',
+  isAndroid
+    ? '连接后流量默认走隧道；可调整重连与系统加固'
+    : '系统代理下可调整重连、托盘与隐私自检',
 )
 const footerHint = computed(() =>
   isAndroid
-    ? '断线自动重连开启后，切网/断网恢复将尝试完整重连。系统 VPN 授权与省电白名单请在系统设置中确认。'
+    ? '断线自动重连开启后，切网/断网恢复将尝试完整重连。Always-on 与省电白名单请在系统设置中确认。'
     : '关闭窗口时若已开启「关闭时最小化到托盘」，VPN 连接会保持；可在托盘图标右键断开或退出。',
 )
 
@@ -121,6 +166,7 @@ const probeMessage = ref<string | null>(null)
 const probePassed = ref(false)
 const probeHistory = ref<PrivacyProbeHistoryEntry[]>(loadPrivacyProbeHistory())
 const latestProbe = computed(() => probeHistory.value[0] ?? null)
+const stability = ref<AndroidStabilityStatus | null>(null)
 
 function formatProbeTime(atMillis: number) {
   return dayjs(atMillis).format('YYYY-MM-DD HH:mm')
@@ -132,8 +178,49 @@ function clearHistory() {
   message.success('已清空自检记录')
 }
 
+async function refreshStability() {
+  if (!isAndroid) return
+  try {
+    const status = await getAndroidStabilityStatus()
+    stability.value = status
+    settings.bootAutoConnect = status.bootAutoConnectEnabled
+    saveDesktopSettings({ bootAutoConnect: status.bootAutoConnectEnabled })
+  } catch {
+    // 非 Android 插件环境忽略
+  }
+}
+
+async function onOpenVpnSettings() {
+  try {
+    await openVpnSettings()
+    message.info('请在系统设置中开启 Always-on / 禁止绕过')
+    window.setTimeout(() => {
+      void refreshStability()
+    }, 1200)
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '无法打开系统设置')
+  }
+}
+
+async function onOpenBatterySettings() {
+  try {
+    await openBatteryOptimizationSettings()
+    message.info('请允许忽略电池优化')
+    window.setTimeout(() => {
+      void refreshStability()
+    }, 1200)
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '无法打开电池设置')
+  }
+}
+
 onMounted(() => {
   probeHistory.value = loadPrivacyProbeHistory()
+  void refreshStability()
+})
+
+onActivated(() => {
+  void refreshStability()
 })
 
 async function runPrivacyProbe() {
@@ -153,9 +240,15 @@ async function runPrivacyProbe() {
   }
 }
 
-type ToggleKey = 'autoReconnect' | 'hideOnClose' | 'restoreSession'
+type ToggleKey = 'autoReconnect' | 'hideOnClose' | 'restoreSession' | 'bootAutoConnect'
 
-const allToggleItems: Array<{ key: ToggleKey; title: string; desc: string; desktopOnly?: boolean }> = [
+const allToggleItems: Array<{
+  key: ToggleKey
+  title: string
+  desc: string
+  desktopOnly?: boolean
+  androidOnly?: boolean
+}> = [
   {
     key: 'autoReconnect',
     title: '意外断线自动重连',
@@ -174,10 +267,20 @@ const allToggleItems: Array<{ key: ToggleKey; title: string; desc: string; deskt
       ? '应用启动后若上次仍登录且有会话，将尝试自动连接'
       : '应用启动后若上次异常退出且仍登录，将尝试自动连接',
   },
+  {
+    key: 'bootAutoConnect',
+    title: '开机自动恢复连接',
+    desc: '设备重启后尝试恢复上次连接（需已授权 VPN）',
+    androidOnly: true,
+  },
 ]
 
 const toggleItems = computed(() =>
-  allToggleItems.filter((item) => !(item.desktopOnly && isAndroid)),
+  allToggleItems.filter((item) => {
+    if (item.desktopOnly && isAndroid) return false
+    if (item.androidOnly && !isAndroid) return false
+    return true
+  }),
 )
 
 async function setSetting(key: ToggleKey, value: boolean) {
@@ -185,6 +288,18 @@ async function setSetting(key: ToggleKey, value: boolean) {
   saveDesktopSettings({ [key]: value })
   if (key === 'hideOnClose' && !isAndroid) {
     await setTrayHideOnClose(value)
+  }
+  if (key === 'bootAutoConnect' && isAndroid) {
+    try {
+      const enabled = await setBootAutoConnect(value)
+      settings.bootAutoConnect = enabled
+      saveDesktopSettings({ bootAutoConnect: enabled })
+    } catch (e) {
+      settings.bootAutoConnect = !value
+      saveDesktopSettings({ bootAutoConnect: !value })
+      message.error(e instanceof Error ? e.message : '保存开机自连失败')
+      return
+    }
   }
   message.success('设置已保存')
 }
@@ -256,6 +371,60 @@ watch(
   font-size: var(--ky-font-sm);
   color: var(--ky-text-muted);
   line-height: 1.6;
+}
+
+.todo-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ky-space-md);
+  width: 100%;
+  padding: var(--ky-space-md) 0;
+  border: 0;
+  border-bottom: 1px solid var(--ky-border-soft);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.todo-row:last-of-type {
+  border-bottom: 0;
+}
+
+.todo-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--ky-border, #d9d9d9);
+}
+
+.todo-dot--ok {
+  background: var(--ky-success, #52c41a);
+}
+
+.todo-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.todo-title {
+  font-size: var(--ky-font-md);
+  font-weight: 600;
+  color: var(--ky-text);
+}
+
+.todo-desc {
+  font-size: var(--ky-font-xs);
+  color: var(--ky-text-muted);
+  line-height: 1.45;
+}
+
+.hardening-btn {
+  margin: var(--ky-space-md) 0 var(--ky-space-sm);
 }
 
 .probe-history {

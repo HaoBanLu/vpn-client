@@ -1,12 +1,33 @@
 # Windows Android build: sync VPN overlay, copy jniLibs if symlink fails, run Gradle
 param(
     [switch]$Release,
-    [switch]$Install
+    [switch]$Install,
+    [ValidateSet("aarch64", "x86_64", "armv7", "i686")]
+    [string]$Target = "aarch64"
 )
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
+
+# Prefer D:\Android\Sdk (has cmdline-tools); fall back to LocalAppData
+if (-not $env:ANDROID_HOME -or -not (Test-Path (Join-Path $env:ANDROID_HOME "cmdline-tools"))) {
+    if (Test-Path "D:\Android\Sdk\cmdline-tools") {
+        $env:ANDROID_HOME = "D:\Android\Sdk"
+        $env:ANDROID_SDK_ROOT = "D:\Android\Sdk"
+    } elseif (Test-Path "$env:LOCALAPPDATA\Android\Sdk") {
+        $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+        $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
+    }
+}
+
+$jdkCandidate = "C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
+if (-not $env:JAVA_HOME -or -not (Test-Path $env:JAVA_HOME)) {
+    if (Test-Path $jdkCandidate) { $env:JAVA_HOME = $jdkCandidate }
+}
+if ($env:JAVA_HOME) {
+    $env:Path = "$env:JAVA_HOME\bin;$env:Path"
+}
 
 $CargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
 if ((Test-Path $CargoBin) -and ($env:Path -notlike "*$CargoBin*")) {
@@ -55,9 +76,9 @@ function Sign-WithDebugKeystore($UnsignedApk) {
 
 $profile = if ($Release) { "release" } else { "debug" }
 $tauriArgs = if ($Release) {
-    "android build --target aarch64"
+    "android build --target $Target"
 } else {
-    "android build --debug --target aarch64"
+    "android build --debug --target $Target"
 }
 
 $buildLog = Join-Path $env:TEMP "tauri-android-build.log"
@@ -78,11 +99,18 @@ if ($exitCode -ne 0 -and $symlinkFailed) {
     } else {
         & "$PSScriptRoot\copy-android-jnilibs.ps1"
     }
-    $gradleTask = if ($Release) { "assembleArm64Release" } else { "assembleArm64Debug" }
+    $abiTask = switch ($Target) {
+        "aarch64" { "Arm64" }
+        "x86_64" { "X86_64" }
+        "armv7" { "Arm" }
+        "i686" { "X86" }
+        default { "Arm64" }
+    }
+    $gradleTask = if ($Release) { "assemble${abiTask}Release" } else { "assemble${abiTask}Debug" }
     $skipRust = if ($Release) {
-        "-x rustBuildArm64Release -x rustBuildUniversalRelease"
+        "-x rustBuild${abiTask}Release -x rustBuildUniversalRelease"
     } else {
-        "-x rustBuildArm64Debug -x rustBuildUniversalDebug"
+        "-x rustBuild${abiTask}Debug -x rustBuildUniversalDebug"
     }
     Push-Location "$Root\src-tauri\gen\android"
     try {
@@ -97,7 +125,14 @@ if ($exitCode -ne 0 -and $symlinkFailed) {
     Write-Host "Android $profile APK built via tauri android build"
 }
 
-$apkPattern = if ($Release) { "*arm64*release*.apk" } else { "*arm64*debug*.apk" }
+$apkAbiGlob = switch ($Target) {
+    "aarch64" { "*arm64*" }
+    "x86_64" { "*x86_64*" }
+    "armv7" { "*armeabi*" }
+    "i686" { "*x86*" }
+    default { "*arm64*" }
+}
+$apkPattern = if ($Release) { "${apkAbiGlob}release*.apk" } else { "${apkAbiGlob}debug*.apk" }
 $apk = Get-ChildItem -Path "$Root\src-tauri\gen\android\app\build\outputs\apk" -Recurse -Filter $apkPattern -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1

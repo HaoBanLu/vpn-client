@@ -37,6 +37,9 @@ export const ANDROID_VPN_BOUNDARIES: AndroidModuleBoundary[] = [
   { layer: 'vpn', androidPath: 'vpn/ConnectivityProbe.kt', tauriStrategy: 'reuse-api', notes: '连接后 HTTP 探测，前端/Tauri fetch 可复刻' },
   { layer: 'vpn', androidPath: 'vpn/VpnSessionStats.kt', tauriStrategy: 'android-plugin', notes: 'TUN 流量统计' },
   { layer: 'vpn', androidPath: 'vpn/VpnConnectionBus.kt', tauriStrategy: 'android-plugin', notes: '状态总线 → Bridge 事件' },
+  { layer: 'vpn', androidPath: 'vpn/AppDirectConnectStore.kt', tauriStrategy: 'android-plugin', notes: 'VpnPlugin.listInstalledApps/setDirectConnectPackages + TUN addDisallowedApplication' },
+  { layer: 'vpn', androidPath: 'vpn/AlwaysOnVpnDetector.kt', tauriStrategy: 'android-plugin', notes: '系统 Always-on/lockdown 状态；产品不用自研 KS' },
+  { layer: 'platform', androidPath: 'vpn/VpnBootReceiver.kt', tauriStrategy: 'android-plugin', notes: '开机自连 + StabilityPrefs 会话' },
 ]
 
 /** 平台能力：通知、更新、会话 */

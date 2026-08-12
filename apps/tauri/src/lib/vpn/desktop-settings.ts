@@ -11,6 +11,7 @@ export const DESKTOP_SETTINGS_KEYS = {
   autoReconnect: `${PREFIX}auto_reconnect`,
   hideOnClose: `${PREFIX}hide_on_close`,
   restoreSession: `${PREFIX}restore_session`,
+  bootAutoConnect: `${PREFIX}boot_auto_connect`,
   killSwitch: `${PREFIX}kill_switch`,
   connectionMode: `${PREFIX}connection_mode`,
 } as const
@@ -19,6 +20,8 @@ export interface DesktopConnectionSettings {
   autoReconnect: boolean
   hideOnClose: boolean
   restoreSession: boolean
+  /** Android：开机后按上次会话恢复隧道 */
+  bootAutoConnect: boolean
   killSwitch: boolean
   connectionMode: DesktopConnectionMode
 }
@@ -27,6 +30,7 @@ const DEFAULTS: DesktopConnectionSettings = {
   autoReconnect: true,
   hideOnClose: true,
   restoreSession: false,
+  bootAutoConnect: false,
   killSwitch: false,
   connectionMode: 'proxy',
 }
@@ -65,6 +69,7 @@ export function loadDesktopSettings(): DesktopConnectionSettings {
     autoReconnect: readBool(DESKTOP_SETTINGS_KEYS.autoReconnect, DEFAULTS.autoReconnect),
     hideOnClose: readBool(DESKTOP_SETTINGS_KEYS.hideOnClose, DEFAULTS.hideOnClose),
     restoreSession: readBool(DESKTOP_SETTINGS_KEYS.restoreSession, DEFAULTS.restoreSession),
+    bootAutoConnect: readBool(DESKTOP_SETTINGS_KEYS.bootAutoConnect, DEFAULTS.bootAutoConnect),
     killSwitch: readBool(DESKTOP_SETTINGS_KEYS.killSwitch, DEFAULTS.killSwitch),
     connectionMode: readMode(),
   }
@@ -87,6 +92,9 @@ export function saveDesktopSettings(patch: Partial<DesktopConnectionSettings>) {
   }
   if (patch.restoreSession !== undefined) {
     writeBool(DESKTOP_SETTINGS_KEYS.restoreSession, patch.restoreSession)
+  }
+  if (patch.bootAutoConnect !== undefined) {
+    writeBool(DESKTOP_SETTINGS_KEYS.bootAutoConnect, patch.bootAutoConnect)
   }
   if (!DESKTOP_MVP_PROXY_ONLY) {
     if (patch.killSwitch !== undefined) {

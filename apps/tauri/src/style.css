@@ -87,6 +87,7 @@
 /* 手机端产品视觉以原生浅色截图为准；暂不强跟系统深色，避免 WebView 误判成全黑 */
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -97,6 +98,7 @@ body {
   color: var(--ky-text);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  touch-action: manipulation;
 }
 
 html {
@@ -306,7 +308,13 @@ html {
   justify-content: center;
   gap: 4px;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, transform 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.bottom-nav button:active {
+  transform: scale(0.94);
 }
 
 .bottom-nav button .tab-icon {

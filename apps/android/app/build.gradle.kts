@@ -130,16 +130,20 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             val releaseSigning = signingConfigs.getByName("release")
+            // 注意：Android Studio Sync 会配置所有 buildType。缺正式签名时不能在配置期 throw，
+            // 否则 Debug 也无法打开工程。正式打 Release 包时由下方 taskGraph 再拦截。
             signingConfig =
                 when {
                     project.hasProperty("useDebugSigning") ->
                         signingConfigs.getByName("debug")
                     releaseSigning.storeFile != null -> releaseSigning
-                    else ->
-                        throw GradleException(
-                            "[跨云] Release 必须配置正式签名（keystore.properties 或 local.properties）。" +
-                                "临时内测可加 -PuseDebugSigning",
+                    else -> {
+                        logger.warn(
+                            "[跨云] 未配置 Release 正式签名（keystore.properties / local.properties），" +
+                                "本地 Sync/Debug 暂用 debug 签名。正式出包请配置签名；临时内测可加 -PuseDebugSigning",
                         )
+                        signingConfigs.getByName("debug")
+                    }
                 }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -180,6 +184,24 @@ android {
                 if (fcmEnabled) "src/fcmEnabled/kotlin" else "src/fcmDisabled/kotlin",
             )
         }
+    }
+}
+
+// 真正打 Release 包时才强制要求正式签名（避免 Android Studio Sync 因缺 keystore.properties 失败）
+gradle.taskGraph.whenReady {
+    val packingRelease =
+        allTasks.any { task ->
+            val n = task.name
+            (n.startsWith("assemble") || n.startsWith("bundle") || n.startsWith("package")) &&
+                n.contains("Release")
+        }
+    if (!packingRelease || project.hasProperty("useDebugSigning")) return@whenReady
+    val store = android.signingConfigs.getByName("release").storeFile
+    if (store == null || !store.isFile) {
+        throw GradleException(
+            "[跨云] Release 必须配置正式签名（keystore.properties 或 local.properties）。" +
+                "临时内测可加 -PuseDebugSigning",
+        )
     }
 }
 

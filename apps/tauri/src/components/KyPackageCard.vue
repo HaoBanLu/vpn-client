@@ -4,7 +4,19 @@
       <span class="ky-package-card__name">{{ name }}</span>
       <StatusBadge v-if="badgeText" :text="badgeText" :variant="badgeVariant" :dot="false" />
     </div>
-    <p class="ky-package-card__price">{{ price }}</p>
+    <div class="ky-package-card__price-row">
+      <p class="ky-package-card__price">{{ price }}</p>
+      <KyButton
+        :type="buttonType"
+        size="small"
+        class="ky-package-card__action"
+        :loading="loading"
+        :disabled="disabled"
+        @click="$emit('action')"
+      >
+        {{ actionLabel }}
+      </KyButton>
+    </div>
     <p v-if="description" class="ky-package-card__desc">{{ description }}</p>
     <div class="ky-package-card__chips">
       <div class="ky-package-card__stat">
@@ -16,25 +28,16 @@
         <span class="ky-package-card__stat-value">{{ trafficGb }} GB</span>
       </div>
     </div>
-    <KyButton
-      type="primary"
-      block
-      class="ky-package-card__action"
-      :loading="loading"
-      :disabled="disabled"
-      @click="$emit('action')"
-    >
-      {{ actionLabel }}
-    </KyButton>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { KyButton } from '@/components/ky'
 import type { StatusBadgeVariant } from '@/components/StatusBadge.vue'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     name: string
     price: string
@@ -52,6 +55,11 @@ withDefaults(
 )
 
 defineEmits<{ action: [] }>()
+
+/** 续费 / 购买 / 升级用实心主色；更换与余额不足用浅底，降低蓝块面积 */
+const buttonType = computed(() =>
+  /续费|立即购买|升级|开通/.test(props.actionLabel) ? 'primary' : 'default',
+)
 </script>
 
 <style scoped>
@@ -84,12 +92,20 @@ defineEmits<{ action: [] }>()
   line-height: 1.35;
 }
 
+.ky-package-card__price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .ky-package-card__price {
   margin: 0;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   line-height: 1.15;
   color: var(--ky-accent);
+  min-width: 0;
 }
 
 .ky-package-card__desc {
@@ -136,10 +152,9 @@ defineEmits<{ action: [] }>()
 }
 
 .ky-package-card__action {
-  margin-top: 4px;
-  height: 40px;
-  font-size: var(--ky-font-sm);
-  font-weight: 650;
-  border-radius: 12px !important;
+  flex-shrink: 0;
+  min-width: 88px;
+  font-weight: 600;
+  align-self: center;
 }
 </style>

@@ -11,13 +11,20 @@ interface ToastItem {
 const state = reactive<{ items: ToastItem[] }>({ items: [] })
 let nextId = 1
 
-function push(type: MessageType, content: string, duration = 3000) {
+const DEFAULT_DURATION: Record<MessageType, number> = {
+  info: 1500,
+  success: 1500,
+  error: 2200,
+}
+
+function push(type: MessageType, content: string, duration?: number) {
   const id = nextId++
   state.items.push({ id, type, content })
+  const ms = duration ?? DEFAULT_DURATION[type]
   window.setTimeout(() => {
     const idx = state.items.findIndex((item) => item.id === id)
     if (idx >= 0) state.items.splice(idx, 1)
-  }, duration)
+  }, ms)
 }
 
 export const messageState = state

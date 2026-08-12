@@ -56,8 +56,22 @@ class VpnTunnelService : VpnService() {
                 userInitiatedDisconnect = true
                 disconnect()
             }
+            ACTION_RESTORE -> {
+                serviceScope.launch { restoreFromPrefs() }
+            }
         }
         return START_STICKY
+    }
+
+    private suspend fun restoreFromPrefs() {
+        val config = StabilityPrefs.lastConfig(this)
+        val node = StabilityPrefs.lastNodeName(this)
+        if (config.isBlank()) {
+            Log.w(TAG, "restore skipped: empty config")
+            stopSelf()
+            return
+        }
+        connect(config, node)
     }
 
     private suspend fun connect(config: String, nodeName: String) {
@@ -78,6 +92,7 @@ class VpnTunnelService : VpnService() {
             lastConfig = config
             autoReconnectAttempts = 0
             userInitiatedDisconnect = false
+            StabilityPrefs.markConnected(this, config, nodeName)
             VpnSessionStatsTracker.reset()
             VpnConnectionBus.update(ConnectionState.CONNECTED, error = null)
             startNotificationUpdater()
@@ -106,6 +121,7 @@ class VpnTunnelService : VpnService() {
                 lastConfig = config
                 autoReconnectAttempts = 0
                 userInitiatedDisconnect = false
+                StabilityPrefs.markConnected(this, config, nodeName)
                 VpnSessionStatsTracker.reset()
                 VpnConnectionBus.update(ConnectionState.CONNECTED, error = null)
                 startNotificationUpdater()
@@ -176,6 +192,16 @@ class VpnTunnelService : VpnService() {
             builder.addDisallowedApplication(packageName)
         } catch (e: NameNotFoundException) {
             Log.e(TAG, "addDisallowedApplication failed", e)
+        }
+
+        // 用户勾选的应用直连：旁路 TUN（暴露真实 IP）
+        AppDirectConnectStore.userSelectedPackages(this).forEach { pkg ->
+            if (pkg == packageName) return@forEach
+            try {
+                builder.addDisallowedApplication(pkg)
+            } catch (e: NameNotFoundException) {
+                Log.w(TAG, "skip direct connect package: $pkg", e)
+            }
         }
 
         val pfd = builder.establish() ?: error("android: the application is not prepared or is revoked")
@@ -278,6 +304,9 @@ class VpnTunnelService : VpnService() {
     }
 
     private fun disconnect() {
+        if (userInitiatedDisconnect) {
+            StabilityPrefs.markUserDisconnected(this)
+        }
         if (!running && tunInterface == null && !tunFdDetached) {
             stopSelf()
             return
@@ -413,6 +442,7 @@ class VpnTunnelService : VpnService() {
         const val ACTION_CONNECT = "com.vpn.kuayun.CONNECT"
         const val ACTION_RECONNECT = "com.vpn.kuayun.RECONNECT"
         const val ACTION_DISCONNECT = "com.vpn.kuayun.DISCONNECT"
+        const val ACTION_RESTORE = "com.vpn.kuayun.RESTORE"
         const val EXTRA_CONFIG = "config"
         const val EXTRA_NODE_NAME = "node_name"
         private const val CHANNEL_ID = "vpn_tunnel"

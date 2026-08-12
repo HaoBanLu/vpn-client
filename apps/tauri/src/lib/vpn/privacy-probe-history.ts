@@ -14,7 +14,7 @@ export interface PrivacyProbeHistoryEntry {
 
 /** 列表展示用白话；兼容历史条目中的工程向 summary。 */
 export function memberFacingProbeSummary(entry: Pick<PrivacyProbeHistoryEntry, 'passed'>): string {
-  return entry.passed ? '已通过' : '未通过 · 可能泄露真实网络信息'
+  return entry.passed ? '基础检测已通过' : '基础检测未通过 · 可能泄露真实网络信息'
 }
 
 function buildSummary(result: PrivacyLeakProbeResult): string {

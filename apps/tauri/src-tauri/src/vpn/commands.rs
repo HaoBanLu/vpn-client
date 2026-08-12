@@ -521,3 +521,210 @@ pub async fn vpn_install_apk_update<R: Runtime>(
         Err("当前平台请使用桌面 updater 或外链下载".into())
     }
 }
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct InstalledAppInfo {
+    pub package_name: String,
+    pub label: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListInstalledAppsResult {
+    pub apps: Vec<InstalledAppInfo>,
+    pub selected_packages: Vec<String>,
+    pub needs_permission: bool,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectConnectPackagesResult {
+    pub packages: Vec<String>,
+    pub count: i32,
+}
+
+/// Android：枚举已安装应用（应用直连勾选）。
+#[tauri::command]
+pub async fn vpn_list_installed_apps<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<ListInstalledAppsResult, String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<ListInstalledAppsResult>("listInstalledApps", ())
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("应用直连仅 Android 支持".into())
+    }
+}
+
+#[tauri::command]
+pub async fn vpn_get_direct_connect_packages<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<DirectConnectPackagesResult, String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<DirectConnectPackagesResult>("getDirectConnectPackages", ())
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Ok(DirectConnectPackagesResult {
+            packages: vec![],
+            count: 0,
+        })
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SetDirectConnectPackagesOptions {
+    pub packages: Vec<String>,
+}
+
+#[tauri::command]
+pub async fn vpn_set_direct_connect_packages<R: Runtime>(
+    app: AppHandle<R>,
+    options: SetDirectConnectPackagesOptions,
+) -> Result<DirectConnectPackagesResult, String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<DirectConnectPackagesResult>("setDirectConnectPackages", &options)
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, options);
+        Err("应用直连仅 Android 支持".into())
+    }
+}
+
+#[tauri::command]
+pub async fn vpn_request_installed_apps_permission<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<bool>("requestInstalledAppsPermission", ())
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Ok(false)
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AndroidStabilityStatus {
+    pub always_on_configured: bool,
+    pub lockdown_configured: bool,
+    pub battery_optimization_ignored: bool,
+    pub boot_auto_connect_enabled: bool,
+    pub hardening_done_count: i32,
+    pub hardening_total: i32,
+}
+
+#[tauri::command]
+pub async fn vpn_get_stability_status<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<AndroidStabilityStatus, String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<AndroidStabilityStatus>("getStabilityStatus", ())
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("仅 Android 支持".into())
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SetBootAutoConnectOptions {
+    pub enabled: bool,
+}
+
+#[tauri::command]
+pub async fn vpn_set_boot_auto_connect<R: Runtime>(
+    app: AppHandle<R>,
+    options: SetBootAutoConnectOptions,
+) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Ret {
+            boot_auto_connect_enabled: bool,
+        }
+        let ret = app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<Ret>("setBootAutoConnect", &options)
+            .map_err(|e| e.to_string())?;
+        return Ok(ret.boot_auto_connect_enabled);
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, options);
+        Err("仅 Android 支持".into())
+    }
+}
+
+#[tauri::command]
+pub async fn vpn_open_vpn_settings<R: Runtime>(app: AppHandle<R>) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<bool>("openVpnSettings", ())
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("仅 Android 支持".into())
+    }
+}
+
+#[tauri::command]
+pub async fn vpn_open_battery_optimization_settings<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<bool>("openBatteryOptimizationSettings", ())
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("仅 Android 支持".into())
+    }
+}

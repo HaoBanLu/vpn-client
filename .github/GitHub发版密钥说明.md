@@ -1,4 +1,4 @@
-﻿# GitHub 发版密钥说明
+# GitHub 发版密钥说明
 
 > 本文说明 Tag 自动打包（[`app-release.yml`](workflows/app-release.yml)）需要配置的 **Repository Secrets**。  
 > **勿在此文件或 PR 中提交真实凭据。** 只在 GitHub → Settings → Secrets and variables → Actions 中填写。  

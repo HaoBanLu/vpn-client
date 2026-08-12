@@ -63,7 +63,9 @@ defineEmits<{ click: [] }>()
   color: var(--ky-text);
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .ky-list-item--compact {
@@ -73,6 +75,11 @@ defineEmits<{ click: [] }>()
 
 .ky-list-item:not(:disabled):hover {
   background: var(--ky-accent-bg);
+}
+
+.ky-list-item:not(:disabled):active {
+  background: var(--ky-accent-bg);
+  transform: scale(0.99);
 }
 
 .ky-list-item--compact:not(:disabled):hover {

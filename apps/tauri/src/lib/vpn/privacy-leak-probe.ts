@@ -76,9 +76,9 @@ export async function runPrivacyLeakProbe(options?: {
 
 export function formatPrivacyProbeMessage(result: PrivacyLeakProbeResult): string {
   if (result.passed) {
-    return `自检通过：出口 IP ${result.exitIp ?? '-'}`
+    return `基础检测通过：出口 IP ${result.exitIp ?? '-'}`
   }
-  const parts = ['自检未完全通过']
+  const parts = ['基础检测未完全通过']
   if (!result.exitIpLooksProtected) parts.push('出口 IP 异常')
   if (result.ipv6LocalActive) parts.push('IPv6 风险')
   if (!result.dnsReachable) parts.push('DNS 异常')

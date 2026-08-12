@@ -16,6 +16,12 @@ fi
 mkdir -p "$GEN_MAIN/java/com/vpn/kuayun"
 rm -rf "$GEN_MAIN/java/com/vpn/kuayun/vpn"
 cp -R "$OVERLAY_MAIN/java/com/vpn/kuayun/vpn" "$GEN_MAIN/java/com/vpn/kuayun/"
+# TauriActivity 入口：overlay 持久化，避免 gen 被清后缺 MainActivity
+if [[ ! -f "$OVERLAY_MAIN/java/com/vpn/kuayun/MainActivity.kt" ]]; then
+  echo "MainActivity missing: $OVERLAY_MAIN/java/com/vpn/kuayun/MainActivity.kt" >&2
+  exit 1
+fi
+cp -f "$OVERLAY_MAIN/java/com/vpn/kuayun/MainActivity.kt" "$GEN_MAIN/java/com/vpn/kuayun/MainActivity.kt"
 # 清理旧包名残留
 rm -rf "$GEN_MAIN/java/com/vpn/tauri"
 
@@ -24,6 +30,23 @@ if [[ -d "$OVERLAY_MAIN/res" ]]; then
   mkdir -p "$GEN_MAIN/res"
   cp -R "$OVERLAY_MAIN/res/." "$GEN_MAIN/res/"
 fi
+
+# 官方品牌图标：src-tauri/icons/android → gen res（避免 gen 残留 Tauri 默认图标）
+BRAND_ICONS="$ROOT/src-tauri/icons/android"
+if [[ ! -d "$BRAND_ICONS" ]]; then
+  echo "Brand icons missing: $BRAND_ICONS (run npm run generate:icon)" >&2
+  exit 1
+fi
+mkdir -p "$GEN_MAIN/res"
+for dir in "$BRAND_ICONS"/*/; do
+  [[ -d "$dir" ]] || continue
+  name="$(basename "$dir")"
+  mkdir -p "$GEN_MAIN/res/$name"
+  cp -R "$dir"/. "$GEN_MAIN/res/$name/"
+done
+rm -f "$GEN_MAIN/res/drawable/ic_launcher_background.xml" \
+  "$GEN_MAIN/res/drawable-v24/ic_launcher_foreground.xml"
+echo "Synced brand launcher icons from icons/android"
 
 python3 - "$OVERLAY_MAIN/AndroidManifest.xml" "$GEN_MAIN/AndroidManifest.xml" <<'PY'
 import re, sys
@@ -153,6 +176,7 @@ if ! grep -rq 'kotlin.plugin.serialization' "$GEN_ANDROID"/build.gradle.kts "$GE
 fi
 
 # mihomo-core minSdk=26；若 init 时未读到 tauri.conf android.minSdkVersion，这里兜底改 gen
+# 同时强制 applicationId/namespace 与 tauri.conf identifier（com.vpn.kuayun）一致
 APP_GRADLE="$GEN_APP/build.gradle.kts"
 if [[ -f "$APP_GRADLE" ]]; then
   python3 - "$APP_GRADLE" <<'PY'
@@ -160,11 +184,14 @@ from pathlib import Path
 import re, sys
 p = Path(sys.argv[1])
 t = p.read_text(encoding="utf-8")
-nt, n = re.subn(r"minSdk\s*=\s*\d+", "minSdk = 26", t, count=1)
-if n:
-    p.write_text(nt, encoding="utf-8")
-    print(f"Patched minSdk=26 into {p}")
-elif "minSdk" not in t:
+orig = t
+t, n = re.subn(r"minSdk\s*=\s*\d+", "minSdk = 26", t, count=1)
+t = re.sub(r'namespace\s*=\s*"[^"]+"', 'namespace = "com.vpn.kuayun"', t)
+t = re.sub(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.vpn.kuayun"', t)
+if t != orig:
+    p.write_text(t, encoding="utf-8")
+    print(f"Patched app identity/minSdk into {p}")
+elif "minSdk" not in orig:
     print(f"WARN: minSdk not found in {p}", file=sys.stderr)
 PY
 fi

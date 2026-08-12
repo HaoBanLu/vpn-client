@@ -95,7 +95,7 @@ async function onSubmit() {
     await auth.login(email.value, password.value, rememberLogin.value)
     router.replace({ name: 'Connect' })
   } catch (error) {
-    errorText.value = mapApiError(error, '登录失败')
+    errorText.value = mapApiError(error, '登录失败，请稍后重试')
   } finally {
     loading.value = false
   }

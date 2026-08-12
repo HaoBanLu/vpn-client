@@ -6,6 +6,11 @@ $GenApp = Join-Path $Root "src-tauri\gen\android\app"
 $OverlayMain = Join-Path $OverlayApp "src\main"
 $GenMain = Join-Path $GenApp "src\main"
 
+function Write-Utf8NoBom([string]$Path, [string]$Content) {
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($Path, $Content, $utf8)
+}
+
 if (-not (Test-Path $GenApp)) {
     throw "gen/android missing; run: npx tauri android init --ci"
 }
@@ -26,6 +31,15 @@ if (Test-Path $legacyDst) {
 New-Item -ItemType Directory -Force -Path (Split-Path $vpnDst) | Out-Null
 Copy-Item -Path $vpnSrc -Destination $vpnDst -Recurse -Force
 
+# TauriActivity 入口：overlay 持久化，避免 gen 被清后缺 MainActivity
+$mainActivitySrc = Join-Path $OverlayMain "java\com\vpn\kuayun\MainActivity.kt"
+$mainActivityDst = Join-Path $GenMain "java\com\vpn\kuayun\MainActivity.kt"
+if (-not (Test-Path $mainActivitySrc)) {
+    throw "MainActivity missing: $mainActivitySrc"
+}
+New-Item -ItemType Directory -Force -Path (Split-Path $mainActivityDst) | Out-Null
+Copy-Item -Path $mainActivitySrc -Destination $mainActivityDst -Force
+
 # 同步 overlay 资源（FileProvider paths 等）
 $overlayRes = Join-Path $OverlayMain "res"
 $genRes = Join-Path $GenMain "res"
@@ -33,6 +47,27 @@ if (Test-Path $overlayRes) {
     New-Item -ItemType Directory -Force -Path $genRes | Out-Null
     Copy-Item -Path (Join-Path $overlayRes "*") -Destination $genRes -Recurse -Force
 }
+
+# 官方品牌图标：src-tauri/icons/android → gen res（避免 gen 残留 Tauri 默认图标）
+$brandIcons = Join-Path $Root "src-tauri\icons\android"
+if (-not (Test-Path $brandIcons)) {
+    throw "Brand icons missing: $brandIcons (run npm run generate:icon)"
+}
+New-Item -ItemType Directory -Force -Path $genRes | Out-Null
+Get-ChildItem -Path $brandIcons -Directory | ForEach-Object {
+    $dst = Join-Path $genRes $_.Name
+    New-Item -ItemType Directory -Force -Path $dst | Out-Null
+    Copy-Item -Path (Join-Path $_.FullName "*") -Destination $dst -Recurse -Force
+}
+# 清理 Android Studio / tauri init 默认 vector，避免与 mipmap 冲突
+@(
+    "drawable\ic_launcher_background.xml",
+    "drawable-v24\ic_launcher_foreground.xml"
+) | ForEach-Object {
+    $p = Join-Path $genRes $_
+    if (Test-Path $p) { Remove-Item -Force $p }
+}
+Write-Host "Synced brand launcher icons from icons/android"
 
 $genManifest = Join-Path $GenMain "AndroidManifest.xml"
 $overlayManifest = Join-Path $OverlayMain "AndroidManifest.xml"
@@ -66,14 +101,14 @@ if ($serviceBlock) {
         $genXml = $genXml -replace '</application>', "$insert`n    </application>"
     }
 }
-Set-Content -Path $genManifest -Value $genXml -Encoding UTF8 -NoNewline
+Write-Utf8NoBom $genManifest $genXml
 
 $genGradle = Join-Path $GenApp "build.gradle.kts"
 $gradle = Get-Content $genGradle -Raw -Encoding UTF8
 $applyLine = 'apply(from = file("../../../android/app/build.gradle.kts"))'
 if ($gradle -notmatch [regex]::Escape($applyLine)) {
     $gradle = $gradle.TrimEnd() + "`n`n$applyLine`n"
-    Set-Content -Path $genGradle -Value $gradle -Encoding UTF8 -NoNewline
+    Write-Utf8NoBom $genGradle $gradle
 }
 
 $overlayProguard = Join-Path $OverlayApp "proguard-rules.pro"
@@ -88,7 +123,7 @@ if (Test-Path $gradleProps) {
     if ($props -notmatch "kotlin\.compiler\.execution\.strategy") {
         if (-not $props.EndsWith("`n")) { $props += "`n" }
         $props += "kotlin.compiler.execution.strategy=in-process`n"
-        Set-Content -Path $gradleProps -Value $props -Encoding UTF8 -NoNewline
+        Write-Utf8NoBom $gradleProps $props
     }
 }
 
@@ -103,7 +138,7 @@ function Patch-MihomoSettings([string]$settingsPath) {
     $settings = Get-Content $settingsPath -Raw -Encoding UTF8
     if ($settings -match 'include\(":mihomo-core"\)') { return $true }
     $settings = $settings.TrimEnd() + $mihomoBlock
-    Set-Content -Path $settingsPath -Value $settings -Encoding UTF8 -NoNewline
+    Write-Utf8NoBom $settingsPath $settings
     Write-Host "Patched mihomo-core into $settingsPath"
     return $true
 }
@@ -128,7 +163,7 @@ if (Test-Path $genRootBuild) {
         } else {
             $rootBuild = "plugins {`n$serializationLine`n}`n`n" + $rootBuild
         }
-        Set-Content -Path $genRootBuild -Value $rootBuild -Encoding UTF8 -NoNewline
+        Write-Utf8NoBom $genRootBuild $rootBuild
         Write-Host "Patched serialization plugin into $genRootBuild"
     }
 }
@@ -146,7 +181,7 @@ if ((Test-Path $settingsGroovy) -and ((Get-Content $settingsGroovy -Raw) -notmat
     } else {
         $sg = "pluginManagement {`n    plugins {`n$pluginLine    }`n}`n" + $sg
     }
-    Set-Content -Path $settingsGroovy -Value $sg -Encoding UTF8 -NoNewline
+    Write-Utf8NoBom $settingsGroovy $sg
     Write-Host "Patched serialization plugin into $settingsGroovy"
 }
 
@@ -157,12 +192,16 @@ if (-not (Select-String -Path (Join-Path $GenAndroidRoot "build.gradle.kts"), (J
 $appGradle = Join-Path $GenApp "build.gradle.kts"
 if (Test-Path $appGradle) {
     $ag = Get-Content $appGradle -Raw -Encoding UTF8
+    $agOrig = $ag
     if ($ag -match "minSdk\s*=\s*\d+") {
-        $ag2 = [regex]::Replace($ag, "minSdk\s*=\s*\d+", "minSdk = 26", 1)
-        if ($ag2 -ne $ag) {
-            Set-Content -Path $appGradle -Value $ag2 -Encoding UTF8 -NoNewline
-            Write-Host "Patched minSdk=26 into $appGradle"
-        }
+        $ag = [regex]::Replace($ag, "minSdk\s*=\s*\d+", "minSdk = 26", 1)
+    }
+    # gen 可能仍是旧 identifier；与 tauri.conf / overlay 包名对齐
+    $ag = [regex]::Replace($ag, 'namespace\s*=\s*"[^"]+"', 'namespace = "com.vpn.kuayun"')
+    $ag = [regex]::Replace($ag, 'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.vpn.kuayun"')
+    if ($ag -ne $agOrig) {
+        Write-Utf8NoBom $appGradle $ag
+        Write-Host "Patched app identity/minSdk into $appGradle"
     }
 }
 

@@ -35,7 +35,7 @@ describe('privacy-probe-history', () => {
     })
     const [entry] = loadPrivacyProbeHistory()
     expect(entry?.passed).toBe(false)
-    expect(entry?.summary).toBe('未通过 · 可能泄露真实网络信息')
+    expect(entry?.summary).toBe('基础检测未通过 · 可能泄露真实网络信息')
   })
 
   it('stores member-facing passed probe summary', () => {
@@ -47,6 +47,6 @@ describe('privacy-probe-history', () => {
       passed: true,
     })
     const [entry] = loadPrivacyProbeHistory()
-    expect(entry?.summary).toBe('已通过')
+    expect(entry?.summary).toBe('基础检测已通过')
   })
 })

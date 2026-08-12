@@ -99,14 +99,19 @@ service.interceptors.response.use(
       }
       if (res.code !== 404) {
         const mapped = mapApiError(
-          new ApiBusinessError(res.message || '请求失败', res.app_code, res.trace_id),
-          '请求失败',
+          new ApiBusinessError(res.message || '操作失败，请稍后重试', res.app_code, res.trace_id),
+          '操作失败，请稍后重试',
           API_BASE,
         )
-        message.error(mapped)
+        // 登录失败展示在表单内，不弹全局 toast
+        if (!path.includes('/auth/login')) {
+          message.error(mapped)
+        }
         return Promise.reject(new ApiBusinessError(mapped, res.app_code, res.trace_id))
       }
-      return Promise.reject(new ApiBusinessError(res.message || '请求失败', res.app_code, res.trace_id))
+      return Promise.reject(
+        new ApiBusinessError(res.message || '操作失败，请稍后重试', res.app_code, res.trace_id),
+      )
     }
     return response
   },
@@ -130,9 +135,11 @@ service.interceptors.response.use(
       )
     }
 
+    // 登录页有表单内错误条，避免与顶部 toast 重复；404/503 由页面自行处理
+    const pathSkipsToast = path.includes('/auth/login')
     const statusSkipsToast = status === 404 || status === 503
-    const mapped = mapApiError(error, '请求失败', API_BASE)
-    if (!statusSkipsToast) {
+    const mapped = mapApiError(error, '操作失败，请稍后重试', API_BASE)
+    if (!statusSkipsToast && !pathSkipsToast) {
       message.error(mapped)
     }
 
