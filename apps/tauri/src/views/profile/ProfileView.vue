@@ -174,12 +174,12 @@ import { useRouter } from 'vue-router'
 import {
   AppstoreOutlined,
   BugOutlined,
+  CloudDownloadOutlined,
   CustomerServiceOutlined,
   FileTextOutlined,
   GlobalOutlined,
   InfoCircleOutlined,
   MoreOutlined,
-  QuestionCircleOutlined,
   SafetyCertificateOutlined,
   ShoppingOutlined,
   UserOutlined,
@@ -270,7 +270,7 @@ const connectItems = computed<MenuItem[]>(() => [
   },
   {
     title: '连接与隐私',
-    subtitle: '重连、Always-on 加固与隐私检测',
+    subtitle: '重连、Always-on 与隐私检测',
     route: 'StabilitySettings',
     icon: SafetyCertificateOutlined,
   },
@@ -281,7 +281,7 @@ const helpItems = computed<MenuItem[]>(() => {
   if (account.supportEnabled) {
     items.push({
       title: '在线客服',
-      subtitle: 'Telegram、群组与人工协助',
+      subtitle: 'Telegram 与人工协助',
       route: 'Support',
       icon: CustomerServiceOutlined,
     })
@@ -289,10 +289,10 @@ const helpItems = computed<MenuItem[]>(() => {
   items.push({ title: '我的工单', subtitle: '问题反馈与客服回复', route: 'Tickets', icon: FileTextOutlined })
   if (isAndroid || account.user?.app_debug_enabled) {
     items.push({
-      title: isAndroid ? '帮助中心' : '订阅导出',
-      subtitle: isAndroid ? '导出订阅链接与连接辅助' : 'Clash 订阅链接（高级）',
+      title: '订阅导出',
+      subtitle: '导出 Clash 订阅链接',
       route: 'Help',
-      icon: QuestionCircleOutlined,
+      icon: CloudDownloadOutlined,
     })
   }
   if (account.user?.app_debug_enabled) {

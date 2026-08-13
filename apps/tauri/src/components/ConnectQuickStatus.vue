@@ -10,8 +10,6 @@
       </div>
       <span class="quick-status__chevron">›</span>
     </button>
-
-    <p v-if="nodeLabel && !connecting" class="quick-status__hint">也可在连接页点「一键连接」重连此节点</p>
   </KyCard>
 </template>
 
@@ -108,11 +106,5 @@ const subscriptionLine = computed(() => {
   color: var(--ky-text-muted);
   font-size: 18px;
   flex-shrink: 0;
-}
-
-.quick-status__hint {
-  margin: 0;
-  font-size: var(--ky-font-xs);
-  color: var(--ky-text-muted);
 }
 </style>

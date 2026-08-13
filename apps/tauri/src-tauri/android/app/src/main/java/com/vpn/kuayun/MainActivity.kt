@@ -8,6 +8,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.vpn.kuayun.vpn.AppStatusNotification
 
 /**
  * 浅色 WebView + edge-to-edge：深色状态栏图标。
@@ -18,6 +19,8 @@ class MainActivity : TauriActivity() {
     private var lastTopPx = -1
     private var lastBottomPx = -1
     private var cssInjected = false
+    private var webViewPolished = false
+    private var notificationAsked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,10 +43,54 @@ class MainActivity : TauriActivity() {
         }
         root.requestApplyInsets()
 
+        askNotificationPermission()
+        AppStatusNotification.showIdle(this)
+
         listOf(300L, 1000L, 2500L).forEach { delayMs ->
             root.postDelayed({
                 injectSafeAreaCss(0f, 0f, force = !cssInjected)
+                polishWebView()
             }, delayMs)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AppStatusNotification.showIdle(this)
+        polishWebView()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == AppStatusNotification.PERMISSION_REQUEST) {
+            AppStatusNotification.showIdle(this)
+        }
+    }
+
+    private fun askNotificationPermission() {
+        if (notificationAsked) return
+        notificationAsked = true
+        AppStatusNotification.requestPostPermission(this)
+    }
+
+    private fun polishWebView() {
+        val webView = findWebView(window.decorView) ?: return
+        if (!webViewPolished) {
+            webView.settings.apply {
+                setSupportZoom(false)
+                builtInZoomControls = false
+                displayZoomControls = false
+                textZoom = 100
+            }
+            webView.overScrollMode = View.OVER_SCROLL_NEVER
+            webView.isHapticFeedbackEnabled = false
+            webView.isLongClickable = false
+            webView.setOnLongClickListener { true }
+            webViewPolished = true
         }
     }
 

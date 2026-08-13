@@ -38,7 +38,7 @@ describe('shouldIgnoreDisconnectedWhileConnecting', () => {
     ).toBe(false)
   })
 
-  it('applies connected / failed normally', () => {
+  it('applies connected while connecting', () => {
     expect(
       shouldIgnoreDisconnectedWhileConnecting({
         connectPending: true,
@@ -48,5 +48,17 @@ describe('shouldIgnoreDisconnectedWhileConnecting', () => {
         nextState: 'connected',
       }),
     ).toBe(false)
+  })
+
+  it('ignores leftover failed while still connecting', () => {
+    expect(
+      shouldIgnoreDisconnectedWhileConnecting({
+        connectPending: true,
+        connectionState: 'connecting',
+        isSwitching: false,
+        userInitiatedDisconnect: false,
+        nextState: 'failed',
+      }),
+    ).toBe(true)
   })
 })

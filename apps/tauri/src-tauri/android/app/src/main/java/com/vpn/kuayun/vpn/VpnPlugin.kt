@@ -60,6 +60,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
             return
         }
         val config = VpnConfigPatcher.prepareClashConfig(raw)
+        VpnConnectionBus.update(ConnectionState.CONNECTING, error = null)
         controller.connect(config, nodeName)
         invoke.resolve(statusObject(ConnectionState.CONNECTING, null))
     }
@@ -74,6 +75,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
             return
         }
         val config = VpnConfigPatcher.prepareClashConfig(raw)
+        VpnConnectionBus.update(ConnectionState.CONNECTING, error = null)
         controller.reconnect(config, nodeName)
         invoke.resolve(statusObject(ConnectionState.CONNECTING, null))
     }

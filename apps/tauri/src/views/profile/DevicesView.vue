@@ -1,6 +1,6 @@
 <template>
   <KyPage sub>
-    <PageHeader title="我的设备" :subtitle="`${quotaUsed}/${quotaMax}`" back />
+    <PageHeader title="我的设备" :subtitle="`已用 ${quotaUsed} / ${quotaMax} 台`" back />
     <KySpin :spinning="loading" overlay>
       <KyEmpty v-if="!loading && !sessions.length" description="暂无登录设备" />
       <KyCard v-for="item in sessions" :key="item.session_id" flat class="device-card">

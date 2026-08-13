@@ -17,14 +17,36 @@ describe('waitForVpnReady', () => {
     expect(n).toBe(3)
   })
 
-  it('returns failed with error message', async () => {
+  it('returns failed after connecting then failing', async () => {
+    let n = 0
     const outcome = await waitForVpnReady({
       intervalMs: 1,
       timeoutMs: 1000,
       sleep: async () => {},
-      getStatus: async () => ({ state: 'failed', error: 'TUN 建立失败' }),
+      getStatus: async () => {
+        n += 1
+        return n < 2
+          ? { state: 'connecting' }
+          : { state: 'failed', error: 'TUN 建立失败' }
+      },
     })
     expect(outcome).toEqual({ kind: 'failed', error: 'TUN 建立失败' })
+  })
+
+  it('ignores leftover failed until connecting is observed', async () => {
+    let n = 0
+    const outcome = await waitForVpnReady({
+      intervalMs: 1,
+      timeoutMs: 1000,
+      sleep: async () => {},
+      getStatus: async () => {
+        n += 1
+        if (n === 1) return { state: 'failed', error: '上一轮失败' }
+        if (n === 2) return { state: 'connecting' }
+        return { state: 'connected' }
+      },
+    })
+    expect(outcome).toEqual({ kind: 'connected' })
   })
 
   it('returns timeout when never settles', async () => {

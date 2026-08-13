@@ -5,11 +5,10 @@
     <KyCard title="连接方式">
       <template v-if="isAndroid">
         <p class="mode-desc">
-          当前使用 <strong>系统 VPN（TUN）</strong>，连接后流量默认走隧道。
+          当前使用系统 VPN。连接后流量默认走隧道。
         </p>
         <p class="mode-desc muted">
-          断网保护不自研 Kill Switch，请用下方「系统级加固」开启 Always-on；分应用直连在「我的 →
-          应用直连」。
+          指定应用不走加速请到「应用直连」。断网保护请用下方系统 Always-on。
         </p>
       </template>
       <template v-else>
@@ -38,7 +37,7 @@
     <KyCard v-if="isAndroid" title="系统级加固">
       <p class="probe-desc">
         已完成 {{ stability?.hardeningDoneCount ?? 0 }} /
-        {{ stability?.hardeningTotal ?? 3 }} 项。由系统托管 Always-on，避免自研阻断导致断网。
+        {{ stability?.hardeningTotal ?? 3 }} 项。开启后由系统保持 VPN，减少意外掉线。
       </p>
       <button type="button" class="todo-row" @click="onOpenVpnSettings">
         <span class="todo-dot" :class="stability?.alwaysOnConfigured ? 'todo-dot--ok' : ''" />
@@ -151,12 +150,12 @@ const isAndroid = detectClientPlatform() === 'android'
 const pageTitle = '连接与隐私'
 const pageSubtitle = computed(() =>
   isAndroid
-    ? '连接后流量默认走隧道；可调整重连与系统加固'
+    ? '连接后流量默认走隧道；可调整重连与系统 Always-on'
     : '系统代理下可调整重连、托盘与隐私自检',
 )
 const footerHint = computed(() =>
   isAndroid
-    ? '断线自动重连开启后，切网/断网恢复将尝试完整重连。Always-on 与省电白名单请在系统设置中确认。'
+    ? '开启断线自动重连后，切网或断网恢复将尝试重新连接。Always-on 与省电白名单请在系统设置中确认。'
     : '关闭窗口时若已开启「关闭时最小化到托盘」，VPN 连接会保持；可在托盘图标右键断开或退出。',
 )
 

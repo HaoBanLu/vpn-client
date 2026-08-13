@@ -1,6 +1,6 @@
 /**
- * 连接进行中时，后端仍可能回报 disconnected；此时不应冲掉前端「连接中」态。
- * 与 Android connectPending 期间保持 CONNECTING UI 一致。
+ * 连接进行中时，后端仍可能回报上一轮的 disconnected / failed；
+ * 此时不应冲掉前端「连接中」态，否则会闪一下「连接失败」再变成「已连接」。
  */
 export function shouldIgnoreDisconnectedWhileConnecting(input: {
   connectPending: boolean
@@ -13,9 +13,6 @@ export function shouldIgnoreDisconnectedWhileConnecting(input: {
     input.connectPending ||
     input.connectionState === 'connecting' ||
     input.isSwitching
-  return (
-    inFlight &&
-    input.nextState === 'disconnected' &&
-    !input.userInitiatedDisconnect
-  )
+  if (!inFlight || input.userInitiatedDisconnect) return false
+  return input.nextState === 'disconnected' || input.nextState === 'failed'
 }

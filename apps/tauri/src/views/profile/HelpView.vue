@@ -1,6 +1,6 @@
 <template>
   <KyPage sub>
-    <PageHeader :title="pageTitle" :subtitle="pageSubtitle" />
+    <PageHeader title="订阅导出" subtitle="若 App 无法连接，可导出 Clash 订阅到第三方客户端" />
 
     <KyButton type="primary" block size="large" :loading="loading" @click="loadSubscriptionUrl">
       生成 Clash 订阅链接
@@ -26,24 +26,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import KyPage from '@/components/KyPage.vue'
 import KyCard from '@/components/KyCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { KyAlert, KyButton } from '@/components/ky'
 import { resolveApiBaseUrl } from '@/lib/api-config'
-import { detectClientPlatform } from '@/lib/app-meta'
 import { clientApi } from '@/api/client'
 
 const API_BASE = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
-const isAndroid = detectClientPlatform() === 'android'
-
-const pageTitle = computed(() => (isAndroid ? '帮助中心' : '订阅导出'))
-const pageSubtitle = computed(() =>
-  isAndroid
-    ? '若 App 无法连接，可导出订阅链接在第三方客户端使用'
-    : '高级功能：导出 Clash 订阅，供第三方客户端使用',
-)
 
 const loading = ref(false)
 const subscriptionUrl = ref<string | null>(null)
@@ -87,6 +78,8 @@ async function copySubscriptionUrl() {
   font-size: var(--ky-font-sm);
   word-break: break-all;
   line-height: 1.5;
+  -webkit-user-select: all;
+  user-select: all;
 }
 
 .copy-btn {

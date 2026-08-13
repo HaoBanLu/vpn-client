@@ -26,12 +26,11 @@
       <KyCard flat class="info-card">
         <p class="info-title">分应用代理</p>
         <p class="info-body">
-          默认全部走 VPN；已选 {{ selectedCount }} 个应用直连。修改后需重连 VPN 才能完全生效。
+          默认全部走 VPN；已选 {{ selectedCount }} 个应用直连。修改后需重连才能完全生效。
         </p>
         <ul class="info-list">
           <li>未勾选的应用仍走 VPN 加速</li>
           <li>系统应用与本应用默认保持代理，避免误伤</li>
-          <li>修改后需重连 VPN 才能完全生效</li>
         </ul>
         <KyButton
           v-if="needsPermission"

@@ -4,10 +4,12 @@ import App from './App.vue'
 import router from './router'
 import { revealAppWindow } from '@/lib/desktop/window-boot'
 import { bootstrapAppDebugFromStorage } from '@/lib/debug/app-debug-log'
+import { installNativeAppFeel } from '@/lib/native-app-feel'
 import './style.css'
 import './styles/ky-ui.css'
 
 bootstrapAppDebugFromStorage()
+installNativeAppFeel()
 
 const app = createApp(App)
 app.use(createPinia())

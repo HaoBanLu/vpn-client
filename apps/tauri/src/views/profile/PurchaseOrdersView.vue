@@ -36,7 +36,6 @@
           <KyDetailRow label="状态" :value="orderStatusLabel(selected.status)" />
           <KyDetailRow label="支付金额" :value="formatMoney(selected.amount)" />
           <KyDetailRow label="支付方式" :value="selected.payment_method || '-'" />
-          <KyDetailRow v-if="selected.package_id" label="套餐 ID" :value="String(selected.package_id)" />
           <KyDetailRow label="创建时间" :value="formatDateTime(selected.created_at)" />
           <KyDetailRow label="支付时间" :value="formatDateTime(selected.paid_at)" />
         </div>

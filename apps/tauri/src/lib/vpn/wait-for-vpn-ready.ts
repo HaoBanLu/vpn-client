@@ -21,6 +21,7 @@ export async function waitForVpnReady(options: {
   const intervalMs = options.intervalMs ?? 400
   const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)))
   const deadline = Date.now() + timeoutMs
+  let seenConnecting = false
 
   while (Date.now() < deadline) {
     if (options.isCurrent && !options.isCurrent()) {
@@ -33,7 +34,11 @@ export async function waitForVpnReady(options: {
     if (status.state === 'connected') {
       return { kind: 'connected' }
     }
-    if (status.state === 'failed') {
+    if (status.state === 'connecting') {
+      seenConnecting = true
+    }
+    // 上一轮残留的 failed 会在服务尚未切到 connecting 时被读到，必须忽略
+    if (status.state === 'failed' && seenConnecting) {
       return { kind: 'failed', error: status.error?.trim() || '连接失败' }
     }
     await sleep(intervalMs)
