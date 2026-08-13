@@ -4,6 +4,7 @@ struct PackagesView: View {
     @EnvironmentObject private var auth: AuthStore
     @State private var packages: [PackageItem] = []
     @State private var loading = false
+    @State private var loadError: String?
     @State private var message: String?
 
     var body: some View {
@@ -24,8 +25,18 @@ struct PackagesView: View {
         }
         .navigationTitle("购买套餐")
         .overlay {
-            if packages.isEmpty && !loading {
-                Text(message ?? "暂无套餐").foregroundStyle(.secondary)
+            if loading && packages.isEmpty {
+                ProgressView()
+            } else if packages.isEmpty {
+                VStack(spacing: 12) {
+                    if let loadError {
+                        Text("网络异常").foregroundStyle(.red)
+                        Text(loadError).font(.footnote).foregroundStyle(.secondary)
+                        Button("重试") { Task { await load() } }
+                    } else {
+                        Text(message ?? "暂无套餐").foregroundStyle(.secondary)
+                    }
+                }
             }
         }
         .task { await load() }
@@ -34,11 +45,12 @@ struct PackagesView: View {
     private func load() async {
         guard let token = auth.token else { return }
         loading = true
+        loadError = nil
         defer { loading = false }
         do {
             packages = try await APIClient.shared.fetchPackages(token: token).packages
         } catch {
-            message = error.localizedDescription
+            loadError = error.localizedDescription
         }
     }
 

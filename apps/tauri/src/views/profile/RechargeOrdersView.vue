@@ -1,7 +1,6 @@
 <template>
-  <KyPage sub>
+  <KySubPage title="充值记录">
     <KyPullRefresh :on-refresh="load">
-      <PageHeader title="充值记录" subtitle="查看 USDT 充值进度与驳回原因" />
       <KySpin :spinning="loading" overlay>
         <KyEmpty v-if="!loading && orders.length === 0" description="暂无充值记录">
           <KyButton type="primary" size="large" @click="router.push({ name: 'Recharge' })">去充值</KyButton>
@@ -65,17 +64,16 @@
         </div>
       </template>
     </KyModal>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyPullRefresh from '@/components/KyPullRefresh.vue'
 import KyDetailRow from '@/components/KyDetailRow.vue'
 import KyOrderCard from '@/components/KyOrderCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyButton, KyEmpty, KyImage, KyModal, KySpin, KyTag } from '@/components/ky'
 import { clientApi, type RechargeOrderItem } from '@/api/client'
 import {

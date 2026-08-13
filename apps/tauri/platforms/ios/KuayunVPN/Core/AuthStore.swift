@@ -63,7 +63,9 @@ final class AuthStore: ObservableObject {
             user = me
             persistUser(me)
         } catch {
-            logout(silent: true)
+            if (error as? APIClientError)?.isUnauthorized == true {
+                logout(silent: true)
+            }
         }
     }
 
@@ -73,6 +75,7 @@ final class AuthStore: ObservableObject {
         user = nil
         UserDefaults.standard.removeObject(forKey: tokenKey)
         UserDefaults.standard.removeObject(forKey: userKey)
+        AccountStore.shared.reset()
         if !silent {
             lastError = nil
         }

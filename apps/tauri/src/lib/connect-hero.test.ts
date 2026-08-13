@@ -49,12 +49,23 @@ describe('resolveConnectHeroCopy', () => {
     expect(copy.subtitle).toContain('正在连接 新加坡2')
   })
 
-  it('idle with node prompts clicking the button', () => {
+  it('no subscription prompts purchase instead of one-click connect', () => {
     const copy = resolveConnectHeroCopy({
       connectionState: 'disconnected',
-      selectedNode: '新加坡2',
+      emptyReason: 'no_subscription',
     })
-    expect(copy.buttonLabel).toBe('一键连接')
-    expect(copy.subtitle).toContain('点击下方连接')
+    expect(copy.buttonLabel).toBe('购买套餐')
+    expect(copy.subtitle).toContain('购买套餐')
+    expect(copy.subtitle).not.toContain('一键连接')
+  })
+
+  it('load error prompts retry instead of no-subscription copy', () => {
+    const copy = resolveConnectHeroCopy({
+      connectionState: 'disconnected',
+      emptyReason: 'load_error',
+    })
+    expect(copy.title).toBe('加载失败')
+    expect(copy.buttonLabel).toBe('重试')
+    expect(copy.subtitle).not.toContain('暂无')
   })
 })

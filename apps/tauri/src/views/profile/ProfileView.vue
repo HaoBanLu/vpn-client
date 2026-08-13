@@ -1,5 +1,5 @@
 <template>
-  <KyTabPage :on-refresh="refresh" :loading="account.loading && !account.user">
+  <KyTabPage :on-refresh="refresh" :loading="profileView === 'loading'">
     <template #before>
       <div v-if="account.user" class="account-bar">
         <div class="account-bar__identity">
@@ -76,7 +76,13 @@
         <KyButton class="sub-hero__btn" @click="router.push({ name: 'Traffic' })">流量统计</KyButton>
       </div>
     </div>
-    <div v-else class="sub-hero">
+    <div v-else-if="profileView === 'error'" class="sub-hero">
+      <p class="sub-hero__label">我使用的套餐</p>
+      <p class="sub-hero__name">网络异常</p>
+      <p class="sub-hero__summary">{{ account.loadError || '请检查网络后重试' }}</p>
+      <KyButton type="primary" block class="sub-hero__buy" @click="refresh">重试</KyButton>
+    </div>
+    <div v-else-if="profileView === 'empty'" class="sub-hero">
       <p class="sub-hero__label">我使用的套餐</p>
       <p class="sub-hero__name">暂无有效套餐</p>
       <p class="sub-hero__summary">购买套餐后即可使用跨云加速服务</p>
@@ -193,6 +199,7 @@ import { KyButton } from '@/components/ky'
 import { APP_VERSION_CODE, APP_VERSION_NAME, detectClientPlatform } from '@/lib/app-meta'
 import { CONNECTION_SCENARIO, type ConnectionScenarioValue } from '@/lib/vpn/connection-scenario'
 import { subscriptionStatusLabel } from '@/lib/subscription'
+import { resolveAccountViewState } from '@/lib/account-view-state'
 import { useAuthStore } from '@/stores/auth'
 import { useAccountStore } from '@/stores/account'
 import { useConnectStore } from '@/stores/connect'
@@ -208,6 +215,14 @@ const accountMenuOpen = ref(false)
 const isAndroid = detectClientPlatform() === 'android'
 
 const recentNotifications = computed(() => account.notifications.slice(-2).reverse())
+const profileView = computed(() =>
+  resolveAccountViewState({
+    loading: account.loading,
+    fetched: account.fetched,
+    loadError: account.loadError,
+    hasSubscription: !!account.subscription,
+  }),
+)
 const expiresLabel = computed(() => formatExpiry(account.subscription?.expires_at))
 const balanceMeta = computed(() =>
   account.user ? `余额 ${formatMoneySafe(account.user.balance)}` : undefined,

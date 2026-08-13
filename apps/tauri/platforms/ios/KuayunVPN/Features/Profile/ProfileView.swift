@@ -39,6 +39,24 @@ struct ProfileView: View {
                             LabeledContent("剩余流量", value: String(format: "%.1f / %.1f GB", usage.remaining, usage.total))
                         }
                     }
+                } else if let error = account.lastError {
+                    Section("当前套餐") {
+                        Text("网络异常").foregroundStyle(.red)
+                        Text(error).font(.footnote).foregroundStyle(.secondary)
+                        Button("重试") {
+                            Task {
+                                if let token = auth.token { await account.refresh(token: token) }
+                            }
+                        }
+                    }
+                } else if account.didFetch {
+                    Section("当前套餐") {
+                        Text("暂无有效套餐")
+                        Text("购买套餐后即可使用加速")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        NavigationLink("去购买套餐") { PackagesView() }
+                    }
                 }
 
                 Section("商业") {

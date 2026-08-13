@@ -14,7 +14,6 @@ import {
   prepareVpn,
   probeVpn,
   reconnectVpn,
-  watchVpnStats,
   watchVpnStatus,
 } from '@/lib/vpn/bridge'
 import { probeConnectivity, probeHint, probeResultToStatus, normalizeProbeResult } from '@/lib/vpn/probe'
@@ -61,6 +60,13 @@ import {
 import { updateTrayTooltip } from '@/lib/desktop/tray'
 import { appendDebugLog, flushDebugLogs } from '@/lib/debug/app-debug-log'
 import { shouldIgnoreDisconnectedWhileConnecting } from '@/lib/vpn/connect-inflight'
+import { shareInflight } from '@/lib/account-view-state'
+import { mapApiError } from '@/lib/api-error'
+import {
+  advanceDisplayRates,
+  emptyRateSmoother,
+  type RateSmootherState,
+} from '@/lib/vpn/session-throughput'
 
 const REGION_KEY = 'tauri_region'
 const NODE_KEY = 'tauri_node'
@@ -113,6 +119,13 @@ export const useConnectStore = defineStore('connect', () => {
       downloadBps: payload.downloadBps ?? 0,
     }
   }
+
+  /** Android 速率已在原生 tracker 算完；桌面忽略 /traffic 瞬时值，用字节差+EMA。 */
+  function usesNativeDisplayRates() {
+    return platformInfo.value?.implementation === 'android-vpn'
+  }
+
+  let rateSmoother: RateSmootherState = emptyRateSmoother()
   const requestNavigateToNodes = ref(false)
   const requestNavigateToPackages = ref(false)
 
@@ -137,6 +150,7 @@ export const useConnectStore = defineStore('connect', () => {
   let onOfflineHandler: (() => void) | null = null
 
   const MAX_AUTO_RECONNECT = AUTO_RECONNECT_POLICY.maxAttempts
+  const refreshHolder: { current: Promise<void> | null } = { current: null }
 
   function bumpConnectGeneration(): number {
     connectGeneration += 1
@@ -169,6 +183,7 @@ export const useConnectStore = defineStore('connect', () => {
   }
 
   function resetSessionStats() {
+    rateSmoother = emptyRateSmoother()
     stats.value = {
       uploadBytes: 0,
       downloadBytes: 0,
@@ -178,11 +193,31 @@ export const useConnectStore = defineStore('connect', () => {
     }
   }
 
+  function applySessionStats(payload: VpnSessionStats) {
+    if (usesNativeDisplayRates()) {
+      stats.value = normalizeSessionStats(payload)
+      return
+    }
+    rateSmoother = advanceDisplayRates(rateSmoother, {
+      uploadBytes: payload.uploadBytes,
+      downloadBytes: payload.downloadBytes,
+      nowMs: Date.now(),
+      sessionElapsedMs: payload.durationMs,
+    })
+    stats.value = {
+      uploadBytes: payload.uploadBytes,
+      downloadBytes: payload.downloadBytes,
+      durationMs: payload.durationMs,
+      uploadBps: rateSmoother.uploadBps,
+      downloadBps: rateSmoother.downloadBps,
+    }
+  }
+
   async function syncVpnStats() {
     if (connectionState.value !== 'connected') return
     if (!platformInfo.value?.vpnSupported) return
     try {
-      stats.value = normalizeSessionStats(await getVpnStats())
+      applySessionStats(await getVpnStats())
     } catch {
       // 统计失败不阻断连接
     }
@@ -241,6 +276,10 @@ export const useConnectStore = defineStore('connect', () => {
   }
 
   async function refresh() {
+    return shareInflight(refreshHolder, runRefresh)
+  }
+
+  async function runRefresh() {
     loading.value = true
     error.value = null
     try {
@@ -260,7 +299,7 @@ export const useConnectStore = defineStore('connect', () => {
         applyResolvedConnectionConfig()
       }
     } catch (e: unknown) {
-      error.value = e instanceof Error ? e.message : '加载失败'
+      error.value = mapApiError(e, '加载失败')
     } finally {
       loading.value = false
     }
@@ -1024,7 +1063,6 @@ export const useConnectStore = defineStore('connect', () => {
   })
 
   let unlistenStatus: (() => void) | null = null
-  let unlistenStats: (() => void) | null = null
 
   let pollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -1033,12 +1071,11 @@ export const useConnectStore = defineStore('connect', () => {
       unlistenStatus = await watchVpnStatus((status) => {
         applyExternalVpnStatus(status)
       })
-      unlistenStats = await watchVpnStats((payload) => {
-        stats.value = normalizeSessionStats(payload)
-      })
       pollTimer = setInterval(() => {
         void syncStatusAndProbe()
-        void syncVpnStats()
+        if (connectionState.value === 'connected') {
+          void syncVpnStats()
+        }
       }, 1000)
     } catch {
       // web dev
@@ -1053,7 +1090,6 @@ export const useConnectStore = defineStore('connect', () => {
 
   function stopWatchers() {
     unlistenStatus?.()
-    unlistenStats?.()
     stopHealthProbeLoop()
     if (networkRestoreDebounceTimer) {
       clearTimeout(networkRestoreDebounceTimer)

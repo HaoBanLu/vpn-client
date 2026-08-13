@@ -14,6 +14,7 @@ final class AccountStore: ObservableObject {
     @Published private(set) var subscription: SubscriptionActive?
     @Published private(set) var usage: SubscriptionUsage?
     @Published private(set) var isLoading = false
+    @Published private(set) var didFetch = false
     @Published var lastError: String?
     @Published private(set) var notifications: [AppNotification] = []
     @Published private(set) var unreadNotificationCount = 0
@@ -21,10 +22,24 @@ final class AccountStore: ObservableObject {
     private var knownRechargeStatuses: [UInt64: String] = [:]
     private var pollingInitialized = false
     private var notificationTimer: Task<Void, Never>?
+    private var inFlightRefresh: Task<Void, Never>?
 
     private init() {}
 
     func refresh(token: String) async {
+        if let inFlightRefresh {
+            await inFlightRefresh.value
+            return
+        }
+        let task = Task { @MainActor in
+            await self.performRefresh(token: token)
+        }
+        inFlightRefresh = task
+        await task.value
+        inFlightRefresh = nil
+    }
+
+    private func performRefresh(token: String) async {
         isLoading = true
         defer { isLoading = false }
         do {
@@ -37,7 +52,9 @@ final class AccountStore: ObservableObject {
             let recharge = try await APIClient.shared.fetchRechargeOrders(token: token)
             seedRechargeStatusesIfNeeded(recharge.orders)
             lastError = nil
+            didFetch = true
         } catch {
+            if (error as? APIClientError)?.isUnauthorized == true { return }
             lastError = error.localizedDescription
         }
     }
@@ -47,8 +64,24 @@ final class AccountStore: ObservableObject {
             let user = try await APIClient.shared.fetchCurrentUser(token: token)
             AuthStore.shared.applySession(token: token, user: user)
         } catch {
+            if (error as? APIClientError)?.isUnauthorized == true { return }
             lastError = error.localizedDescription
         }
+    }
+
+    func reset() {
+        inFlightRefresh?.cancel()
+        inFlightRefresh = nil
+        stopNotificationPolling()
+        subscription = nil
+        usage = nil
+        isLoading = false
+        didFetch = false
+        lastError = nil
+        notifications = []
+        unreadNotificationCount = 0
+        knownRechargeStatuses = [:]
+        pollingInitialized = false
     }
 
     var hasActiveSubscription: Bool {

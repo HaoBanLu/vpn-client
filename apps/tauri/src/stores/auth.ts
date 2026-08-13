@@ -70,6 +70,12 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+    try {
+      const { useAccountStore } = await import('@/stores/account')
+      useAccountStore().reset()
+    } catch {
+      // pinia 未就绪时忽略
+    }
     if (!options?.silent) {
       message.success('已退出登录')
     }

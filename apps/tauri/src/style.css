@@ -233,6 +233,28 @@ html {
   max-width: var(--ky-page-max-width-desktop);
 }
 
+/* 子页自带顶栏与 16px 内容边距，去掉外壳双重 padding，并取消 460px 限宽 */
+.app-shell:not(.app-shell--desktop) .app-content:has(.ky-sub-page) {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+  max-width: none;
+}
+
+.app-shell:not(.app-shell--desktop) .app-route-view:has(.ky-sub-page),
+.app-shell:not(.app-shell--desktop) .app-route-view:has(.ky-sub-page) > * {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell--desktop .app-content .ky-sub-page {
+  max-width: var(--ky-page-max-width-desktop);
+  margin: 0;
+}
+
 .app-route-view {
   display: block;
   width: 100%;

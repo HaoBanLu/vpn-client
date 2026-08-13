@@ -1,6 +1,5 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="在线客服" subtitle="问题反馈与人工协助" />
+  <KySubPage title="在线客服">
 
     <KySpin :spinning="loading" overlay>
       <KyStack gap="md">
@@ -57,21 +56,20 @@
         </template>
       </KyStack>
     </KySpin>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from '@/lib/ui/message'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
 import KyStack from '@/components/KyStack.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyAlert, KyButton, KyEmpty, KySpin } from '@/components/ky'
 import { clientApi, type SupportChannelItem, type SupportConfigData } from '@/api/client'
 import { mapApiError } from '@/lib/api-error'
-import { openExternalUrl } from '@/lib/open-url'
+import { openSupportChannelUrl } from '@/lib/open-url'
 
 const router = useRouter()
 const loading = ref(false)
@@ -126,13 +124,17 @@ async function load() {
   }
 }
 
-function openChannel(item: SupportChannelItem) {
+async function openChannel(item: SupportChannelItem) {
   const url = item.url?.trim()
   if (!url) {
     message.warning('该渠道暂未配置有效链接')
     return
   }
-  openExternalUrl(url)
+  try {
+    await openSupportChannelUrl(url, item.type)
+  } catch {
+    message.error('无法打开客服链接，请稍后重试')
+  }
 }
 
 function goTickets() {

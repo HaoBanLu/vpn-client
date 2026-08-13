@@ -10,15 +10,21 @@ struct NodesView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.isLoading && viewModel.nodes.isEmpty {
+                if viewModel.isLoading && viewModel.nodes.isEmpty && viewModel.lastError == nil {
                     ProgressView("加载节点…")
+                } else if let err = viewModel.lastError, viewModel.nodes.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "wifi.exclamationmark").font(.largeTitle).foregroundStyle(.secondary)
+                        Text("网络异常")
+                        Text(err).font(.footnote).foregroundStyle(.secondary)
+                        Button("重试") {
+                            Task { await viewModel.load(token: auth.token) }
+                        }
+                    }
                 } else if viewModel.filteredNodes.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "server.rack").font(.largeTitle).foregroundStyle(.secondary)
                         Text("暂无节点")
-                        if let err = viewModel.lastError {
-                            Text(err).font(.footnote).foregroundStyle(.secondary)
-                        }
                     }
                 } else {
                     List {

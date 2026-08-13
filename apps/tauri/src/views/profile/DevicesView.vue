@@ -1,6 +1,8 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="我的设备" :subtitle="`已用 ${quotaUsed} / ${quotaMax} 台`" back />
+  <KySubPage title="我的设备">
+    <template #extra>
+      <span class="quota-extra">{{ quotaUsed }}/{{ quotaMax }}</span>
+    </template>
     <KySpin :spinning="loading" overlay>
       <KyEmpty v-if="!loading && !sessions.length" description="暂无登录设备" />
       <KyCard v-for="item in sessions" :key="item.session_id" flat class="device-card">
@@ -34,16 +36,15 @@
         </div>
       </KyCard>
     </KySpin>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { message } from '@/lib/ui/message'
 import { clientApi, type MemberSessionItem } from '@/api/client'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { KyButton, KyEmpty, KySpin } from '@/components/ky'
 
@@ -93,9 +94,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.device-card {
-  margin-bottom: 12px;
-}
 .device-row {
   display: flex;
   justify-content: space-between;
@@ -116,7 +114,13 @@ onMounted(load)
 .device-node,
 .device-time {
   margin: 0 0 4px;
+  font-size: 12px;
   color: var(--ky-text-muted);
+}
+
+.quota-extra {
   font-size: 13px;
+  color: var(--ky-text-muted);
+  white-space: nowrap;
 }
 </style>

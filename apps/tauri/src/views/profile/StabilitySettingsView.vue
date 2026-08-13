@@ -1,44 +1,31 @@
 <template>
-  <KyPage sub>
-    <PageHeader :title="pageTitle" :subtitle="pageSubtitle" />
-
-    <KyCard title="连接方式">
-      <template v-if="isAndroid">
-        <p class="mode-desc">
-          当前使用系统 VPN。连接后流量默认走隧道。
-        </p>
-        <p class="mode-desc muted">
-          指定应用不走加速请到「应用直连」。断网保护请用下方系统 Always-on。
-        </p>
-      </template>
-      <template v-else>
-        <p class="mode-desc">
-          当前使用 <strong>系统代理</strong>（本地混合端口 + 系统 HTTP/HTTPS），无需管理员权限。
-        </p>
-        <p class="mode-desc muted">
-          TUN 全隧道、Always-on、分应用直连为 Android 能力，桌面端不提供。
-        </p>
-      </template>
+  <KySubPage title="连接与隐私">
+    <KyCard class="status-card aligned-card" :class="`status-card--${protection.level}`">
+      <p class="status-label">保护状态</p>
+      <p class="status-title">{{ protection.title }}</p>
+      <p class="status-summary">{{ protection.summary }}</p>
     </KyCard>
 
-    <KyCard title="连接设置">
+    <KyCard title="连接设置" class="aligned-card">
       <div v-for="item in toggleItems" :key="item.key" class="setting-row">
         <div class="setting-copy">
           <p class="setting-title">{{ item.title }}</p>
           <p class="setting-desc">{{ item.desc }}</p>
         </div>
         <KySwitch
+          class="setting-switch"
           :checked="settings[item.key]"
           @update:checked="(v) => setSetting(item.key, v)"
         />
       </div>
     </KyCard>
 
-    <KyCard v-if="isAndroid" title="系统级加固">
-      <p class="probe-desc">
-        已完成 {{ stability?.hardeningDoneCount ?? 0 }} /
-        {{ stability?.hardeningTotal ?? 3 }} 项。开启后由系统保持 VPN，减少意外掉线。
-      </p>
+    <KyCard v-if="isAndroid" class="aligned-card" title="系统级加固">
+      <template #extra>
+        <span class="hardening-count">
+          已完成 {{ stability?.hardeningDoneCount ?? 0 }} / {{ stability?.hardeningTotal ?? 3 }} 项
+        </span>
+      </template>
       <button type="button" class="todo-row" @click="onOpenVpnSettings">
         <span class="todo-dot" :class="stability?.alwaysOnConfigured ? 'todo-dot--ok' : ''" />
         <span class="todo-copy">
@@ -63,13 +50,11 @@
           <span class="todo-desc">避免后台被系统杀掉导致掉线</span>
         </span>
       </button>
-      <KyButton class="hardening-btn" block @click="onOpenVpnSettings">打开系统 VPN 设置</KyButton>
-      <KyButton block type="default" @click="refreshStability">刷新状态</KyButton>
     </KyCard>
 
-    <KyCard title="隐私自检">
+    <KyCard title="隐私自检" class="aligned-card">
       <p class="probe-desc">
-        连接 VPN 后做基础检测（出口 IP / DNS / IPv6），帮助发现明显泄露风险；通过不等于绝对无泄露。
+        连接 VPN 后检测出口 IP / DNS / IPv6，帮助发现明显泄露；通过不等于绝对无泄露。
       </p>
       <KyButton
         type="primary"
@@ -103,19 +88,14 @@
         </ul>
       </div>
     </KyCard>
-
-    <KyCard flat title="说明">
-      <p class="hint">{{ footerHint }}</p>
-    </KyCard>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted, onActivated } from 'vue'
 import dayjs from 'dayjs'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyAlert, KyButton, KySwitch } from '@/components/ky'
 import {
   appendPrivacyProbeHistory,
@@ -138,6 +118,9 @@ import {
 } from '@/lib/vpn/android-stability'
 import { setTrayHideOnClose } from '@/lib/desktop/tray'
 import { detectClientPlatform } from '@/lib/app-meta'
+import { getDirectConnectPackages } from '@/lib/vpn/app-direct-connect'
+import { enabledDirectBypassRules } from '@/lib/vpn/direct-bypass-rule'
+import { resolveProtectionStatus } from '@/lib/vpn/protection-status'
 import { useConnectStore } from '@/stores/connect'
 import { storeToRefs } from 'pinia'
 import { appendDebugLog } from '@/lib/debug/app-debug-log'
@@ -146,17 +129,18 @@ import { message } from '@/lib/ui/message'
 const connect = useConnectStore()
 const { isConnected } = storeToRefs(connect)
 const isAndroid = detectClientPlatform() === 'android'
+const appDirectCount = ref(0)
+const ruleCount = ref(enabledDirectBypassRules().length)
 
-const pageTitle = '连接与隐私'
-const pageSubtitle = computed(() =>
-  isAndroid
-    ? '连接后流量默认走隧道；可调整重连与系统 Always-on'
-    : '系统代理下可调整重连、托盘与隐私自检',
-)
-const footerHint = computed(() =>
-  isAndroid
-    ? '开启断线自动重连后，切网或断网恢复将尝试重新连接。Always-on 与省电白名单请在系统设置中确认。'
-    : '关闭窗口时若已开启「关闭时最小化到托盘」，VPN 连接会保持；可在托盘图标右键断开或退出。',
+const protection = computed(() =>
+  resolveProtectionStatus({
+    connected: isConnected.value,
+    appDirectCount: appDirectCount.value,
+    ruleCount: ruleCount.value,
+    hardeningIncomplete: isAndroid
+      ? (stability.value?.hardeningDoneCount ?? 0) < (stability.value?.hardeningTotal ?? 3)
+      : false,
+  }),
 )
 
 const settings = reactive(loadDesktopSettings())
@@ -175,6 +159,20 @@ function clearHistory() {
   clearPrivacyProbeHistory()
   probeHistory.value = []
   message.success('已清空自检记录')
+}
+
+async function refreshBypassCounts() {
+  ruleCount.value = enabledDirectBypassRules().length
+  if (!isAndroid) {
+    appDirectCount.value = 0
+    return
+  }
+  try {
+    const result = await getDirectConnectPackages()
+    appDirectCount.value = result.count
+  } catch {
+    appDirectCount.value = 0
+  }
 }
 
 async function refreshStability() {
@@ -216,10 +214,12 @@ async function onOpenBatterySettings() {
 onMounted(() => {
   probeHistory.value = loadPrivacyProbeHistory()
   void refreshStability()
+  void refreshBypassCounts()
 })
 
 onActivated(() => {
   void refreshStability()
+  void refreshBypassCounts()
 })
 
 async function runPrivacyProbe() {
@@ -313,25 +313,63 @@ watch(
 </script>
 
 <style scoped>
-.mode-desc {
-  margin: 0 0 var(--ky-space-sm);
-  font-size: var(--ky-font-sm);
-  color: var(--ky-text);
-  line-height: 1.6;
+.aligned-card :deep(.ky-card__head),
+.aligned-card :deep(.ky-card__body) {
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
-.mode-desc.muted {
+.aligned-card :deep(.ky-card__body) {
+  padding-bottom: 16px;
+}
+
+.status-card {
+  /* 内边距由 aligned-card 统一 */
+}
+
+.status-label {
+  margin: 0;
+  font-size: 12px;
   color: var(--ky-text-muted);
-  font-size: var(--ky-font-xs);
+}
+
+.status-title {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ky-text);
+}
+
+.status-summary {
+  margin: 8px 0 0;
+  font-size: var(--ky-font-sm);
+  color: var(--ky-text-muted);
+  line-height: 1.5;
+}
+
+.status-card--protected {
+  border-color: rgba(46, 125, 50, 0.28);
+}
+
+.status-card--degraded {
+  border-color: rgba(245, 124, 0, 0.35);
+}
+
+.status-card--disconnected {
+  border-color: var(--ky-border-soft);
 }
 
 .setting-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--ky-space-md);
   padding: var(--ky-space-md) 0;
   border-bottom: 1px solid var(--ky-border-soft);
+}
+
+.setting-row:first-child {
+  padding-top: 0;
 }
 
 .setting-row:last-child {
@@ -358,11 +396,9 @@ watch(
   line-height: 1.5;
 }
 
-.hint {
-  margin: 0;
-  font-size: var(--ky-font-sm);
-  color: var(--ky-text-muted);
-  line-height: 1.6;
+.setting-switch {
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .probe-desc {
@@ -386,14 +422,27 @@ watch(
   -webkit-tap-highlight-color: transparent;
 }
 
+.todo-row:first-of-type {
+  padding-top: 0;
+}
+
 .todo-row:last-of-type {
   border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.hardening-count {
+  font-size: var(--ky-font-xs);
+  color: var(--ky-text-muted);
+  white-space: nowrap;
+  line-height: 1.4;
+  padding-top: 3px;
 }
 
 .todo-dot {
   width: 10px;
   height: 10px;
-  margin-top: 5px;
+  margin-top: 4px;
   border-radius: 50%;
   flex-shrink: 0;
   background: var(--ky-border, #d9d9d9);
@@ -420,10 +469,6 @@ watch(
   font-size: var(--ky-font-xs);
   color: var(--ky-text-muted);
   line-height: 1.45;
-}
-
-.hardening-btn {
-  margin: var(--ky-space-md) 0 var(--ky-space-sm);
 }
 
 .probe-history {

@@ -5,6 +5,7 @@ struct ConnectView: View {
     @StateObject private var viewModel = ConnectViewModel()
     @ObservedObject private var vpn = VPNController.shared
     @ObservedObject private var routeStore = ConnectRouteStore.shared
+    @ObservedObject private var account = AccountStore.shared
 
     var body: some View {
         NavigationStack {
@@ -27,6 +28,23 @@ struct ConnectView: View {
                     }
                 }
 
+                if let error = account.lastError, account.subscription == nil {
+                    Section("套餐") {
+                        Text("网络异常").foregroundStyle(.red)
+                        Text(error).font(.footnote).foregroundStyle(.secondary)
+                        Button("重试") {
+                            Task { await viewModel.onAppear() }
+                        }
+                    }
+                } else if account.didFetch && !account.hasActiveSubscription {
+                    Section("套餐") {
+                        Text("暂无有效套餐")
+                        Text("购买套餐后即可使用加速")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section("选路") {
                     Picker("场景", selection: Binding(
                         get: { viewModel.connectionScenario },
@@ -39,7 +57,14 @@ struct ConnectView: View {
                     .disabled(vpn.isConnected || viewModel.isBusy)
 
                     if viewModel.regions.isEmpty {
-                        Text("暂无可用地区").foregroundStyle(.secondary)
+                        if viewModel.lastError != nil {
+                            Text("地区加载失败").foregroundStyle(.secondary)
+                            Button("重试") {
+                                Task { await viewModel.refreshRegions() }
+                            }
+                        } else if account.lastError == nil {
+                            Text("暂无可用地区").foregroundStyle(.secondary)
+                        }
                     } else {
                         Picker("地区", selection: Binding(
                             get: { viewModel.selectedRegion ?? "" },
@@ -66,11 +91,15 @@ struct ConnectView: View {
                         Button { Task { await viewModel.connect() } } label: {
                             if viewModel.isBusy {
                                 HStack { ProgressView(); Text("连接中…") }
+                            } else if account.lastError != nil && account.subscription == nil {
+                                Text("重试")
+                            } else if account.didFetch && !account.hasActiveSubscription {
+                                Text("购买套餐")
                             } else {
                                 Text("连接 VPN")
                             }
                         }
-                        .disabled(viewModel.isBusy || viewModel.selectedRegion == nil)
+                        .disabled(viewModel.isBusy || (viewModel.selectedRegion == nil && account.lastError == nil))
                     }
                 }
 

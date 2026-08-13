@@ -34,6 +34,7 @@ export function resolveConnectHeroCopy(input: {
   selectedNode?: string | null
   tunnelLatencyMs?: number | null
   entryLatencyMs?: number | null
+  emptyReason?: 'no_subscription' | 'load_error'
 }): ConnectHeroCopy {
   const {
     connectionState,
@@ -42,7 +43,32 @@ export function resolveConnectHeroCopy(input: {
     selectedNode,
     tunnelLatencyMs,
     entryLatencyMs,
+    emptyReason,
   } = input
+
+  if (emptyReason === 'load_error') {
+    return {
+      title: '加载失败',
+      subtitle: '请检查网络后重试',
+      buttonLabel: '重试',
+      variant: 'default',
+      titleTone: 'error',
+      connected: false,
+      connecting: false,
+    }
+  }
+
+  if (emptyReason === 'no_subscription') {
+    return {
+      title: '未连接',
+      subtitle: '购买套餐后即可使用加速',
+      buttonLabel: '购买套餐',
+      variant: 'default',
+      titleTone: 'default',
+      connected: false,
+      connecting: false,
+    }
+  }
 
   const nodeLabel = displayNodeLabel(selectedNode) || '未选择节点'
   const latencyHint = formatLatencyHint(tunnelLatencyMs, entryLatencyMs)

@@ -1,7 +1,6 @@
 <template>
-  <KyPage sub>
+  <KySubPage title="购买记录">
     <KyPullRefresh :on-refresh="load">
-      <PageHeader title="购买记录" subtitle="套餐购买、续费与支付状态" />
       <KySpin :spinning="loading" overlay>
         <KyEmpty v-if="!loading && orders.length === 0" description="暂无购买记录">
           <KyButton type="primary" size="large" @click="router.push({ name: 'Packages' })">去购买套餐</KyButton>
@@ -44,17 +43,16 @@
         </div>
       </template>
     </KyModal>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyPullRefresh from '@/components/KyPullRefresh.vue'
 import KyDetailRow from '@/components/KyDetailRow.vue'
 import KyOrderCard from '@/components/KyOrderCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyButton, KyEmpty, KyModal, KySpin, KyTag } from '@/components/ky'
 import { clientApi, type OrderItem } from '@/api/client'
 import {

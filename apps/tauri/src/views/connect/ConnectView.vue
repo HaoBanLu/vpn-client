@@ -5,19 +5,27 @@
     stack-gap="sm"
     :desktop-larger="false"
     :on-refresh="onRefresh"
-    :loading="store.loading && !store.subscription"
+    :loading="accountView === 'loading'"
     :spin-overlay="false"
     :refresh-disabled="store.isConnecting || store.isSwitching"
   >
-    <template v-if="!store.subscription">
+    <template v-if="accountView === 'error'">
       <KyCard>
-        <p class="empty-main">{{ store.actionHint || '暂无有效套餐' }}</p>
+        <p class="empty-main">网络异常</p>
+        <p class="empty-sub">{{ account.loadError || '请检查网络后重试' }}</p>
+      </KyCard>
+      <ConnectHero :copy="errorHeroCopy" @click="onRefresh" />
+    </template>
+
+    <template v-else-if="accountView === 'empty'">
+      <KyCard>
+        <p class="empty-main">暂无有效套餐</p>
         <p class="empty-sub">购买套餐后即可使用跨云加速服务</p>
       </KyCard>
       <ConnectHero :copy="noSubHeroCopy" @click="goPackages" />
     </template>
 
-    <template v-else>
+    <template v-else-if="accountView === 'ready'">
       <div v-if="renewalHint" class="renewal-hint">{{ renewalHint }}</div>
 
       <ConnectHero :copy="heroCopy" @click="onToggle" />
@@ -27,8 +35,8 @@
         :download-bytes="store.stats.downloadBytes"
         :upload-bytes="store.stats.uploadBytes"
         :duration-ms="store.stats.durationMs"
-        :download-bps="downloadBps"
-        :upload-bps="uploadBps"
+        :download-bps="store.stats.downloadBps"
+        :upload-bps="store.stats.uploadBps"
         :remaining-gb="store.usage?.remaining ?? null"
         :expires-at="store.subscription?.expires_at"
         :selected-node="store.selectedNode"
@@ -70,7 +78,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'ConnectView' })
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import KyTabPage from '@/components/KyTabPage.vue'
 import KyCard from '@/components/KyCard.vue'
@@ -79,27 +87,35 @@ import ConnectQuickStatus from '@/components/ConnectQuickStatus.vue'
 import ConnectSessionCard from '@/components/ConnectSessionCard.vue'
 import { KyButton } from '@/components/ky'
 import { resolveConnectHeroCopy } from '@/lib/connect-hero'
+import { resolveAccountViewState } from '@/lib/account-view-state'
 import { getEntryLatencyMs } from '@/lib/vpn/entry-latency-cache'
 import { useConnectStore } from '@/stores/connect'
+import { useAccountStore } from '@/stores/account'
 import { probeHint } from '@/lib/vpn/probe'
-import {
-  RATE_WARMUP_MS,
-  estimateDisplayBps,
-  smoothTrafficRateEma,
-} from '@/lib/vpn/session-throughput'
 import { buildRenewalHint } from '@/lib/subscription'
 
 const router = useRouter()
 const store = useConnectStore()
+const account = useAccountStore()
 
 const NODE_REQUIRED_HINT = '请先选择要连接的节点'
+
+const accountView = computed(() =>
+  resolveAccountViewState({
+    loading: account.loading || store.loading,
+    fetched: account.fetched,
+    loadError: account.loadError,
+    hasSubscription: !!account.subscription,
+  }),
+)
 
 const renewalHint = computed(() =>
   store.subscription ? buildRenewalHint(store.subscription.expires_at) : null,
 )
 
-/** 仅展示真正的连接失败；已连接后质量探测失败不挡「已保护」 */
+/** 仅展示真正的连接失败；拉取失败走三态，不挡「已保护」 */
 const showConnectError = computed(() => {
+  if (accountView.value !== 'ready') return false
   if (!store.error) return false
   return !store.error.includes(NODE_REQUIRED_HINT)
 })
@@ -117,13 +133,19 @@ const heroCopy = computed(() =>
   }),
 )
 
-const noSubHeroCopy = computed(() => ({
-  ...resolveConnectHeroCopy({
+const noSubHeroCopy = computed(() =>
+  resolveConnectHeroCopy({
     connectionState: 'disconnected',
-    selectedNode: null,
+    emptyReason: 'no_subscription',
   }),
-  buttonLabel: '购买套餐',
-}))
+)
+
+const errorHeroCopy = computed(() =>
+  resolveConnectHeroCopy({
+    connectionState: 'disconnected',
+    emptyReason: 'load_error',
+  }),
+)
 
 const displayHint = computed(() => {
   if (store.isConnected || store.isConnecting || store.connectPending || store.isSwitching) {
@@ -136,76 +158,6 @@ const displayHint = computed(() => {
   if (/正在连接|正在建立|正在切换|正在恢复|连接中/.test(hint)) return null
   return hint
 })
-
-const downloadBps = ref(0)
-const uploadBps = ref(0)
-let prevDownloadBytes = 0
-let prevUploadBytes = 0
-let prevSampleAt = 0
-let sessionStartedAt = 0
-
-watch(
-  () => store.isConnected,
-  (connected) => {
-    if (connected) {
-      sessionStartedAt = Date.now()
-      prevDownloadBytes = 0
-      prevUploadBytes = 0
-      prevSampleAt = 0
-      downloadBps.value = 0
-      uploadBps.value = 0
-    } else {
-      sessionStartedAt = 0
-      downloadBps.value = 0
-      uploadBps.value = 0
-    }
-  },
-)
-
-watch(
-  () => store.stats,
-  (stats) => {
-    if (!store.isConnected || sessionStartedAt <= 0) {
-      downloadBps.value = 0
-      uploadBps.value = 0
-      return
-    }
-    const now = Date.now()
-    const sessionElapsedMs = now - sessionStartedAt
-
-    // 对齐 Android VpnSessionStatsTracker：用会话累计字节差算速率，不用 /traffic 瞬时值
-    //（短间隔或被别处消费时 TrafficNow 易放大成虚高 Mbps）
-    if (prevSampleAt > 0) {
-      const elapsed = now - prevSampleAt
-      const downInstant = estimateDisplayBps({
-        deltaBytes: Math.max(0, stats.downloadBytes - prevDownloadBytes),
-        deltaMs: elapsed,
-        sessionElapsedMs,
-      })
-      const upInstant = estimateDisplayBps({
-        deltaBytes: Math.max(0, stats.uploadBytes - prevUploadBytes),
-        deltaMs: elapsed,
-        sessionElapsedMs,
-      })
-      if (downInstant != null) {
-        downloadBps.value = smoothTrafficRateEma(downloadBps.value, downInstant)
-      }
-      if (upInstant != null) {
-        uploadBps.value = smoothTrafficRateEma(uploadBps.value, upInstant)
-      }
-    }
-    prevDownloadBytes = stats.downloadBytes
-    prevUploadBytes = stats.uploadBytes
-    prevSampleAt = now
-
-    // warmup 内强制展示 0（与 Android capDisplayRate 一致）
-    if (sessionElapsedMs < RATE_WARMUP_MS) {
-      downloadBps.value = 0
-      uploadBps.value = 0
-    }
-  },
-  { deep: true },
-)
 
 function goPackages() {
   router.push({ name: 'Packages' })
@@ -238,7 +190,7 @@ async function onToggle() {
 
 onMounted(async () => {
   store.clearNodeRequiredFailure()
-  if (!store.subscription) {
+  if (accountView.value === 'loading') {
     await store.refresh()
   }
 })

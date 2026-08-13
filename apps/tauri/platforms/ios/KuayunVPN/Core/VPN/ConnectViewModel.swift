@@ -83,6 +83,10 @@ final class ConnectViewModel: ObservableObject {
         }
         guard !isBusy else { return }
         await account.refresh(token: token)
+        if account.lastError != nil && account.subscription == nil {
+            lastError = account.lastError ?? "网络异常，请稍后重试"
+            return
+        }
         guard account.hasActiveSubscription else {
             lastError = "暂无有效套餐，请先购买"
             return

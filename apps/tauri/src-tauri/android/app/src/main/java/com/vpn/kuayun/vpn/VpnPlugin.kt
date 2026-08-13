@@ -107,7 +107,8 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
             return
         }
         val snap = VpnSessionStatsTracker.snapshot()
-        val rates = VpnSessionStatsTracker.sampleRates(snap)
+        // 只读上次速率，采样由通知循环独占，避免与 getStats 互偷间隔
+        val rates = VpnSessionStatsTracker.peekRates()
         ret.put("uploadBytes", snap.uploadBytes)
         ret.put("downloadBytes", snap.downloadBytes)
         ret.put("durationMs", snap.durationMs)
@@ -166,9 +167,9 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
                 withContext(Dispatchers.IO) {
                     val apps = InstalledAppCatalog(activity.applicationContext).listInstalledApps()
                     val selected = AppDirectConnectStore.userSelectedPackages(activity.applicationContext)
-                    Triple(apps, selected, apps.size)
+                    Triple(apps, selected, Unit)
                 }
-            }.onSuccess { (apps, selected, count) ->
+            }.onSuccess { (apps, selected, _) ->
                 val appsArr = JSONArray()
                 apps.forEach { app ->
                     val item = JSObject()
@@ -181,7 +182,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
                 val ret = JSObject()
                 ret.put("apps", appsArr)
                 ret.put("selectedPackages", selectedArr)
-                ret.put("needsPermission", InstalledAppsPermission.needsUserGrant(activity, count))
+                ret.put("needsPermission", InstalledAppsPermission.needsUserGrant(activity))
                 invoke.resolve(ret)
             }.onFailure { e ->
                 invoke.reject(e.message ?: "加载应用列表失败")
@@ -286,6 +287,29 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     fun openBatteryOptimizationSettings(invoke: Invoke) {
         BatteryOptimizationGuide.openBatteryOptimizationSettings(activity)
         invoke.resolveObject(true)
+    }
+
+    @Command
+    fun openExternalUrl(invoke: Invoke) {
+        val url = invoke.getArgs().optString("url", "").trim()
+        if (url.isEmpty()) {
+            invoke.reject("链接无效")
+            return
+        }
+        val uri = android.net.Uri.parse(url)
+        if (uri.scheme.isNullOrBlank()) {
+            invoke.reject("链接无效")
+            return
+        }
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri).apply {
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching {
+            activity.startActivity(intent)
+            invoke.resolveObject(true)
+        }.onFailure { err ->
+            invoke.reject(err.message ?: "无法打开链接")
+        }
     }
 
     private fun emitStatus(status: VpnConnectionStatus) {

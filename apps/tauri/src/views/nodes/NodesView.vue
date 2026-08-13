@@ -4,7 +4,7 @@
     subtitle="点「连接」上网；需要延迟时再批量测速"
     page-class="nodes-page"
     :on-refresh="load"
-    :loading="loading && nodes.length === 0"
+    :loading="loading && nodes.length === 0 && !loadError"
   >
     <template #sticky>
       <div class="nodes-toolbar">
@@ -23,12 +23,17 @@
       </div>
     </template>
 
-    <KyAlert v-if="loadError" type="error" :message="loadError" />
+    <div v-if="loadError" class="nodes-error">
+      <KyAlert type="error" :message="loadError" />
+      <KyButton type="primary" block @click="load">重试</KyButton>
+    </div>
 
     <KyEmpty
-      v-if="!loading && connectableNodes.length === 0 && unsupportedNodes.length === 0"
+      v-if="!loading && !loadError && connectableNodes.length === 0 && unsupportedNodes.length === 0"
       description="当前地区暂无在线节点"
-    />
+    >
+      <KyButton type="primary" @click="load">重新加载</KyButton>
+    </KyEmpty>
 
     <div v-else-if="sortedConnectableNodes.length > 0" class="nodes-list-card">
       <template v-for="(item, index) in sortedConnectableNodes" :key="item.id">
@@ -90,9 +95,11 @@ import {
 import { findFastestNodeId, sortNodesByLatency } from '@/lib/vpn/node-list-display'
 import { saveEntryLatenciesByNodeName } from '@/lib/vpn/entry-latency-cache'
 import { useConnectStore } from '@/stores/connect'
+import { useAccountStore } from '@/stores/account'
 
 const router = useRouter()
 const connect = useConnectStore()
+const account = useAccountStore()
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 const nodes = ref<NodeItem[]>([])
@@ -143,10 +150,11 @@ async function load() {
   loading.value = true
   loadError.value = null
   try {
-    if (connect.regions.length === 0 || !connect.subscription) {
+    const nodesReq = clientApi.getNodes()
+    if (connect.regions.length === 0 && !account.fetched) {
       await connect.refresh()
     }
-    nodes.value = (await clientApi.getNodes()).data.nodes
+    nodes.value = (await nodesReq).data.nodes
     await connect.syncSavedNodeWithNodes(nodes.value)
   } catch (error) {
     loadError.value = mapApiError(error, '节点加载失败')
@@ -220,6 +228,12 @@ onMounted(load)
 
 <style scoped>
 /* 对齐 Android：chip 下 10dp 间距、按钮高 40、M3 ExtraLarge 近胶囊 */
+.nodes-error {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .nodes-toolbar {
   display: flex;
   flex-direction: column;

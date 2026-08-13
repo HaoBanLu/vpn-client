@@ -182,7 +182,7 @@ onMounted(async () => {
   await connect.initVpnBridge()
   await connect.startWatchers()
   try {
-    await Promise.all([connect.refresh(), account.refreshAccount()])
+    await connect.refresh()
   } catch {
     // 账户/连接数据加载失败不阻断主壳初始化
   }

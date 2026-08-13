@@ -1,6 +1,5 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="流量统计" subtitle="最近 30 天使用情况" />
+  <KySubPage title="流量统计">
     <KySpin :spinning="loading" overlay>
       <div v-if="summary" class="metric-row">
         <KyMetricCard label="总流量" :value="`${summary.total_mb.toFixed(1)} MB`" highlight />
@@ -18,16 +17,15 @@
         />
       </KyCard>
     </KySpin>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
 import KyMetricCard from '@/components/KyMetricCard.vue'
 import KyListItem from '@/components/KyListItem.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyEmpty, KySpin } from '@/components/ky'
 import { clientApi, type DailyTrafficItem, type TrafficSummary } from '@/api/client'
 

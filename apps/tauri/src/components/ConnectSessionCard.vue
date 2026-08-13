@@ -67,7 +67,11 @@
 import { computed, ref } from 'vue'
 import KyCard from '@/components/KyCard.vue'
 import { displayNodeLabel } from '@/lib/connect-hero'
-import { formatDisplaySpeed, formatSessionDuration } from '@/lib/vpn/session-throughput'
+import {
+  formatDisplaySpeed,
+  formatSessionBytes,
+  formatSessionDuration,
+} from '@/lib/vpn/session-throughput'
 
 const props = defineProps<{
   downloadBytes: number
@@ -102,15 +106,6 @@ const subscriptionLine = computed(() => {
 
 const downloadSpeedText = computed(() => formatDisplaySpeed(props.downloadBps))
 const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
-
-/** 对齐 Android VpnSessionStatsTracker.formatBytes（MB 一位小数） */
-function formatSessionBytes(bytes: number): string {
-  const n = Math.max(0, bytes)
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`
-  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`
-}
 </script>
 
 <style scoped>

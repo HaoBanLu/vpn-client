@@ -6,6 +6,9 @@ export const RATE_WARMUP_MS = 3_000
 /** 采样间隔过短时不算速率。 */
 export const MIN_SAMPLE_MS = 400
 
+/** 300ms 内重复采样返回缓存，避免双调用偷间隔。 */
+export const RATE_CACHE_MS = 300
+
 /** 展示速率上限 200 Mbps（bytes/s）。 */
 export const MAX_DISPLAY_BPS = 25_000_000
 
@@ -89,4 +92,106 @@ export function estimateDisplayMbps(input: ThroughputSampleInput): number {
   const bps = estimateDisplayBps(input)
   if (bps == null || bps <= 0) return 0
   return bpsToMbps(bps)
+}
+
+/** 桌面端：用累计字节差平滑出展示速率（Android 走原生 tracker，不走这里）。 */
+export function nextSmoothedDisplayBps(input: {
+  previousBps: number
+  deltaBytes: number
+  deltaMs: number
+  sessionElapsedMs: number
+}): number {
+  if (input.sessionElapsedMs < RATE_WARMUP_MS) return 0
+  if (input.deltaMs <= 0) return Math.max(0, input.previousBps)
+  const instant = estimateDisplayBps({
+    deltaBytes: input.deltaBytes,
+    deltaMs: input.deltaMs,
+    sessionElapsedMs: input.sessionElapsedMs,
+  })
+  if (instant == null) return Math.max(0, input.previousBps)
+  return smoothTrafficRateEma(input.previousBps, instant)
+}
+
+export interface RateSmootherState {
+  prevUploadBytes: number
+  prevDownloadBytes: number
+  prevSampleMs: number
+  uploadBps: number
+  downloadBps: number
+}
+
+export function emptyRateSmoother(): RateSmootherState {
+  return {
+    prevUploadBytes: 0,
+    prevDownloadBytes: 0,
+    prevSampleMs: 0,
+    uploadBps: 0,
+    downloadBps: 0,
+  }
+}
+
+/**
+ * 对齐 Android VpnSessionStatsTracker.sampleRates：warmup / 缓存 / EMA / cap。
+ * 桌面连接页用累计字节差走这里；Android 直接用原生 bps。
+ */
+export function advanceDisplayRates(
+  state: RateSmootherState,
+  sample: {
+    uploadBytes: number
+    downloadBytes: number
+    nowMs: number
+    sessionElapsedMs: number
+  },
+): RateSmootherState {
+  if (sample.sessionElapsedMs < RATE_WARMUP_MS) {
+    return {
+      prevUploadBytes: sample.uploadBytes,
+      prevDownloadBytes: sample.downloadBytes,
+      prevSampleMs: sample.nowMs,
+      uploadBps: 0,
+      downloadBps: 0,
+    }
+  }
+  if (state.prevSampleMs > 0 && sample.nowMs - state.prevSampleMs < RATE_CACHE_MS) {
+    return state
+  }
+  if (state.prevSampleMs > 0) {
+    const deltaMs = sample.nowMs - state.prevSampleMs
+    if (deltaMs < MIN_SAMPLE_MS) {
+      return state
+    }
+    return {
+      prevUploadBytes: sample.uploadBytes,
+      prevDownloadBytes: sample.downloadBytes,
+      prevSampleMs: sample.nowMs,
+      uploadBps: nextSmoothedDisplayBps({
+        previousBps: state.uploadBps,
+        deltaBytes: sample.uploadBytes - state.prevUploadBytes,
+        deltaMs,
+        sessionElapsedMs: sample.sessionElapsedMs,
+      }),
+      downloadBps: nextSmoothedDisplayBps({
+        previousBps: state.downloadBps,
+        deltaBytes: sample.downloadBytes - state.prevDownloadBytes,
+        deltaMs,
+        sessionElapsedMs: sample.sessionElapsedMs,
+      }),
+    }
+  }
+  return {
+    prevUploadBytes: sample.uploadBytes,
+    prevDownloadBytes: sample.downloadBytes,
+    prevSampleMs: sample.nowMs,
+    uploadBps: state.uploadBps,
+    downloadBps: state.downloadBps,
+  }
+}
+
+/** 对齐 Android VpnSessionStatsTracker.formatBytes */
+export function formatSessionBytes(bytes: number): string {
+  const n = Math.max(0, bytes)
+  if (n < 1024) return `${Math.round(n)} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`
 }

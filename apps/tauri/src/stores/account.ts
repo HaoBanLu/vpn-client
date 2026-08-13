@@ -4,6 +4,8 @@ import { message } from '@/lib/ui/message'
 import { clientApi, type OrderItem, type RechargeOrderItem, type SubscriptionActive, type SubscriptionUsage, type UserBrief } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { configureAppDebug } from '@/lib/debug/app-debug-log'
+import { mapApiError } from '@/lib/api-error'
+import { shareInflight } from '@/lib/account-view-state'
 
 export interface AppNotification {
   id: number
@@ -14,6 +16,8 @@ export interface AppNotification {
 
 export const useAccountStore = defineStore('account', () => {
   const loading = ref(false)
+  const fetched = ref(false)
+  const loadError = ref<string | null>(null)
   const user = ref<UserBrief | null>(null)
   const subscription = ref<SubscriptionActive | null>(null)
   const usage = ref<SubscriptionUsage | null>(null)
@@ -25,8 +29,13 @@ export const useAccountStore = defineStore('account', () => {
   let knownRechargeStatuses: Record<number, string> = {}
   let notificationTimer: ReturnType<typeof setInterval> | null = null
   let pollingInitialized = false
+  const refreshHolder: { current: Promise<void> | null } = { current: null }
 
   async function refreshAccount() {
+    return shareInflight(refreshHolder, runRefreshAccount)
+  }
+
+  async function runRefreshAccount() {
     loading.value = true
     try {
       const [me, sub, orderRes, rechargeRes, supportRes] = await Promise.all([
@@ -51,9 +60,31 @@ export const useAccountStore = defineStore('account', () => {
       auth.user = me.data
       localStorage.setItem('tauri_user', JSON.stringify(me.data))
       configureAppDebug(Boolean(me.data?.app_debug_enabled))
+      loadError.value = null
+      fetched.value = true
+    } catch (e: unknown) {
+      loadError.value = mapApiError(e, '账户信息加载失败')
+      throw e
     } finally {
       loading.value = false
     }
+  }
+
+  function reset() {
+    refreshHolder.current = null
+    stopNotificationPolling()
+    loading.value = false
+    fetched.value = false
+    loadError.value = null
+    user.value = null
+    subscription.value = null
+    usage.value = null
+    orders.value = []
+    supportEnabled.value = false
+    notifications.value = []
+    unreadNotificationCount.value = 0
+    knownRechargeStatuses = {}
+    pollingInitialized = false
   }
 
   function notificationMessage(status: string) {
@@ -134,6 +165,8 @@ export const useAccountStore = defineStore('account', () => {
 
   return {
     loading,
+    fetched,
+    loadError,
     user,
     subscription,
     usage,
@@ -142,6 +175,7 @@ export const useAccountStore = defineStore('account', () => {
     notifications,
     unreadNotificationCount,
     refreshAccount,
+    reset,
     startNotificationPolling,
     stopNotificationPolling,
     clearUnreadNotifications,

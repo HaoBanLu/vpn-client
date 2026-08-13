@@ -24,7 +24,6 @@ const CMD = {
 } as const
 
 export const VPN_STATUS_EVENT = 'vpn://status'
-export const VPN_STATS_EVENT = 'vpn://stats'
 
 function toRustConnectOptions(options: VpnConnectOptions) {
   return {
@@ -97,12 +96,6 @@ export async function watchVpnStatus(
   handler: (status: VpnConnectionStatus) => void,
 ): Promise<UnlistenFn> {
   return listen<VpnConnectionStatus>(VPN_STATUS_EVENT, (event) => {
-    handler(event.payload)
-  })
-}
-
-export async function watchVpnStats(handler: (stats: VpnSessionStats) => void): Promise<UnlistenFn> {
-  return listen<VpnSessionStats>(VPN_STATS_EVENT, (event) => {
     handler(event.payload)
   })
 }

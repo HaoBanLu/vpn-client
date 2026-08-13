@@ -3,7 +3,7 @@ import { message } from '@/lib/ui/message'
 import { Modal } from '@/lib/ui/confirm'
 import { useAuthStore } from '@/stores/auth'
 import router from '@/router'
-import { sessionInvalidationMessage, shouldInvalidateSession } from '@/lib/session-auth'
+import { sessionInvalidationMessage, shouldLogoutOnApiFailure } from '@/lib/session-auth'
 import { saveLastInvalidation, loginInvalidationTitle } from '@/lib/last-invalidation-store'
 import { ApiBusinessError, mapApiError } from '@/lib/api-error'
 import { resolveApiBaseUrl } from '@/lib/api-config'
@@ -66,8 +66,8 @@ async function showSessionInvalidated(messageText?: string, appCode?: string) {
     // web dev or store unavailable
   }
   const auth = useAuthStore()
-  void auth.logout({ silent: true, skipVpn: true })
-  router.push({ name: 'Login' })
+  await auth.logout({ silent: true, skipVpn: true })
+  await router.push({ name: 'Login' })
 
   if (sessionDialogVisible) return
   sessionDialogVisible = true
@@ -99,14 +99,19 @@ service.interceptors.response.use(
       const path = requestPath(response.config)
       const hadAuth = requestHadAuth(response.config)
       if (
-        res.code === 401 &&
-        shouldInvalidateSession(path, hadAuth, res.app_code)
+        shouldLogoutOnApiFailure({
+          businessCode: res.code,
+          path,
+          hadAuth,
+          appCode: res.app_code,
+        })
       ) {
-        showSessionInvalidated(res.message, res.app_code)
-        return Promise.reject(
-          new ApiBusinessError(
-            sessionInvalidationMessage(res.message, res.app_code),
-            res.app_code,
+        return showSessionInvalidated(res.message, res.app_code).then(() =>
+          Promise.reject(
+            new ApiBusinessError(
+              sessionInvalidationMessage(res.message, res.app_code),
+              res.app_code,
+            ),
           ),
         )
       }
@@ -135,15 +140,21 @@ service.interceptors.response.use(
     const status = error.response?.status
 
     if (
-      status === 401 &&
-      shouldInvalidateSession(path, hadAuth, res?.app_code)
+      shouldLogoutOnApiFailure({
+        httpStatus: status,
+        businessCode: res?.code,
+        path,
+        hadAuth,
+        appCode: res?.app_code,
+      })
     ) {
-      showSessionInvalidated(res?.message, res?.app_code)
-      return Promise.reject(
-        new ApiBusinessError(
-          sessionInvalidationMessage(res?.message, res?.app_code),
-          res?.app_code,
-          res?.trace_id,
+      return showSessionInvalidated(res?.message, res?.app_code).then(() =>
+        Promise.reject(
+          new ApiBusinessError(
+            sessionInvalidationMessage(res?.message, res?.app_code),
+            res?.app_code,
+            res?.trace_id,
+          ),
         ),
       )
     }

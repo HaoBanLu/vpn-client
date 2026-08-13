@@ -127,4 +127,9 @@ enum APIClientError: LocalizedError {
             return "登录已失效，请重新登录"
         }
     }
+
+    var isUnauthorized: Bool {
+        if case .unauthorized = self { return true }
+        return false
+    }
 }

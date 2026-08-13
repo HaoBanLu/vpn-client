@@ -1,6 +1,5 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="规则直连" subtitle="匹配规则的流量不经代理，将暴露真实 IP" />
+  <KySubPage title="规则直连">
 
     <KyAlert
       type="warning"
@@ -42,14 +41,13 @@
       </KyFormItem>
       <KyAlert v-if="addError" type="error" :message="addError" show-icon />
     </KyModal>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import {
   KyAlert,
   KyButton,
@@ -165,11 +163,6 @@ function onDelete(id: string) {
 </script>
 
 <style scoped>
-.empty-card,
-.rule-card {
-  margin-top: var(--ky-space-sm);
-}
-
 .rule-row {
   display: flex;
   align-items: center;

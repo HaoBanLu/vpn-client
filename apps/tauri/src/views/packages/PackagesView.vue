@@ -3,7 +3,7 @@
     title="加速套餐"
     subtitle="选择适合你的流量方案，余额支付即时生效"
     :on-refresh="load"
-    :loading="loading && packages.length === 0"
+    :loading="loading && packages.length === 0 && !loadError"
   >
     <KySubscriptionSummary
       v-if="account.subscription"
@@ -13,11 +13,16 @@
       :expires-at="account.subscription.expires_at"
     />
 
-    <KyEmpty v-if="!loading && packages.length === 0" description="暂无可用套餐，请稍后重试">
+    <div v-if="loadError" class="packages-error">
+      <KyAlert type="error" :message="loadError" />
+      <KyButton type="primary" block @click="load">重试</KyButton>
+    </div>
+
+    <KyEmpty v-if="!loading && !loadError && packages.length === 0" description="暂无可用套餐，请稍后重试">
       <KyButton type="primary" @click="load">重新加载</KyButton>
     </KyEmpty>
 
-    <div v-else class="packages-list">
+    <div v-else-if="packages.length > 0" class="packages-list">
       <KyPackageCard
         v-for="(item, index) in packages"
         :key="item.id"
@@ -47,7 +52,7 @@ import { message } from '@/lib/ui/message'
 import KyTabPage from '@/components/KyTabPage.vue'
 import KyPackageCard from '@/components/KyPackageCard.vue'
 import KySubscriptionSummary from '@/components/KySubscriptionSummary.vue'
-import { KyButton, KyEmpty } from '@/components/ky'
+import { KyAlert, KyButton, KyEmpty } from '@/components/ky'
 import type { StatusBadgeVariant } from '@/components/StatusBadge.vue'
 import { clientApi, type PackageItem } from '@/api/client'
 import { ApiBusinessError } from '@/api/request'
@@ -65,6 +70,7 @@ const router = useRouter()
 const connect = useConnectStore()
 const account = useAccountStore()
 const loading = ref(false)
+const loadError = ref<string | null>(null)
 const packages = ref<PackageItem[]>([])
 const buyingId = ref<number | null>(null)
 
@@ -91,12 +97,15 @@ function buttonState(item: PackageItem) {
 
 async function load() {
   loading.value = true
+  loadError.value = null
+  const pkgReq = clientApi.getPackages()
+  void account.refreshAccount().catch(() => {
+    /* 账户失败走 store.loadError，不挡套餐列表 */
+  })
   try {
-    const [pkgRes] = await Promise.all([clientApi.getPackages(), account.refreshAccount()])
-    packages.value = pkgRes.data.packages
+    packages.value = (await pkgReq).data.packages
   } catch (error) {
-    // 读请求已 skipGlobalToast；此处只展示一次页内/单条 toast
-    message.error(mapApiError(error, '套餐加载失败'))
+    loadError.value = mapApiError(error, '套餐加载失败')
   } finally {
     loading.value = false
   }
@@ -161,6 +170,12 @@ onMounted(load)
 </script>
 
 <style scoped>
+.packages-error {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .packages-list {
   display: flex;
   flex-direction: column;

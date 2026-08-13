@@ -1,6 +1,5 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="诊断日志" subtitle="连接事件会自动上报（需后台开启诊断）；也可手动上传" />
+  <KySubPage title="诊断日志">
 
     <div class="toolbar">
       <KyButton :loading="uploading" @click="upload">上传日志</KyButton>
@@ -36,15 +35,14 @@
       </div>
       <p class="log-message">{{ entry.message }}</p>
     </KyCard>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyAlert, KyButton, KyEmpty, KyTag } from '@/components/ky'
 import {
   clearDebugLogs,
@@ -112,11 +110,6 @@ onMounted(refresh)
 .toolbar {
   display: flex;
   gap: var(--ky-space-sm);
-  margin-bottom: var(--ky-space-md);
-}
-
-.log-card {
-  margin-bottom: var(--ky-space-sm);
 }
 
 .log-head {

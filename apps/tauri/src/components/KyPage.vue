@@ -40,7 +40,7 @@ withDefaults(
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: var(--ky-space-md) 20px;
+  padding: 16px;
   padding-bottom: var(--ky-space-2xl);
 }
 

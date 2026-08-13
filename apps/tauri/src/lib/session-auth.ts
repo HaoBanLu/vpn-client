@@ -17,6 +17,18 @@ export function shouldInvalidateSession(path: string, hadAuth: boolean, appCode?
   return hadAuth
 }
 
+/** 仅 HTTP/业务 401 才登出；超时、断网、5xx 保持登录。 */
+export function shouldLogoutOnApiFailure(input: {
+  httpStatus?: number
+  businessCode?: number
+  path: string
+  hadAuth: boolean
+  appCode?: string
+}): boolean {
+  if (input.httpStatus !== 401 && input.businessCode !== 401) return false
+  return shouldInvalidateSession(input.path, input.hadAuth, input.appCode)
+}
+
 export function sessionInvalidationMessage(message?: string, appCode?: string): string {
   const raw = message?.trim()
   if (appCode === 'LOGIN_ON_ANOTHER_DEVICE') {

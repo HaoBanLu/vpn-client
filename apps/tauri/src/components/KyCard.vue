@@ -36,6 +36,7 @@ defineProps<{
   background: var(--ky-bg-card);
   overflow: hidden;
   box-shadow: var(--ky-shadow-sm);
+  flex-shrink: 0;
 }
 
 .ky-card--highlight {

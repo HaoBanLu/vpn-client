@@ -3,7 +3,7 @@
 > **统一版本线**：自 **1.2 / code 120** 起跨端迭代  
 > **包名**：`com.vpn.kuayun`（iOS：`.app` / `.tunnel`；Group：`group.com.vpn.kuayun`）  
 > **Android 发包**：仅 **`apps/tauri`**；**`apps/android` 已存档**（[`ARCHIVE.md`](../../apps/android/ARCHIVE.md)）  
-> **最后核对**：2026-08-12
+> **最后核对**：2026-08-13（发版 `1.2.23` / code `143`）
 
 ---
 
@@ -100,7 +100,7 @@ apps/tauri/
 | 自动重连 | ✅ 完整重连 | ✅ 完整重连 | ✅ Vue + 原生 rebind | 部分 |
 | 开机自连 | ✅ | ❌ | ✅ BootReceiver | ❌ |
 | Failover | 默认关 | 默认关 | 同 Vue | ❌ |
-| 会话速率 | ✅ | ✅ | ✅ Vue | ❌ |
+| 会话速率 | ✅ | ✅ 字节差+EMA | ✅ 原生 tracker SSOT，页面直读 bps | ❌ |
 | 连接中可中断/切节点 | ✅ | ✅ | ✅ Vue | 部分 |
 | 系统托盘 / 关窗驻留 | — | ✅ | — | — |
 | FCM | ✅ | ❌ | 可选 | ❌ |
@@ -176,5 +176,5 @@ cd apps/tauri && npm run tauri:android:build:release
 
 ## 10–12. 连接页 UI / 开发说明 / 齐全度（摘要）
 
-桌面连接页 Hero、PC 壳、`Ky*` 布局、未选节点跳转、会话速率护栏、协议门控、默认关 failover、断网完整重连等 **已与原生 Android 成熟化对齐**（详见历史核对 2026-07～08）。  
+桌面连接页 Hero、PC 壳、`Ky*` 布局、未选节点跳转、会话速率（Android 通知与连接页共用 tracker）、协议门控、默认关 failover、断网完整重连等 **已与原生 Android 成熟化对齐**（详见历史核对 2026-07～08）。  
 发版硬缺口仍是：**桌面窗内系统代理 E2E**、**Tauri Android 正式签名与专属设置页**、**iOS xcframework**。

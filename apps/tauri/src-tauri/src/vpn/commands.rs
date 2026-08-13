@@ -728,3 +728,29 @@ pub async fn vpn_open_battery_optimization_settings<R: Runtime>(
         Err("仅 Android 支持".into())
     }
 }
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenExternalUrlOptions {
+    pub url: String,
+}
+
+#[tauri::command]
+pub async fn vpn_open_external_url<R: Runtime>(
+    app: AppHandle<R>,
+    options: OpenExternalUrlOptions,
+) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<bool>("openExternalUrl", &options)
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, options);
+        Err("仅 Android 支持外部打开".into())
+    }
+}

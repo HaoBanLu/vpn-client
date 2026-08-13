@@ -1,6 +1,5 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="修改密码" subtitle="更新账户登录密码" />
+  <KySubPage title="修改密码">
     <KyCard>
       <KyForm @finish="onSubmit">
         <KyFormItem label="当前密码">
@@ -17,16 +16,15 @@
         </KyButton>
       </KyForm>
     </KyCard>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from '@/lib/ui/message'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyButton, KyForm, KyFormItem, KyInput } from '@/components/ky'
 import { clientApi } from '@/api/client'
 

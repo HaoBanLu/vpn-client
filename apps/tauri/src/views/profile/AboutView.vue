@@ -1,6 +1,5 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="关于跨云" subtitle="专业、安全、稳定的网络加速" />
+  <KySubPage title="关于跨云">
 
     <KyCard>
       <p class="version">版本 {{ APP_VERSION_NAME }}</p>
@@ -26,14 +25,13 @@
         {{ updateResult.forceUpdate ? '立即更新' : '下载更新' }}
       </KyButton>
     </KyCard>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyAlert, KyButton } from '@/components/ky'
 import { APP_VERSION_CODE, APP_VERSION_NAME, detectClientPlatform } from '@/lib/app-meta'
 import { checkAppUpdate, installAppUpdate, type AppUpdateResult } from '@/lib/desktop/updater'

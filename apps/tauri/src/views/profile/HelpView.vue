@@ -1,7 +1,6 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="订阅导出" subtitle="若 App 无法连接，可导出 Clash 订阅到第三方客户端" />
-
+  <KySubPage title="订阅导出">
+    <p class="help-lead">若 App 无法连接，可导出 Clash 订阅到第三方客户端。</p>
     <KyButton type="primary" block size="large" :loading="loading" @click="loadSubscriptionUrl">
       生成 Clash 订阅链接
     </KyButton>
@@ -14,7 +13,6 @@
       v-if="subscriptionUrl"
       block
       size="large"
-      class="copy-btn"
       @click="copySubscriptionUrl"
     >
       复制订阅链接
@@ -22,14 +20,13 @@
 
     <KyAlert v-if="messageText" type="success" :message="messageText" show-icon />
     <KyAlert v-if="errorText" type="error" :message="errorText" show-icon />
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyAlert, KyButton } from '@/components/ky'
 import { resolveApiBaseUrl } from '@/lib/api-config'
 import { clientApi } from '@/api/client'
@@ -71,6 +68,13 @@ async function copySubscriptionUrl() {
 </script>
 
 <style scoped>
+.help-lead {
+  margin: 0;
+  font-size: var(--ky-font-sm);
+  color: var(--ky-text-muted);
+  line-height: 1.5;
+}
+
 .subscription-url {
   margin: 0;
   color: var(--ky-text);
@@ -80,9 +84,5 @@ async function copySubscriptionUrl() {
   line-height: 1.5;
   -webkit-user-select: all;
   user-select: all;
-}
-
-.copy-btn {
-  margin-top: var(--ky-space-sm);
 }
 </style>

@@ -1,10 +1,8 @@
 <template>
-  <KyPage sub>
-    <PageHeader :title="'USDT 充值'" :subtitle="pageSubtitle">
-      <template #extra>
-        <KyButton type="link" @click="router.push({ name: 'RechargeOrders' })">充值记录</KyButton>
-      </template>
-    </PageHeader>
+  <KySubPage title="USDT 充值">
+    <template #extra>
+      <KyButton type="link" @click="router.push({ name: 'RechargeOrders' })">充值记录</KyButton>
+    </template>
 
     <KySpin :spinning="loading && !usdtConfig" overlay>
       <div class="balance-hero">
@@ -210,7 +208,7 @@
         </div>
       </template>
     </KySpin>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
@@ -218,8 +216,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import { message } from '@/lib/ui/message'
-import KyPage from '@/components/KyPage.vue'
-import PageHeader from '@/components/PageHeader.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import {
   KyAlert,
   KyButton,
@@ -261,8 +258,6 @@ const isAutoMode = computed(() => {
 })
 
 const scanIntervalSeconds = computed(() => usdtConfig.value?.scan_interval_seconds || 60)
-
-const pageSubtitle = computed(() => (isAutoMode.value ? 'TRC20 转账，自动确认到账' : 'TRC20 转账，人工审核入账'))
 
 const pollIntervalMs = computed(() => Math.max(5000, Math.floor(scanIntervalSeconds.value / 2) * 1000))
 

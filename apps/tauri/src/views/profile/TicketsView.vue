@@ -1,10 +1,8 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="我的工单" subtitle="问题反馈与客服回复">
-      <template #extra>
-        <KyButton type="link" @click="showCreate = !showCreate">{{ showCreate ? '取消' : '新建' }}</KyButton>
-      </template>
-    </PageHeader>
+  <KySubPage title="我的工单">
+    <template #extra>
+      <KyButton type="link" @click="showCreate = !showCreate">{{ showCreate ? '取消' : '新建' }}</KyButton>
+    </template>
 
     <KyStack gap="md">
       <KyCard v-if="showCreate" title="新建工单">
@@ -66,17 +64,16 @@
         </KyForm>
       </template>
     </KyDrawer>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from '@/lib/ui/message'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
 import KyStack from '@/components/KyStack.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import {
   KyButton,

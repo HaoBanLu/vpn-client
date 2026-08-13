@@ -21,9 +21,9 @@ export interface VpnSessionStats {
   uploadBytes: number
   downloadBytes: number
   durationMs: number
-  /** Mihomo 瞬时上传 bytes/s（可选） */
+  /** 展示用上传 bytes/s（Android 为 tracker EMA，可选） */
   uploadBps?: number
-  /** Mihomo 瞬时下载 bytes/s（可选） */
+  /** 展示用下载 bytes/s（Android 为 tracker EMA，可选） */
   downloadBps?: number
 }
 

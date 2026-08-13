@@ -1,6 +1,8 @@
 <template>
-  <KyPage sub>
-    <PageHeader title="应用直连" subtitle="指定应用不走 VPN，其余流量默认加速" />
+  <KySubPage title="应用直连">
+    <template v-if="isAndroid" #extra>
+      <KyButton type="link" :loading="refreshing" @click="loadApps">刷新</KyButton>
+    </template>
 
     <KyAlert
       type="warning"
@@ -30,7 +32,7 @@
         </p>
         <ul class="info-list">
           <li>未勾选的应用仍走 VPN 加速</li>
-          <li>系统应用与本应用默认保持代理，避免误伤</li>
+          <li>系统应用也会出现在列表里；本应用始终走加速</li>
         </ul>
         <KyButton
           v-if="needsPermission"
@@ -75,15 +77,14 @@
         </KyCard>
       </template>
     </template>
-  </KyPage>
+  </KySubPage>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import KyPage from '@/components/KyPage.vue'
+import KySubPage from '@/components/KySubPage.vue'
 import KyCard from '@/components/KyCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { KyAlert, KyButton, KyEmpty, KyInput, KySwitch } from '@/components/ky'
 import { detectClientPlatform } from '@/lib/app-meta'
 import {
@@ -102,6 +103,7 @@ const connect = useConnectStore()
 const isAndroid = detectClientPlatform() === 'android'
 
 const loading = ref(false)
+const refreshing = ref(false)
 const loadError = ref<string | null>(null)
 const query = ref('')
 const apps = ref<InstalledAppInfo[]>([])
@@ -118,7 +120,8 @@ function goBypass() {
 
 async function loadApps() {
   if (!isAndroid) return
-  loading.value = true
+  if (apps.value.length === 0) loading.value = true
+  else refreshing.value = true
   loadError.value = null
   try {
     const result = await listInstalledApps()
@@ -129,17 +132,23 @@ async function loadApps() {
     loadError.value = e instanceof Error ? e.message : '加载应用列表失败'
   } finally {
     loading.value = false
+    refreshing.value = false
+  }
+}
+
+async function waitAndReloadAfterGrant() {
+  for (let i = 0; i < 20; i += 1) {
+    await new Promise((r) => setTimeout(r, 500))
+    await loadApps()
+    if (!needsPermission.value) return
   }
 }
 
 async function onRequestPermission() {
   try {
     await requestInstalledAppsPermission()
-    message.info('请在系统弹窗中允许后返回')
-    // 给用户一点时间点授权
-    window.setTimeout(() => {
-      void loadApps()
-    }, 800)
+    message.info('请在系统弹窗中允许后返回本页')
+    void waitAndReloadAfterGrant()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '无法请求权限')
   }
@@ -181,14 +190,23 @@ function onToggle(packageName: string, enabled: boolean) {
 
 onMounted(() => {
   void loadApps()
+  document.addEventListener('visibilitychange', onVisible)
 })
+
+onActivated(() => {
+  void loadApps()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisible)
+})
+
+function onVisible() {
+  if (document.visibilityState === 'visible') void loadApps()
+}
 </script>
 
 <style scoped>
-.info-card {
-  margin-top: 12px;
-}
-
 .info-title {
   margin: 0;
   font-size: var(--ky-font-md);
@@ -215,12 +233,7 @@ onMounted(() => {
   margin-top: 12px;
 }
 
-.search-card {
-  margin-top: 12px;
-}
-
 .list-card {
-  margin-top: 12px;
   padding: 4px 0;
 }
 
@@ -262,7 +275,6 @@ onMounted(() => {
 }
 
 .empty-card {
-  margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;

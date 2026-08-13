@@ -20,10 +20,9 @@ object InstalledAppsPermission {
             PackageManager.PERMISSION_GRANTED
     }
 
-    /** 列表明显过短时提示用户授权（AOSP 有 QUERY_ALL_PACKAGES 通常足够）。 */
-    fun needsUserGrant(context: Context, listedCount: Int): Boolean {
+    /** 声明了 OEM 权限且未授予时始终提示，避免 Launcher 可见数 ≥8 就藏掉授权入口。 */
+    fun needsUserGrant(context: Context): Boolean {
         if (!isPermissionDeclared(context)) return false
-        if (isGranted(context)) return false
-        return listedCount < 8
+        return !isGranted(context)
     }
 }

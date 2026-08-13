@@ -118,6 +118,7 @@ pub fn run() {
             vpn::vpn_set_boot_auto_connect,
             vpn::vpn_open_vpn_settings,
             vpn::vpn_open_battery_optimization_settings,
+            vpn::vpn_open_external_url,
             tray::tray_update_tooltip,
             tray::tray_set_hide_on_close,
             privacy::privacy_detect_local_ipv6,

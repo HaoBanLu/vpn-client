@@ -412,6 +412,7 @@ class VpnTunnelService : VpnService() {
             return AppStatusNotification.showConnecting(this, currentNodeName)
         }
         val stats = VpnSessionStatsTracker.snapshot()
+        // 通知循环是唯一采样点；getStats 只 peek，避免 1s 交错偷间隔
         val rates = VpnSessionStatsTracker.sampleRates(stats)
         return AppStatusNotification.showConnected(this, currentNodeName, stats, rates)
     }

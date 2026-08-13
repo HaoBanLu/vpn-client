@@ -12,6 +12,7 @@ export const PROFILE_ROUTE_NAMES = new Set([
   'Help',
   'About',
   'StabilitySettings',
+  'AppDirectConnect',
   'DirectBypassRules',
   'DebugLog',
 ])
