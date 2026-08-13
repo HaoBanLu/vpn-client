@@ -26,10 +26,15 @@ fn parse_android_plugin_status(value: serde_json::Value) -> Result<VpnConnection
         Some(serde_json::Value::String(s)) if !s.is_empty() => Some(s.clone()),
         _ => None,
     };
+    let system_vpn_active = value
+        .get("systemVpnActive")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     Ok(VpnConnectionStatus {
         state,
         error,
         node_name: None,
+        system_vpn_active,
     })
 }
 
@@ -139,6 +144,7 @@ pub async fn vpn_connect<R: Runtime>(
             state: VpnConnectionState::Connecting,
             error: None,
             node_name: options.node_name.clone(),
+            system_vpn_active: false,
         },
     );
 
@@ -156,6 +162,7 @@ pub async fn vpn_connect<R: Runtime>(
                     state: VpnConnectionState::Failed,
                     error: result.as_ref().err().cloned(),
                     node_name: options.node_name,
+                    system_vpn_active: false,
                 },
             );
         }
@@ -181,6 +188,7 @@ pub async fn vpn_connect<R: Runtime>(
                         state: VpnConnectionState::Failed,
                         error: Some(e.to_string()),
                         node_name: options.node_name,
+                    system_vpn_active: false,
                     },
                 );
                 Err(e.to_string())
@@ -223,6 +231,7 @@ pub async fn vpn_reconnect<R: Runtime>(
                 state: VpnConnectionState::Connecting,
                 error: None,
                 node_name: options.node_name.clone(),
+            system_vpn_active: false,
             },
         );
         return app
@@ -283,6 +292,7 @@ pub async fn vpn_disconnect<R: Runtime>(
                 state: VpnConnectionState::Disconnected,
                 error: None,
                 node_name: None,
+                system_vpn_active: false,
             },
         );
     }

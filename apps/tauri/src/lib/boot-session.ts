@@ -6,10 +6,13 @@ export function shouldDropLeftoverTunnelOnLaunch(input: {
   previousVersionCode: string | null
   currentVersionCode: number
   vpnActive: boolean
+  systemVpnActive?: boolean
 }): boolean {
   const prev = input.previousVersionCode?.trim() || null
-  if (prev === String(input.currentVersionCode)) return false
-  return input.vpnActive
+  const current = String(input.currentVersionCode)
+  if (prev === current) return input.systemVpnActive === true
+  if (prev !== null) return true
+  return input.vpnActive || input.systemVpnActive === true
 }
 
 export function persistAppVersionCode(currentVersionCode: number, storage: Storage = localStorage) {

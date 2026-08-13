@@ -29,6 +29,27 @@ describe('shouldDropLeftoverTunnelOnLaunch', () => {
     ).toBe(true)
   })
 
+  it('drops after version bump even if JS vpn state is disconnected', () => {
+    expect(
+      shouldDropLeftoverTunnelOnLaunch({
+        previousVersionCode: '143',
+        currentVersionCode: 144,
+        vpnActive: false,
+      }),
+    ).toBe(true)
+  })
+
+  it('drops when system vpn is still present on same version', () => {
+    expect(
+      shouldDropLeftoverTunnelOnLaunch({
+        previousVersionCode: '144',
+        currentVersionCode: 144,
+        vpnActive: false,
+        systemVpnActive: true,
+      }),
+    ).toBe(true)
+  })
+
   it('does not drop on first install without vpn', () => {
     expect(
       shouldDropLeftoverTunnelOnLaunch({

@@ -2,7 +2,7 @@
 > **仓库**：`vpn-client`（客户端独立仓；控制�?`vpn` 仓不跑客户端发版�? 
 > **用�?*：Tag 触发自动打包、GitHub Secrets、版�?bump、产物核对、后台发布�?*发版铁律与踩�?*  
 > **最后更�?*�?026-08-08  
-> **当前版本线**：`1.2.24` / code `144`（以 `apps/tauri` 为准） 
+> **当前版本线**：`1.2.25` / code `145`（以 `apps/tauri` 为准） 
 > **Workflow**：[`app-release.yml`](../../.github/workflows/app-release.yml) · 门禁 [`tauri-ci.yml`](../../.github/workflows/tauri-ci.yml)  
 > **密钥短表**：[`.github/GitHub发版密钥说明.md`](../../.github/GitHub发版密钥说明.md)  
 > **本机备忘模板**：复�?[`.github/GitHub发版密钥本机备忘模板.md`](../../.github/GitHub发版密钥本机备忘模板.md) �?`.github/GitHub发版密钥本机备忘.md`（已 gitignore，勿提交�? 
@@ -95,12 +95,12 @@ flowchart LR
 ---
 
 ## 3. 当前版本对照（以源码为准�?
-> Tag（如 `v1.2.24`）是发版列车号；用户看到的版本以各端源码为准。下表按 **2026-08-13** 核对�?
+> Tag（如 `v1.2.25`）是发版列车号；用户看到的版本以各端源码为准。下表按 **2026-08-13** 核对�?
 | �?| 用户可见版本 | 版本�?| 改哪�?|
 |----|--------------|--------|--------|
-| **Android / Windows / macOS / Linux** | `1.2.24` | `144` | **统一**：`apps/tauri/package.json`、`src-tauri/tauri.conf.json`、`src/lib/app-meta.ts`；`Cargo.toml` 一�?|
-| **iPhone** | `1.2.24` | `144` | `apps/tauri/platforms/ios/project.yml` |
-| **发版 Tag** | `v1.2.24` | �?| �?Git Tag |
+| **Android / Windows / macOS / Linux** | `1.2.25` | `145` | **统一**：`apps/tauri/package.json`、`src-tauri/tauri.conf.json`、`src/lib/app-meta.ts`；`Cargo.toml` 一�?|
+| **iPhone** | `1.2.25` | `145` | `apps/tauri/platforms/ios/project.yml` |
+| **发版 Tag** | `v1.2.25` | �?| �?Git Tag |
 
 > **`apps/android` 已存�?*：不再改�?`build.gradle.kts` 发版。CI Android APK 来自 `apps/tauri`�?
 ---

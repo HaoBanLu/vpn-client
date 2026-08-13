@@ -281,6 +281,8 @@ export const useConnectStore = defineStore('connect', () => {
     }
   }
 
+  const recoverHolder: { current: Promise<void> | null } = { current: null }
+
   /** 覆盖安装后系统 VPN 可能仍在，App 请求会被打进死隧道。 */
   async function dropLeftoverTunnel(reason: string) {
     appendDebugLog('connect', `拆除残留隧道 · ${reason}`, 'info')
@@ -296,13 +298,26 @@ export const useConnectStore = defineStore('connect', () => {
   }
 
   async function recoverAfterAppUpdate() {
+    return shareInflight(recoverHolder, runRecoverAfterAppUpdate)
+  }
+
+  async function runRecoverAfterAppUpdate() {
     const previous = readPersistedAppVersionCode()
+    let systemVpnActive = false
+    try {
+      const status = await getVpnStatus()
+      connectionState.value = status.state
+      systemVpnActive = status.systemVpnActive === true
+    } catch {
+      // 浏览器开发模式没有 VPN 插件
+    }
     const vpnActive =
       connectionState.value === 'connected' || connectionState.value === 'connecting'
     const shouldDrop = shouldDropLeftoverTunnelOnLaunch({
       previousVersionCode: previous,
       currentVersionCode: APP_VERSION_CODE,
       vpnActive,
+      systemVpnActive,
     })
     persistAppVersionCode(APP_VERSION_CODE)
     if (shouldDrop) {
@@ -1206,6 +1221,7 @@ export const useConnectStore = defineStore('connect', () => {
     isSwitching,
     initVpnBridge,
     recoverAfterAppUpdate,
+    dropLeftoverTunnel,
     refresh,
     saveRegion,
     setRouteMode,

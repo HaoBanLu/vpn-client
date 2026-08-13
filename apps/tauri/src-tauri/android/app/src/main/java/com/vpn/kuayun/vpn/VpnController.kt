@@ -45,12 +45,10 @@ class VpnController(context: Context) {
     }
 
     fun disconnect() {
-        scope.launch {
-            val intent =
-                Intent(appContext, VpnTunnelService::class.java).apply {
-                    action = VpnTunnelService.ACTION_DISCONNECT
-                }
-            appContext.startService(intent)
-        }
+        val intent =
+            Intent(appContext, VpnTunnelService::class.java).apply {
+                action = VpnTunnelService.ACTION_DISCONNECT
+            }
+        appContext.startService(intent)
     }
 }

@@ -138,6 +138,7 @@ impl DesktopVpnManager {
                     state: VpnConnectionState::Connected,
                     error: None,
                     node_name: options.node_name,
+                    system_vpn_active: false,
                 },
             );
         }
@@ -259,6 +260,7 @@ impl DesktopVpnManager {
                             "mihomo exited unexpectedly: {detail}"
                         ))),
                         node_name: None,
+                        system_vpn_active: false,
                     };
                     state.update_status(app, status.clone());
                     return Ok(status);
@@ -269,6 +271,7 @@ impl DesktopVpnManager {
                         state: VpnConnectionState::Failed,
                         error: Some(e.to_string()),
                         node_name: None,
+                        system_vpn_active: false,
                     };
                     state.update_status(app, status.clone());
                     return Ok(status);
@@ -306,6 +309,7 @@ impl DesktopVpnManager {
                     state: VpnConnectionState::Disconnected,
                     error: None,
                     node_name: None,
+                    system_vpn_active: false,
                 },
             );
         }

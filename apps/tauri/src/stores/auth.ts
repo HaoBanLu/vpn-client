@@ -7,6 +7,7 @@ import { effectiveKillSwitchEnabled } from '@/lib/vpn/desktop-settings'
 import { appendDebugLog, configureAppDebug, flushDebugLogs } from '@/lib/debug/app-debug-log'
 import { acceptPrivacy, ensurePrivacyAcceptedIfLoggedIn } from '@/lib/app-meta'
 import { saveLoginCredentials } from '@/lib/login-credentials'
+import { isNetworkConnectivityError } from '@/lib/api-error'
 
 const TOKEN_KEY = 'tauri_token'
 const USER_KEY = 'tauri_user'
@@ -36,8 +37,35 @@ export const useAuthStore = defineStore('auth', () => {
     configureAppDebug(Boolean(session.user?.app_debug_enabled))
   }
 
+  async function ensureTunnelRecovered() {
+    try {
+      const { useConnectStore } = await import('@/stores/connect')
+      const connect = useConnectStore()
+      await connect.initVpnBridge()
+      await connect.recoverAfterAppUpdate()
+    } catch {
+      // 浏览器开发或插件未就绪时忽略
+    }
+  }
+
+  async function withTunnelRetry<T>(reason: string, run: () => Promise<T>): Promise<T> {
+    await ensureTunnelRecovered()
+    try {
+      return await run()
+    } catch (error) {
+      if (!isNetworkConnectivityError(error)) throw error
+      try {
+        const { useConnectStore } = await import('@/stores/connect')
+        await useConnectStore().dropLeftoverTunnel(reason)
+      } catch {
+        // ignore
+      }
+      return await run()
+    }
+  }
+
   async function login(email: string, password: string, rememberLogin = true) {
-    const res = await clientApi.login(email, password)
+    const res = await withTunnelRetry('login_blocked', () => clientApi.login(email, password))
     persistSession({ token: res.data.token, user: res.data.user })
     saveLoginCredentials(rememberLogin, email, password)
     ensurePrivacyAcceptedIfLoggedIn(true)
@@ -45,11 +73,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function register(email: string, password: string, emailCode?: string) {
-    const res = await clientApi.register({
-      email,
-      password,
-      email_code: emailCode,
-    })
+    const res = await withTunnelRetry('register_blocked', () =>
+      clientApi.register({
+        email,
+        password,
+        email_code: emailCode,
+      }),
+    )
     persistSession({ token: res.data.token, user: res.data.user })
     acceptPrivacy()
     message.success('注册成功')

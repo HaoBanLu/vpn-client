@@ -17,6 +17,9 @@ pub struct VpnConnectionStatus {
     pub state: VpnConnectionState,
     pub error: Option<String>,
     pub node_name: Option<String>,
+    /// Android 系统层是否仍有 TRANSPORT_VPN（覆盖安装残留）
+    #[serde(default)]
+    pub system_vpn_active: bool,
 }
 
 impl Default for VpnConnectionStatus {
@@ -25,6 +28,7 @@ impl Default for VpnConnectionStatus {
             state: VpnConnectionState::Disconnected,
             error: None,
             node_name: None,
+            system_vpn_active: false,
         }
     }
 }

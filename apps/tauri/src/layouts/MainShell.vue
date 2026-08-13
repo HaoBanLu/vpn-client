@@ -83,6 +83,7 @@ import { checkAppUpdate, installAppUpdate } from '@/lib/desktop/updater'
 import { loadDesktopSettings } from '@/lib/vpn/desktop-settings'
 import { shouldUseDesktopLayout } from '@/lib/layout'
 import { isProfileRoute } from '@/lib/route-groups'
+import { sessionHeartbeatIntervalMs } from '@/lib/session-auth'
 import { Modal } from '@/lib/ui/confirm'
 import { message } from '@/lib/ui/message'
 
@@ -111,6 +112,25 @@ function updateLayout() {
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null
 let updateCheckedOnStart = false
 let unlistenTray: (() => void) | null = null
+
+function isDocumentVisible() {
+  return typeof document === 'undefined' || document.visibilityState !== 'hidden'
+}
+
+function startHeartbeatTimer() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
+  heartbeatTimer = setInterval(sendHeartbeat, sessionHeartbeatIntervalMs(isDocumentVisible()))
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    void sendHeartbeat()
+  }
+  startHeartbeatTimer()
+}
 
 function isActive(name: string) {
   if (name === 'Profile') return isProfileRoute(route.name)
@@ -192,11 +212,13 @@ onMounted(async () => {
   void connect.restoreSessionIfNeeded()
   void checkForUpdateSilently()
   sendHeartbeat()
-  heartbeatTimer = setInterval(sendHeartbeat, 60_000)
+  startHeartbeatTimer()
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateLayout)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
   unlistenTray?.()
   connect.stopWatchers()
   account.stopNotificationPolling()

@@ -29,6 +29,13 @@ export function shouldLogoutOnApiFailure(input: {
   return shouldInvalidateSession(input.path, input.hadAuth, input.appCode)
 }
 
+export const SESSION_HEARTBEAT_FOREGROUND_MS = 15_000
+export const SESSION_HEARTBEAT_BACKGROUND_MS = 60_000
+
+export function sessionHeartbeatIntervalMs(visible: boolean): number {
+  return visible ? SESSION_HEARTBEAT_FOREGROUND_MS : SESSION_HEARTBEAT_BACKGROUND_MS
+}
+
 export function sessionInvalidationMessage(message?: string, appCode?: string): string {
   const raw = message?.trim()
   if (appCode === 'LOGIN_ON_ANOTHER_DEVICE') {

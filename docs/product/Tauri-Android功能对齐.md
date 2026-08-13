@@ -3,7 +3,7 @@
 > **统一版本线**：自 **1.2 / code 120** 起跨端迭代  
 > **包名**：`com.vpn.kuayun`（iOS：`.app` / `.tunnel`；Group：`group.com.vpn.kuayun`）  
 > **Android 发包**：仅 **`apps/tauri`**；**`apps/android` 已存档**（[`ARCHIVE.md`](../../apps/android/ARCHIVE.md)）  
-> **最后核对**：2026-08-13（发版 `1.2.24` / code `144`）
+> **最后核对**：2026-08-13（发版 `1.2.25` / code `145`）
 
 ---
 

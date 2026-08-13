@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  sessionHeartbeatIntervalMs,
   sessionInvalidationMessage,
   shouldInvalidateSession,
   shouldLogoutOnApiFailure,
+  SESSION_HEARTBEAT_BACKGROUND_MS,
+  SESSION_HEARTBEAT_FOREGROUND_MS,
 } from './session-auth'
 
 describe('session-auth', () => {
@@ -59,5 +62,12 @@ describe('session-auth', () => {
         hadAuth: true,
       }),
     ).toBe(true)
+  })
+
+  it('uses shorter heartbeat while foreground', () => {
+    expect(sessionHeartbeatIntervalMs(true)).toBe(SESSION_HEARTBEAT_FOREGROUND_MS)
+    expect(sessionHeartbeatIntervalMs(false)).toBe(SESSION_HEARTBEAT_BACKGROUND_MS)
+    expect(SESSION_HEARTBEAT_FOREGROUND_MS).toBe(15_000)
+    expect(SESSION_HEARTBEAT_BACKGROUND_MS).toBe(60_000)
   })
 })

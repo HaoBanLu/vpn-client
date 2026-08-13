@@ -15,6 +15,8 @@ export interface VpnConnectionStatus {
   state: VpnConnectionState
   error?: string | null
   nodeName?: string | null
+  /** Android 系统层是否仍有 VPN 接口（覆盖安装残留） */
+  systemVpnActive?: boolean
 }
 
 export interface VpnSessionStats {

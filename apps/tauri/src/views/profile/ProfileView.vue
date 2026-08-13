@@ -372,7 +372,7 @@ async function pickScenario(value: ConnectionScenarioValue) {
 
 async function refresh() {
   try {
-    await account.refreshAccount()
+    await connect.refresh()
   } catch {
     // 错误提示由请求层处理
   }

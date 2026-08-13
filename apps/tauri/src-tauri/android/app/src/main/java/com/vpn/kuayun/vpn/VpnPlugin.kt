@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -83,7 +84,16 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     @Command
     fun disconnect(invoke: Invoke) {
         controller.disconnect()
-        invoke.resolve(JSObject())
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                val deadline = System.currentTimeMillis() + 2_500
+                while (System.currentTimeMillis() < deadline) {
+                    if (ConnectivityProbe.findVpnNetwork() == null) break
+                    delay(150)
+                }
+            }
+            invoke.resolve(JSObject())
+        }
     }
 
     @Command
@@ -320,6 +330,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         val ret = JSObject()
         ret.put("state", state.name.lowercase())
         ret.put("error", error)
+        ret.put("systemVpnActive", runCatching { ConnectivityProbe.findVpnNetwork() != null }.getOrDefault(false))
         return ret
     }
 

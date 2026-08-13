@@ -350,11 +350,7 @@ class VpnTunnelService : VpnService() {
         if (userInitiatedDisconnect) {
             StabilityPrefs.markUserDisconnected(this)
         }
-        if (!running && tunInterface == null && !tunFdDetached) {
-            stopForegroundKeepIdle()
-            stopSelf()
-            return
-        }
+        // 覆盖安装后 Service 可能未 running，但仍需 cleanup 才能拆掉系统残留 VPN
         cleanup()
         VpnConnectionBus.update(ConnectionState.DISCONNECTED, error = null)
         stopForegroundKeepIdle()
