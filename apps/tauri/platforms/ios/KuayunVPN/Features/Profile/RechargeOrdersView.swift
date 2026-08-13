@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RechargeOrdersView: View {
+    var embedded = false
     @EnvironmentObject private var auth: AuthStore
     @State private var orders: [RechargeOrderItem] = []
     @State private var loading = false
@@ -44,7 +45,7 @@ struct RechargeOrdersView: View {
                 }
             }
         }
-        .navigationTitle("充值记录")
+        .modifier(EmbeddedNavTitle(title: "充值记录", embedded: embedded))
         .refreshable { await load() }
         .task { await load() }
         .sheet(item: $selected) { order in

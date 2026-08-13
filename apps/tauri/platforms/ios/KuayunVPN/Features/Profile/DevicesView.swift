@@ -65,7 +65,7 @@ struct DevicesView: View {
                 }
             }
         }
-        .navigationTitle("我的设备")
+        .navigationTitle("登录设备")
         .refreshable { await load() }
         .task { await load() }
         .overlay {

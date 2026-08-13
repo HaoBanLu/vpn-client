@@ -1,6 +1,5 @@
 <template>
   <KySubPage title="在线客服">
-
     <KySpin :spinning="loading" overlay>
       <KyStack gap="md">
         <KyAlert
@@ -24,21 +23,28 @@
           </KyCard>
 
           <KyEmpty
-            v-if="contactChannels.length === 0 && !showTicketEntry"
+            v-if="!telegramChannel && otherChannels.length === 0 && !showTicketEntry"
             description="暂未配置客服渠道"
           />
 
-          <KyStack v-if="contactChannels.length > 0" gap="sm">
-            <p class="support-section-title">联系渠道</p>
+          <KyStack v-if="telegramChannel" gap="sm">
+            <KyButton block size="large" type="primary" @click="openTelegram">
+              Telegram 联系客服
+            </KyButton>
+            <p class="support-tg-hint">{{ telegramButtonHint(telegramChannel) }}</p>
+          </KyStack>
+
+          <KyStack v-if="otherChannels.length > 0" gap="sm">
+            <p class="support-section-title">其它渠道</p>
             <KyCard
-              v-for="(item, idx) in contactChannels"
+              v-for="(item, idx) in otherChannels"
               :key="`${item.type}-${idx}`"
               class="support-channel-card"
               @click="openChannel(item)"
             >
               <div class="support-channel">
                 <div class="support-channel__copy">
-                  <p class="support-channel__title">{{ channelTitle(item) }}</p>
+                  <p class="support-channel__title">{{ supportChannelShortTitle(item) }}</p>
                   <p class="support-channel__hint">{{ channelHint(item) }}</p>
                 </div>
                 <span class="support-channel__action">打开</span>
@@ -48,10 +54,10 @@
 
           <KyStack v-if="showTicketEntry" gap="sm">
             <p class="support-section-title">应用内反馈</p>
-            <KyButton block size="large" type="primary" @click="goTickets">
+            <KyButton block size="large" :type="telegramChannel ? 'default' : 'primary'" @click="goTickets">
               提交工单
             </KyButton>
-            <p class="support-ticket-hint">填写问题后由客服在线回复，可随时查看进度</p>
+            <p class="support-ticket-hint">不方便使用 Telegram 时，可提交工单由客服回复</p>
           </KyStack>
         </template>
       </KyStack>
@@ -70,25 +76,26 @@ import { KyAlert, KyButton, KyEmpty, KySpin } from '@/components/ky'
 import { clientApi, type SupportChannelItem, type SupportConfigData } from '@/api/client'
 import { mapApiError } from '@/lib/api-error'
 import { openSupportChannelUrl } from '@/lib/open-url'
+import {
+  firstTelegramChannel,
+  secondarySupportChannels,
+  supportChannelShortTitle,
+  telegramButtonHint,
+} from '@/lib/support-channels'
 
 const router = useRouter()
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 const config = ref<SupportConfigData | null>(null)
 
-const contactChannels = computed(() =>
-  (config.value?.channels ?? []).filter((item) => item.type !== 'ticket'),
-)
+const telegramChannel = computed(() => firstTelegramChannel(config.value?.channels))
+const otherChannels = computed(() => secondarySupportChannels(config.value?.channels))
 
 const showTicketEntry = computed(() => {
   if (!config.value?.enabled) return false
   if (config.value.ticket_enabled === false) return false
   return true
 })
-
-function channelTitle(item: SupportChannelItem) {
-  return item.label?.trim() || defaultChannelLabel(item.type)
-}
 
 function channelHint(item: SupportChannelItem) {
   const map: Record<string, string> = {
@@ -99,17 +106,6 @@ function channelHint(item: SupportChannelItem) {
     web: '打开网页客服',
   }
   return map[item.type] || '在外部应用中打开'
-}
-
-function defaultChannelLabel(type: string) {
-  const map: Record<string, string> = {
-    telegram: 'Telegram 客服',
-    telegram_group: 'Telegram 群组',
-    telegram_channel: 'Telegram 频道',
-    email: '邮箱客服',
-    web: '网页客服',
-  }
-  return map[type] || type
 }
 
 async function load() {
@@ -135,6 +131,11 @@ async function openChannel(item: SupportChannelItem) {
   } catch {
     message.error('无法打开客服链接，请稍后重试')
   }
+}
+
+function openTelegram() {
+  const item = telegramChannel.value
+  if (item) void openChannel(item)
 }
 
 function goTickets() {
@@ -166,6 +167,13 @@ onMounted(load)
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  color: var(--ky-text-muted);
+}
+
+.support-tg-hint {
+  margin: 0;
+  text-align: center;
+  font-size: var(--ky-font-sm);
   color: var(--ky-text-muted);
 }
 

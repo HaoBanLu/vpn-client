@@ -61,7 +61,13 @@ import { updateTrayTooltip } from '@/lib/desktop/tray'
 import { appendDebugLog, flushDebugLogs } from '@/lib/debug/app-debug-log'
 import { shouldIgnoreDisconnectedWhileConnecting } from '@/lib/vpn/connect-inflight'
 import { shareInflight } from '@/lib/account-view-state'
-import { mapApiError } from '@/lib/api-error'
+import { isNetworkConnectivityError, mapApiError } from '@/lib/api-error'
+import { APP_VERSION_CODE } from '@/lib/app-meta'
+import {
+  persistAppVersionCode,
+  readPersistedAppVersionCode,
+  shouldDropLeftoverTunnelOnLaunch,
+} from '@/lib/boot-session'
 import {
   advanceDisplayRates,
   emptyRateSmoother,
@@ -275,6 +281,45 @@ export const useConnectStore = defineStore('connect', () => {
     }
   }
 
+  /** 覆盖安装后系统 VPN 可能仍在，App 请求会被打进死隧道。 */
+  async function dropLeftoverTunnel(reason: string) {
+    appendDebugLog('connect', `拆除残留隧道 · ${reason}`, 'info')
+    try {
+      await disconnectVpn({ userInitiated: false })
+    } catch {
+      // 未连接或插件不可用时忽略
+    }
+    connectionState.value = 'disconnected'
+    connectPending.value = false
+    resetSessionStats()
+    syncTrayTooltip()
+  }
+
+  async function recoverAfterAppUpdate() {
+    const previous = readPersistedAppVersionCode()
+    const vpnActive =
+      connectionState.value === 'connected' || connectionState.value === 'connecting'
+    const shouldDrop = shouldDropLeftoverTunnelOnLaunch({
+      previousVersionCode: previous,
+      currentVersionCode: APP_VERSION_CODE,
+      vpnActive,
+    })
+    persistAppVersionCode(APP_VERSION_CODE)
+    if (shouldDrop) {
+      await dropLeftoverTunnel('app_upgrade')
+    }
+  }
+
+  async function refreshAccountRecoveringTunnel() {
+    try {
+      await account.refreshAccount()
+    } catch (error) {
+      if (!isNetworkConnectivityError(error)) throw error
+      await dropLeftoverTunnel('account_fetch_blocked')
+      await account.refreshAccount()
+    }
+  }
+
   async function refresh() {
     return shareInflight(refreshHolder, runRefresh)
   }
@@ -283,7 +328,7 @@ export const useConnectStore = defineStore('connect', () => {
     loading.value = true
     error.value = null
     try {
-      await account.refreshAccount()
+      await refreshAccountRecoveringTunnel()
       const [regionsRes, dashRes, prefRes] = await Promise.all([
         clientApi.getRegions(),
         clientApi.getConnectDashboard(selectedNode.value),
@@ -1160,6 +1205,7 @@ export const useConnectStore = defineStore('connect', () => {
     isConnecting,
     isSwitching,
     initVpnBridge,
+    recoverAfterAppUpdate,
     refresh,
     saveRegion,
     setRouteMode,

@@ -13,14 +13,19 @@ const profileChildRoutes = [
     component: () => import('@/views/profile/RechargeView.vue'),
   },
   {
+    path: 'orders',
+    name: 'Orders',
+    component: () => import('@/views/profile/OrdersView.vue'),
+  },
+  {
     path: 'recharge-orders',
     name: 'RechargeOrders',
-    component: () => import('@/views/profile/RechargeOrdersView.vue'),
+    redirect: { name: 'Orders', query: { tab: 'recharge' } },
   },
   {
     path: 'purchase-orders',
     name: 'PurchaseOrders',
-    component: () => import('@/views/profile/PurchaseOrdersView.vue'),
+    redirect: { name: 'Orders', query: { tab: 'purchase' } },
   },
   {
     path: 'traffic',

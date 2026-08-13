@@ -146,7 +146,7 @@ async function buy(item: PackageItem) {
       await connect.refresh()
       await load()
     } else {
-      message.warning('支付处理中，请稍后在购买记录查看')
+      message.warning('支付处理中，请稍后在订单查看')
     }
   } catch (e: unknown) {
     if (e instanceof ApiBusinessError && e.appCode === 'INSUFFICIENT_BALANCE') {

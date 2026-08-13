@@ -9,6 +9,7 @@ export function resolveAccountViewState(input: {
   hasSubscription: boolean
 }): AccountViewState {
   if (input.hasSubscription) return 'ready'
+  if (input.loading) return 'loading'
   if (input.loadError) return 'error'
   if (input.fetched) return 'empty'
   return 'loading'

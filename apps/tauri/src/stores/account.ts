@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { message } from '@/lib/ui/message'
-import { clientApi, type OrderItem, type RechargeOrderItem, type SubscriptionActive, type SubscriptionUsage, type UserBrief } from '@/api/client'
+import { clientApi, type OrderItem, type RechargeOrderItem, type SupportChannelItem, type SubscriptionActive, type SubscriptionUsage, type UserBrief } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { configureAppDebug } from '@/lib/debug/app-debug-log'
 import { mapApiError } from '@/lib/api-error'
@@ -23,6 +23,7 @@ export const useAccountStore = defineStore('account', () => {
   const usage = ref<SubscriptionUsage | null>(null)
   const orders = ref<OrderItem[]>([])
   const supportEnabled = ref(false)
+  const supportChannels = ref<SupportChannelItem[]>([])
   const notifications = ref<AppNotification[]>([])
   const unreadNotificationCount = ref(0)
 
@@ -55,6 +56,7 @@ export const useAccountStore = defineStore('account', () => {
         return acc
       }, {})
       supportEnabled.value = supportRes.data.enabled
+      supportChannels.value = supportRes.data.channels ?? []
 
       const auth = useAuthStore()
       auth.user = me.data
@@ -81,6 +83,7 @@ export const useAccountStore = defineStore('account', () => {
     usage.value = null
     orders.value = []
     supportEnabled.value = false
+    supportChannels.value = []
     notifications.value = []
     unreadNotificationCount.value = 0
     knownRechargeStatuses = {}
@@ -172,6 +175,7 @@ export const useAccountStore = defineStore('account', () => {
     usage,
     orders,
     supportEnabled,
+    supportChannels,
     notifications,
     unreadNotificationCount,
     refreshAccount,

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PurchaseOrdersView: View {
+    var embedded = false
     @EnvironmentObject private var auth: AuthStore
     @State private var orders: [OrderItem] = []
     @State private var loading = false
@@ -10,8 +11,10 @@ struct PurchaseOrdersView: View {
     var body: some View {
         Group {
             if orders.isEmpty && !loading {
-                VStack {
-                    Text("暂无购买记录").foregroundStyle(.secondary)
+                VStack(spacing: 12) {
+                    Text("暂无套餐订单").foregroundStyle(.secondary)
+                    NavigationLink("去购买套餐") { PackagesView() }
+                        .buttonStyle(.borderedProminent)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -40,7 +43,7 @@ struct PurchaseOrdersView: View {
                 }
             }
         }
-        .navigationTitle("购买记录")
+        .modifier(EmbeddedNavTitle(title: "购买记录", embedded: embedded))
         .refreshable { await load() }
         .task { await load() }
         .overlay {

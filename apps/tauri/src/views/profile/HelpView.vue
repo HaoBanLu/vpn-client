@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="订阅导出">
+  <KySubPage title="导出订阅">
     <p class="help-lead">若 App 无法连接，可导出 Clash 订阅到第三方客户端。</p>
     <KyButton type="primary" block size="large" :loading="loading" @click="loadSubscriptionUrl">
       生成 Clash 订阅链接

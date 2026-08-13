@@ -15,6 +15,7 @@
         <p class="empty-sub">{{ account.loadError || '请检查网络后重试' }}</p>
       </KyCard>
       <ConnectHero :copy="errorHeroCopy" @click="onRefresh" />
+      <KyButton block class="relogin-btn" @click="relogin">重新登录</KyButton>
     </template>
 
     <template v-else-if="accountView === 'empty'">
@@ -91,12 +92,14 @@ import { resolveAccountViewState } from '@/lib/account-view-state'
 import { getEntryLatencyMs } from '@/lib/vpn/entry-latency-cache'
 import { useConnectStore } from '@/stores/connect'
 import { useAccountStore } from '@/stores/account'
+import { useAuthStore } from '@/stores/auth'
 import { probeHint } from '@/lib/vpn/probe'
 import { buildRenewalHint } from '@/lib/subscription'
 
 const router = useRouter()
 const store = useConnectStore()
 const account = useAccountStore()
+const auth = useAuthStore()
 
 const NODE_REQUIRED_HINT = '请先选择要连接的节点'
 
@@ -171,6 +174,11 @@ async function onRefresh() {
   await store.refresh()
 }
 
+async function relogin() {
+  await auth.logout({ silent: true })
+  await router.replace({ name: 'Login' })
+}
+
 async function startConnect() {
   await store.connect()
 }
@@ -230,6 +238,10 @@ onMounted(async () => {
   margin: var(--ky-space-sm) 0 0;
   font-size: var(--ky-font-sm);
   color: var(--ky-text-muted);
+}
+
+.relogin-btn {
+  margin-top: 4px;
 }
 
 .error-card {

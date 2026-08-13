@@ -27,7 +27,7 @@
             <MoreOutlined />
           </button>
           <div v-if="accountMenuOpen" class="account-bar__menu" role="menu">
-            <button type="button" role="menuitem" @click="goMenu('Devices')">查看设备</button>
+            <button type="button" role="menuitem" @click="goMenu('Devices')">登录设备</button>
             <button type="button" role="menuitem" @click="goMenu('Recharge')">充值</button>
             <button type="button" role="menuitem" @click="goMenu('ChangePassword')">修改密码</button>
             <button type="button" role="menuitem" @click="openScenario">
@@ -44,7 +44,7 @@
         v-for="item in recentNotifications"
         :key="`${item.id}-${item.type}`"
         :class="['notification-card', `notification-card--${item.type}`]"
-        @click="router.push({ name: 'RechargeOrders' })"
+        @click="router.push({ name: 'Orders', query: { tab: 'recharge' } })"
       >
         <p class="notification-message">{{ item.message }}</p>
         <p class="notification-order">{{ item.orderNo }}</p>
@@ -80,7 +80,10 @@
       <p class="sub-hero__label">我使用的套餐</p>
       <p class="sub-hero__name">网络异常</p>
       <p class="sub-hero__summary">{{ account.loadError || '请检查网络后重试' }}</p>
-      <KyButton type="primary" block class="sub-hero__buy" @click="refresh">重试</KyButton>
+      <div class="sub-hero__actions">
+        <KyButton type="primary" class="sub-hero__btn" @click="refresh">重试</KyButton>
+        <KyButton class="sub-hero__btn" @click="logout">重新登录</KyButton>
+      </div>
     </div>
     <div v-else-if="profileView === 'empty'" class="sub-hero">
       <p class="sub-hero__label">我使用的套餐</p>
@@ -187,7 +190,6 @@ import {
   InfoCircleOutlined,
   MoreOutlined,
   SafetyCertificateOutlined,
-  ShoppingOutlined,
   UserOutlined,
   WalletOutlined,
 } from '@ant-design/icons-vue'
@@ -203,6 +205,7 @@ import { resolveAccountViewState } from '@/lib/account-view-state'
 import { useAuthStore } from '@/stores/auth'
 import { useAccountStore } from '@/stores/account'
 import { useConnectStore } from '@/stores/connect'
+import { supportMenuSubtitle } from '@/lib/support-channels'
 
 type MenuItem = { title: string; subtitle: string; route: string; icon: Component; action?: 'scenario' }
 
@@ -265,27 +268,26 @@ function formatExpiryDateOnly(raw?: string | null) {
 }
 
 const accountItems = computed<MenuItem[]>(() => [
-  { title: 'USDT 充值', subtitle: '余额充值与到账', route: 'Recharge', icon: WalletOutlined },
-  { title: '充值订单', subtitle: 'USDT 充值记录与状态', route: 'RechargeOrders', icon: FileTextOutlined },
-  { title: '购买记录', subtitle: '套餐订单与支付状态', route: 'PurchaseOrders', icon: ShoppingOutlined },
+  { title: '充值', subtitle: '余额到账', route: 'Recharge', icon: WalletOutlined },
+  { title: '订单', subtitle: '充值与套餐购买', route: 'Orders', icon: FileTextOutlined },
 ])
 
 const connectItems = computed<MenuItem[]>(() => [
   {
     title: '应用直连',
-    subtitle: '指定应用不走 VPN，其余默认加速',
+    subtitle: '指定 App 不走加速',
     route: 'AppDirectConnect',
     icon: AppstoreOutlined,
   },
   {
     title: '规则直连',
-    subtitle: '指定域名或 IP 不经代理节点',
+    subtitle: '指定网站不走加速',
     route: 'DirectBypassRules',
     icon: GlobalOutlined,
   },
   {
     title: '连接与隐私',
-    subtitle: '重连、Always-on 与隐私检测',
+    subtitle: '自动重连与系统 VPN',
     route: 'StabilitySettings',
     icon: SafetyCertificateOutlined,
   },
@@ -296,15 +298,14 @@ const helpItems = computed<MenuItem[]>(() => {
   if (account.supportEnabled) {
     items.push({
       title: '在线客服',
-      subtitle: 'Telegram 与人工协助',
+      subtitle: supportMenuSubtitle(account.supportChannels),
       route: 'Support',
       icon: CustomerServiceOutlined,
     })
   }
-  items.push({ title: '我的工单', subtitle: '问题反馈与客服回复', route: 'Tickets', icon: FileTextOutlined })
   if (isAndroid || account.user?.app_debug_enabled) {
     items.push({
-      title: '订阅导出',
+      title: '导出订阅',
       subtitle: '导出 Clash 订阅链接',
       route: 'Help',
       icon: CloudDownloadOutlined,

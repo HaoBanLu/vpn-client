@@ -1,7 +1,7 @@
 <template>
-  <KySubPage title="USDT 充值">
+  <KySubPage title="充值">
     <template #extra>
-      <KyButton type="link" @click="router.push({ name: 'RechargeOrders' })">充值记录</KyButton>
+      <KyButton type="link" @click="router.push({ name: 'Orders', query: { tab: 'recharge' } })">充值记录</KyButton>
     </template>
 
     <KySpin :spinning="loading && !usdtConfig" overlay>
@@ -17,7 +17,7 @@
         </div>
       </div>
 
-      <KyAlert v-if="!usdtEnabled" type="warning" message="USDT 充值暂未开放" show-icon />
+      <KyAlert v-if="!usdtEnabled" type="warning" message="充值暂未开放" show-icon />
 
       <template v-else-if="!activeOrder">
         <div class="network-notice network-notice--compact">

@@ -89,3 +89,20 @@ export function mapApiError(
 
   return fallback
 }
+
+/** 无 HTTP 响应：超时 / 断网 / 被残留 VPN 黑洞。此时不得当 401 清会话。 */
+export function isNetworkConnectivityError(error: unknown): boolean {
+  if (error instanceof ApiBusinessError) {
+    return /网络异常|连接超时/.test(error.message)
+  }
+  const axiosError = error as AxiosError
+  if (axiosError.response) return false
+  const code = axiosError.code || ''
+  const raw = (axiosError.message || '').toLowerCase()
+  return (
+    code === 'ERR_NETWORK' ||
+    code === 'ECONNABORTED' ||
+    raw.includes('network error') ||
+    raw.includes('timeout')
+  )
+}

@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="我的设备">
+  <KySubPage title="登录设备">
     <template #extra>
       <span class="quota-extra">{{ quotaUsed }}/{{ quotaMax }}</span>
     </template>

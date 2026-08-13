@@ -180,6 +180,7 @@ onMounted(async () => {
     unlistenTray = null
   }
   await connect.initVpnBridge()
+  await connect.recoverAfterAppUpdate()
   await connect.startWatchers()
   try {
     await connect.refresh()

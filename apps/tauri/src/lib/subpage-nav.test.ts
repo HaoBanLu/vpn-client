@@ -9,6 +9,12 @@ describe('resolveSubpageBack', () => {
         historyLength: 4,
       }),
     ).toEqual({ name: 'Profile' })
+    expect(
+      resolveSubpageBack({
+        routeName: 'Orders',
+        historyLength: 4,
+      }),
+    ).toEqual({ name: 'Profile' })
   })
 
   it('respects explicit backTo', () => {

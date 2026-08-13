@@ -1,6 +1,6 @@
 {
   "name": "vpn-tauri",
-  "version": "1.2.23",
+  "version": "1.2.24",
   "private": true,
   "type": "module",
   "description": "跨云 Tauri 跨端客户端",

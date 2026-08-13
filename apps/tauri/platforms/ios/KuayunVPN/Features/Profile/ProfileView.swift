@@ -11,7 +11,7 @@ struct ProfileView: View {
                     Section("通知") {
                         ForEach(account.notifications.reversed()) { item in
                             NavigationLink {
-                                RechargeOrdersView()
+                                OrdersView(initialTab: .recharge)
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(item.message).font(.subheadline)
@@ -25,9 +25,9 @@ struct ProfileView: View {
                 if let user = auth.user {
                     Section("账户") {
                         LabeledContent("邮箱", value: user.email)
-                        LabeledContent("余额", value: String(format: "%.2f USDT", user.balance))
-                        NavigationLink("USDT 充值") { RechargeView() }
-                        NavigationLink("充值记录") { RechargeOrdersView() }
+                        LabeledContent("余额", value: String(format: "¥%.2f", user.balance))
+                        NavigationLink("充值") { RechargeView() }
+                        NavigationLink("订单") { OrdersView() }
                     }
                 }
 
@@ -64,15 +64,10 @@ struct ProfileView: View {
                     NavigationLink("流量统计") { TrafficView() }
                 }
 
-                Section("订单") {
-                    NavigationLink("购买记录") { PurchaseOrdersView() }
-                }
-
                 Section("服务") {
                     NavigationLink("在线客服") { SupportView() }
-                    NavigationLink("我的工单") { TicketsView() }
                     if auth.user?.appDebugEnabled == true {
-                        NavigationLink("订阅导出") { HelpView() }
+                        NavigationLink("导出订阅") { HelpView() }
                     }
                 }
 
@@ -82,7 +77,7 @@ struct ProfileView: View {
                         NavigationLink("规则直连") { DirectBypassRulesView() }
                         NavigationLink("诊断日志") { DebugLogView() }
                     }
-                    NavigationLink("我的设备") { DevicesView() }
+                    NavigationLink("登录设备") { DevicesView() }
                     NavigationLink("修改密码") { ChangePasswordView() }
                     NavigationLink("关于") { AboutView() }
                 }

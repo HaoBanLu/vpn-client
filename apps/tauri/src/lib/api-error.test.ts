@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AxiosError } from 'axios'
-import { ApiBusinessError, mapApiError } from './api-error'
+import { ApiBusinessError, mapApiError, isNetworkConnectivityError } from './api-error'
 
 describe('mapApiError', () => {
   it('mapsInvalidCredentialsToChinese', () => {
@@ -57,5 +57,29 @@ describe('mapApiError', () => {
   it('stripsTechnicalFragmentsFromBusinessMessage', () => {
     const error = new ApiBusinessError('无法连接 https://vpn.example.com/api 请重试')
     expect(mapApiError(error, '失败')).toBe('无法连接 请重试')
+  })
+
+  it('detects connectivity failures without http response', () => {
+    expect(
+      isNetworkConnectivityError({
+        code: 'ERR_NETWORK',
+        message: 'Network Error',
+        isAxiosError: true,
+      }),
+    ).toBe(true)
+    expect(
+      isNetworkConnectivityError({
+        code: 'ECONNABORTED',
+        message: 'timeout of 30000ms exceeded',
+        isAxiosError: true,
+      }),
+    ).toBe(true)
+    expect(
+      isNetworkConnectivityError({
+        response: { status: 401, data: { message: 'invalid token' } },
+        isAxiosError: true,
+      }),
+    ).toBe(false)
+    expect(isNetworkConnectivityError(new ApiBusinessError('网络异常，请检查网络后重试'))).toBe(true)
   })
 })

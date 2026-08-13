@@ -46,6 +46,17 @@ describe('resolveAccountViewState', () => {
     ).toBe('loading')
   })
 
+  it('stays loading while retrying after a network error', () => {
+    expect(
+      resolveAccountViewState({
+        loading: true,
+        fetched: false,
+        loadError: '网络异常，请检查网络后重试',
+        hasSubscription: false,
+      }),
+    ).toBe('loading')
+  })
+
   it('timeout is never treated as no-subscription empty', () => {
     expect(
       resolveAccountViewState({

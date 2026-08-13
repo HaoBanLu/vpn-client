@@ -2,6 +2,7 @@
 export const PROFILE_ROUTE_NAMES = new Set([
   'Profile',
   'Recharge',
+  'Orders',
   'RechargeOrders',
   'PurchaseOrders',
   'Traffic',

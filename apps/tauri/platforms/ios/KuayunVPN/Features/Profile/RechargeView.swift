@@ -34,7 +34,7 @@ struct RechargeView: View {
         List {
             Section {
                 if let user = auth.user {
-                    LabeledContent("当前余额", value: String(format: "%.2f USDT", user.balance))
+                    LabeledContent("当前余额", value: String(format: "¥%.2f", user.balance))
                 }
                 if let cfg = usdtConfig {
                     Text("汇率 1U ≈ ¥\(String(format: "%.2f", cfg.exchangeRate))")
@@ -48,7 +48,7 @@ struct RechargeView: View {
 
             if !usdtEnabled {
                 Section {
-                    Text("USDT 充值暂未开放").foregroundStyle(.orange)
+                    Text("充值暂未开放").foregroundStyle(.orange)
                 }
             } else if activeOrder == nil {
                 amountSelectionSection
@@ -62,10 +62,10 @@ struct RechargeView: View {
                 }
             }
         }
-        .navigationTitle("USDT 充值")
+        .navigationTitle("充值")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink("充值记录") { RechargeOrdersView() }
+                NavigationLink("充值记录") { OrdersView(initialTab: .recharge) }
             }
         }
         .onDisappear { pollTask?.cancel() }

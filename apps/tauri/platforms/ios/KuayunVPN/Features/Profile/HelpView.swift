@@ -51,7 +51,7 @@ struct HelpView: View {
                 }
             }
         }
-        .navigationTitle("帮助中心")
+        .navigationTitle("导出订阅")
     }
 
     private func loadSubscriptionUrl() async {
