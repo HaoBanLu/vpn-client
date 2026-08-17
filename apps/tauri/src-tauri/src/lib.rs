@@ -81,6 +81,7 @@ pub fn run() {
     {
         builder = builder
             .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init())
             .manage(tray::HideOnCloseState(std::sync::Mutex::new(true)));
     }
 
@@ -117,6 +118,8 @@ pub fn run() {
             vpn::vpn_kill_switch_release,
             vpn::vpn_kill_switch_status,
             vpn::vpn_install_apk_update,
+            vpn::vpn_get_pending_apk_update,
+            vpn::vpn_try_install_pending_apk,
             vpn::vpn_list_installed_apps,
             vpn::vpn_get_direct_connect_packages,
             vpn::vpn_set_direct_connect_packages,

@@ -79,12 +79,11 @@ import { clientApi } from '@/api/client'
 import { useConnectStore } from '@/stores/connect'
 import { useAccountStore } from '@/stores/account'
 import { initDesktopTray, setTrayHideOnClose } from '@/lib/desktop/tray'
-import { checkAppUpdate, installAppUpdate } from '@/lib/desktop/updater'
 import { loadDesktopSettings } from '@/lib/vpn/desktop-settings'
 import { shouldUseDesktopLayout } from '@/lib/layout'
 import { isProfileRoute } from '@/lib/route-groups'
 import { sessionHeartbeatIntervalMs } from '@/lib/session-auth'
-import { Modal } from '@/lib/ui/confirm'
+import { useAppUpdate } from '@/lib/app-update/use-app-update'
 import { message } from '@/lib/ui/message'
 
 const route = useRoute()
@@ -103,14 +102,13 @@ const tabs: Array<{ name: string; label: string; icon: Component }> = [
 const tabKeepAliveNames = ['ConnectView', 'NodesView', 'PackagesView', 'ProfileView']
 
 const isDesktop = ref(typeof window !== 'undefined' && shouldUseDesktopLayout(window.innerWidth))
-const UPDATE_DISMISSED_KEY = 'tauri_update_dismissed_version'
+const appUpdate = useAppUpdate()
 
 function updateLayout() {
   isDesktop.value = shouldUseDesktopLayout(window.innerWidth)
 }
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null
-let updateCheckedOnStart = false
 let unlistenTray: (() => void) | null = null
 
 function isDocumentVisible() {
@@ -128,6 +126,7 @@ function startHeartbeatTimer() {
 function onVisibilityChange() {
   if (document.visibilityState === 'visible') {
     void sendHeartbeat()
+    void appUpdate.reconcileAfterResume()
   }
   startHeartbeatTimer()
 }
@@ -146,43 +145,6 @@ async function sendHeartbeat() {
     await clientApi.sendHeartbeat(connect.heartbeatPayload())
   } catch {
     // ignore heartbeat errors
-  }
-}
-
-async function checkForUpdateSilently() {
-  if (updateCheckedOnStart) return
-  updateCheckedOnStart = true
-  try {
-    const result = await checkAppUpdate()
-    if (!result.hasUpdate && !result.forceUpdate) return
-
-    const versionCode = result.latestVersionCode ?? 0
-    if (!result.forceUpdate && versionCode > 0 && localStorage.getItem(UPDATE_DISMISSED_KEY) === String(versionCode)) {
-      return
-    }
-
-    Modal.confirm({
-      title: result.forceUpdate ? '需要更新到最新版本' : '发现新版本',
-      content: result.message,
-      okText: result.downloadUrl || result.source === 'updater' ? '立即更新' : '知道了',
-      cancelText: result.forceUpdate ? undefined : '稍后再说',
-      onOk: async () => {
-        if (result.source === 'updater' || result.downloadUrl) {
-          await installAppUpdate({
-            downloadUrl: result.downloadUrl,
-            versionLabel: result.latestVersionName,
-            versionCode: result.latestVersionCode,
-          })
-        }
-      },
-      onCancel: () => {
-        if (!result.forceUpdate && versionCode > 0) {
-          localStorage.setItem(UPDATE_DISMISSED_KEY, String(versionCode))
-        }
-      },
-    })
-  } catch {
-    // Auto update checks should never block app startup.
   }
 }
 
@@ -210,7 +172,7 @@ onMounted(async () => {
   account.startNotificationPolling()
   connect.syncTrayTooltip()
   void connect.restoreSessionIfNeeded()
-  void checkForUpdateSilently()
+  void appUpdate.checkSilently()
   sendHeartbeat()
   startHeartbeatTimer()
   document.addEventListener('visibilitychange', onVisibilityChange)

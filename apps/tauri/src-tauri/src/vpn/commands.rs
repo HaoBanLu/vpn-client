@@ -534,6 +534,83 @@ pub async fn vpn_install_apk_update<R: Runtime>(
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct PendingApkUpdateInfo {
+    pub version_label: String,
+    pub version_code: i32,
+    #[serde(default)]
+    pub needs_install_permission: bool,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingApkUpdateResponse {
+    pub pending: Option<PendingApkUpdateInfo>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TryInstallPendingApkResponse {
+    pub result: String,
+}
+
+/// Android：读取待安装 APK 状态。
+#[tauri::command]
+pub async fn vpn_get_pending_apk_update<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<PendingApkUpdateResponse, String> {
+    #[cfg(target_os = "android")]
+    {
+        let value = app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<serde_json::Value>("getPendingApkUpdate", ())
+            .map_err(|e| e.to_string())?;
+        let pending = value.get("pending").and_then(|p| {
+            if p.is_null() {
+                None
+            } else {
+                serde_json::from_value(p.clone()).ok()
+            }
+        });
+        return Ok(PendingApkUpdateResponse { pending });
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Ok(PendingApkUpdateResponse { pending: None })
+    }
+}
+
+/// Android：尝试调起待安装 APK 的系统安装器。
+#[tauri::command]
+pub async fn vpn_try_install_pending_apk<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<TryInstallPendingApkResponse, String> {
+    #[cfg(target_os = "android")]
+    {
+        let value = app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<serde_json::Value>("tryInstallPendingApk", ())
+            .map_err(|e| e.to_string())?;
+        let result = value
+            .get("result")
+            .and_then(|v| v.as_str())
+            .unwrap_or("failed")
+            .to_string();
+        return Ok(TryInstallPendingApkResponse { result });
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Ok(TryInstallPendingApkResponse {
+            result: "no_pending".into(),
+        })
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct InstalledAppInfo {
     pub package_name: String,
     pub label: String,

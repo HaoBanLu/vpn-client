@@ -28,6 +28,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     init {
         NetworkServices.init(activity.application)
         MihomoInitializer.ensureReady(activity.application)
+        AppUpdateInstaller.eventEmitter = { event, payload -> trigger(event, payload) }
         scope.launch {
             VpnConnectionBus.status.collectLatest { status ->
                 emitStatus(status)
@@ -161,11 +162,46 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
             invoke.reject("下载地址无效")
             return
         }
-        val installer = AppUpdateInstaller(activity.applicationContext)
+        val installer = AppUpdateInstaller.getInstance(activity)
         installer.attachActivity(activity)
         installer.startDownload(url, versionLabel, versionCode)
         val ret = JSObject()
         ret.put("started", true)
+        invoke.resolve(ret)
+    }
+
+    @Command
+    fun getPendingApkUpdate(invoke: Invoke) {
+        val installer = AppUpdateInstaller.getInstance(activity)
+        installer.attachActivity(activity)
+        val pending = installer.readPendingInstall()
+        val ret = JSObject()
+        if (pending == null) {
+            ret.put("pending", null)
+        } else {
+            val obj = JSObject()
+            obj.put("versionLabel", pending.versionLabel)
+            obj.put("versionCode", pending.versionCode)
+            obj.put("needsInstallPermission", installer.needsInstallPermission())
+            ret.put("pending", obj)
+        }
+        invoke.resolve(ret)
+    }
+
+    @Command
+    fun tryInstallPendingApk(invoke: Invoke) {
+        val installer = AppUpdateInstaller.getInstance(activity)
+        installer.attachActivity(activity)
+        val result =
+            when (installer.tryInstallPendingApk()) {
+                AppUpdateInstaller.InstallAttemptResult.NoPending -> "no_pending"
+                AppUpdateInstaller.InstallAttemptResult.MissingApk -> "missing_apk"
+                AppUpdateInstaller.InstallAttemptResult.NeedPermission -> "need_permission"
+                AppUpdateInstaller.InstallAttemptResult.Launched -> "launched"
+                AppUpdateInstaller.InstallAttemptResult.Failed -> "failed"
+            }
+        val ret = JSObject()
+        ret.put("result", result)
         invoke.resolve(ret)
     }
 

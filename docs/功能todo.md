@@ -7,6 +7,7 @@
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
+| 跨端更新浮层与安装闭环 | ✅ | 2026-08-17 | Windows 下载进度 + 自动 relaunch；Android pending APK 持久化/onResume 继续安装；AppUpdateOverlay 替代 Modal.confirm；24h 前台复检；About 继续安装 |
 | 发版 1.2.26 / code 146 | ✅ | 2026-08-17 | 连接页首连并行与阶段文案；节点本机批量测速；测速色 600/1200；按 node.id 选路；Android rustls 启动修复。Tag `v1.2.26` |
 | 节点测速颜色放宽与按 ID 选节点 | ✅ | 2026-08-17 | 延迟色阈值放宽为 600/1200ms，跨境 400–600ms 视为正常绿色；节点选中、连接中态与入口延迟缓存改按 `node.id`，避免同名节点串选/串测速 |
 | 连接页首连加速与阶段文案 | ✅ | 2026-08-17 | 隐私基线与 getClientConfig 并行；节点列表 60s 缓存；connectPhase 驱动 Hero 副标题；QuickStatus 连接中禁用选节点 |

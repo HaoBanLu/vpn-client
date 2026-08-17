@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import KyButton from './KyButton.vue'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     open?: boolean
     title?: string
@@ -27,15 +27,19 @@ withDefaults(
     cancelText?: string
     showCancel?: boolean
     showFooter?: boolean
+    /** false 时由父组件在异步 onOk 完成后再关窗 */
+    closeOnOk?: boolean
   }>(),
-  { open: false, okText: '确定', cancelText: '取消', showCancel: true, showFooter: true },
+  { open: false, okText: '确定', cancelText: '取消', showCancel: true, showFooter: true, closeOnOk: true },
 )
 
 const emit = defineEmits<{ 'update:open': [value: boolean]; ok: []; cancel: [] }>()
 
 function onOk() {
   emit('ok')
-  emit('update:open', false)
+  if (props.closeOnOk) {
+    emit('update:open', false)
+  }
 }
 
 function onCancel() {

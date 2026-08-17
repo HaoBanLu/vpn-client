@@ -9,6 +9,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.vpn.kuayun.vpn.AppStatusNotification
+import com.vpn.kuayun.vpn.AppUpdateInstaller
 
 /**
  * 浅色 WebView + edge-to-edge：深色状态栏图标。
@@ -58,6 +59,8 @@ class MainActivity : TauriActivity() {
         super.onResume()
         AppStatusNotification.showIdle(this)
         polishWebView()
+        AppUpdateInstaller.getInstance(this).attachActivity(this)
+        AppUpdateInstaller.getInstance(this).onResume()
     }
 
     override fun onRequestPermissionsResult(

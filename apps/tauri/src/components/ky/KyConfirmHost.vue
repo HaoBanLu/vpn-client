@@ -6,6 +6,7 @@
     :ok-text="confirmState.options?.okText || '确定'"
     :cancel-text="confirmState.options?.cancelText || '取消'"
     :show-cancel="confirmState.options?.type !== 'error' && !!confirmState.options?.cancelText"
+    :close-on-ok="false"
     @update:open="onVisibleChange"
     @ok="handleOk"
     @cancel="handleCancel"
