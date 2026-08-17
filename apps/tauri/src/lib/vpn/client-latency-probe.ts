@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 
+export const CLIENT_LATENCY_CONCURRENCY = 8
+
 export function parseLatencyEndpoint(endpoint?: string | null): { host: string; port: number } | null {
   const raw = endpoint?.trim() ?? ''
   if (!raw) return null
@@ -28,10 +30,30 @@ export async function probeTcpLatency(
   }
 }
 
+/** 有本机结果就用本机；本机失败才用控制面（机房到节点，不能代表用户 RTT）。 */
 export function mergeLatencyResults(serverMs: number, clientMs: number | null): number {
   const server = serverMs > 0 ? serverMs : -1
   const client = clientMs != null && clientMs > 0 ? clientMs : -1
-  if (server > 0 && client > 0) return Math.min(server, client)
   if (client > 0) return client
   return server
+}
+
+export async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return []
+  const results: R[] = new Array(items.length)
+  let next = 0
+  const limit = Math.min(Math.max(1, concurrency), items.length)
+  async function worker() {
+    while (next < items.length) {
+      const index = next
+      next += 1
+      results[index] = await mapper(items[index], index)
+    }
+  }
+  await Promise.all(Array.from({ length: limit }, () => worker()))
+  return results
 }

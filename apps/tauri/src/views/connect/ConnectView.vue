@@ -123,7 +123,7 @@ const showConnectError = computed(() => {
   return !store.error.includes(NODE_REQUIRED_HINT)
 })
 
-const entryLatencyMs = computed(() => getEntryLatencyMs(store.selectedNode))
+const entryLatencyMs = computed(() => getEntryLatencyMs(store.selectedNodeId))
 
 const heroCopy = computed(() =>
   resolveConnectHeroCopy({
@@ -133,6 +133,7 @@ const heroCopy = computed(() =>
     selectedNode: store.selectedNode,
     tunnelLatencyMs: store.probeLatencyMs,
     entryLatencyMs: entryLatencyMs.value,
+    connectPhase: store.connectPhase,
   }),
 )
 

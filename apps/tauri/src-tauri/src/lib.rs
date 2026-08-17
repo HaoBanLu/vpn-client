@@ -63,8 +63,15 @@ fn boot_reveal_main(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// reqwest/rustls 在 Android 等目标上不会自动安装 crypto provider，启动前必须显式注册。
+fn init_rustls_crypto_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    init_rustls_crypto_provider();
+
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(vpn_plugin())

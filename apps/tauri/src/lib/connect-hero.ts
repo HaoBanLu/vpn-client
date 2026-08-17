@@ -1,4 +1,6 @@
 import type { VpnConnectionState } from '@/lib/vpn/types'
+import type { ConnectPhase } from '@/lib/vpn/connect-phase'
+import { connectPhaseLabel } from '@/lib/vpn/connect-phase'
 
 export interface ConnectHeroCopy {
   title: string
@@ -34,6 +36,7 @@ export function resolveConnectHeroCopy(input: {
   selectedNode?: string | null
   tunnelLatencyMs?: number | null
   entryLatencyMs?: number | null
+  connectPhase?: ConnectPhase
   emptyReason?: 'no_subscription' | 'load_error'
 }): ConnectHeroCopy {
   const {
@@ -43,6 +46,7 @@ export function resolveConnectHeroCopy(input: {
     selectedNode,
     tunnelLatencyMs,
     entryLatencyMs,
+    connectPhase = 'idle',
     emptyReason,
   } = input
 
@@ -77,11 +81,14 @@ export function resolveConnectHeroCopy(input: {
   const connected = connectionState === 'connected'
 
   if (connecting) {
-    let subtitle = '正在建立加密隧道…'
-    if (selectedNode?.trim()) {
+    const phaseHint = connectPhaseLabel(connectPhase, { isSwitching })
+    let subtitle = phaseHint ?? '正在建立加密隧道…'
+    if (selectedNode?.trim() && !phaseHint) {
       subtitle = `${isSwitching ? '正在切换至 ' : '正在连接 '}${nodeLabel}`
-    } else if (connectPending && connectionState !== 'connecting') {
+    } else if (connectPending && connectionState !== 'connecting' && !phaseHint) {
       subtitle = '正在准备连接…'
+    } else if (selectedNode?.trim() && phaseHint) {
+      subtitle = `${phaseHint} · ${nodeLabel}`
     }
     if (latencyHint) subtitle += ` · ${latencyHint}`
 
@@ -126,7 +133,7 @@ export function resolveConnectHeroCopy(input: {
     title: '未连接',
     subtitle: selectedNode?.trim()
       ? `已选 ${nodeLabel} · 点击下方连接`
-      : '点击「一键连接」前往选择节点',
+      : '未选节点时将按地区自动选路',
     buttonLabel: '一键连接',
     variant: 'default',
     titleTone: 'default',

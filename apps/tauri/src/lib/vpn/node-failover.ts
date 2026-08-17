@@ -36,8 +36,11 @@ export function pickBackupNode(
   currentNodeName: string,
   currentRegion: string | null | undefined,
   nodes: NodeItem[],
+  currentNodeId?: number | null,
 ): NodeItem | null {
-  const current = nodes.find((n) => n.name === currentNodeName)
+  const current = currentNodeId != null
+    ? nodes.find((n) => n.id === currentNodeId) ?? nodes.find((n) => n.name === currentNodeName)
+    : nodes.find((n) => n.name === currentNodeName)
   if (!current) return null
 
   const region =
@@ -46,7 +49,11 @@ export function pickBackupNode(
     ''
 
   const connectable = nodes.filter(
-    (node) => node.name !== currentNodeName && isOnline(node) && isAppConnectable(node),
+    (node) =>
+      node.id !== current.id &&
+      node.name !== currentNodeName &&
+      isOnline(node) &&
+      isAppConnectable(node),
   )
 
   let candidates = region

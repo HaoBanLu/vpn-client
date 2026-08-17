@@ -110,8 +110,11 @@ export function nodeRegionLabel(region?: string, regionName?: string): string {
   return regionName?.trim() || region?.trim()?.toUpperCase() || '未知'
 }
 
+const LATENCY_GOOD_MAX_MS = 600
+const LATENCY_WARN_MAX_MS = 1200
+
 export function latencyColor(ms: number): string {
-  if (ms < 80) return '#4CAF50'
-  if (ms < 150) return '#FFC107'
+  if (ms <= LATENCY_GOOD_MAX_MS) return '#4CAF50'
+  if (ms <= LATENCY_WARN_MAX_MS) return '#FFC107'
   return '#FF6B6B'
 }

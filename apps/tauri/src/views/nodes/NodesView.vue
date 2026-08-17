@@ -88,12 +88,14 @@ import { regionDisplayLabel } from '@/lib/subscription'
 import { isAppConnectable, unsupportedReason } from '@/lib/vpn/app-protocol-support'
 import { shouldConnectAfterNodeSelect, shouldNavigateToConnectAfterNodeSelect } from '@/lib/vpn/connect-navigation'
 import {
+  CLIENT_LATENCY_CONCURRENCY,
+  mapPool,
   mergeLatencyResults,
   parseLatencyEndpoint,
   probeTcpLatency,
 } from '@/lib/vpn/client-latency-probe'
 import { findFastestNodeId, sortNodesByLatency } from '@/lib/vpn/node-list-display'
-import { saveEntryLatenciesByNodeName } from '@/lib/vpn/entry-latency-cache'
+import { saveEntryLatenciesByNodeId } from '@/lib/vpn/entry-latency-cache'
 import { useConnectStore } from '@/stores/connect'
 import { useAccountStore } from '@/stores/account'
 
@@ -126,18 +128,18 @@ const regionItems = computed(() => [
 ])
 
 function isNodeActive(item: NodeItem) {
-  return connect.isConnected && connect.selectedNode === item.name
+  return connect.isConnected && connect.selectedNodeId === item.id
 }
 
 function isNodeSelected(item: NodeItem) {
   if (isNodeActive(item)) return false
-  return connect.selectedNode === item.name
+  return connect.selectedNodeId === item.id
 }
 
 function isNodeConnecting(item: NodeItem) {
   return (
     (connect.isConnecting || connect.isSwitching) &&
-    connect.selectedNode === item.name
+    connect.selectedNodeId === item.id
   )
 }
 
@@ -150,6 +152,7 @@ async function load() {
   loading.value = true
   loadError.value = null
   try {
+    connect.invalidateConnectNodesCache()
     const nodesReq = clientApi.getNodes()
     if (connect.regions.length === 0 && !account.fetched) {
       await connect.refresh()
@@ -174,7 +177,7 @@ async function selectNode(node: NodeItem) {
   }
   const willConnect = shouldConnectAfterNodeSelect(wasConnected)
   if (willConnect && connect.subscription) {
-    connect.beginConnectPending(node.name)
+    connect.beginConnectPending(node)
   }
   if (shouldNavigateToConnectAfterNodeSelect()) {
     await router.push({ name: 'Connect' })
@@ -188,36 +191,48 @@ async function selectNode(node: NodeItem) {
   }
 }
 
-async function batchTest() {
-  const targets = connectableNodes.value
-  const ids = targets.map((n) => n.id)
-  if (ids.length === 0) return
-  batchTesting.value = true
+async function persistLatencyCache(targets: NodeItem[]) {
+  saveEntryLatenciesByNodeId(
+    targets.map((node) => ({
+      id: node.id,
+      latencyMs: latencyMap[node.id] ?? 0,
+    })),
+  )
+}
+
+async function fillMissingFromServer(missing: NodeItem[]) {
+  if (missing.length === 0) return
   try {
-    const payload = (await clientApi.batchTestLatency(ids)).data
+    const payload = (await clientApi.batchTestLatency(missing.map((node) => node.id))).data
     const results = payload.results ?? {}
     const details = payload.details ?? {}
-    const clientLatencies = await Promise.all(
-      targets.map(async (node) => {
-        const endpoint = parseLatencyEndpoint(node.latency_endpoint)
-        if (!endpoint) return [node.id, null] as const
-        const latency = await probeTcpLatency(endpoint.host, endpoint.port)
-        return [node.id, latency] as const
-      }),
-    )
-    const clientMap = Object.fromEntries(clientLatencies)
-    Object.entries(results).forEach(([id, latency]) => {
-      const nodeId = Number(id)
-      const serverMs = details[id]?.entry_latency_ms ?? latency
-      latencyMap[nodeId] = mergeLatencyResults(serverMs, clientMap[nodeId] ?? null)
+    for (const node of missing) {
+      const key = String(node.id)
+      const serverMs = details[key]?.entry_latency_ms ?? results[key] ?? -1
+      const merged = mergeLatencyResults(serverMs, latencyMap[node.id] ?? null)
+      if (merged > 0) latencyMap[node.id] = merged
+    }
+  } catch {
+    // 控制面补洞失败不影响已测出的本机结果
+  }
+}
+
+async function batchTest() {
+  const targets = [...connectableNodes.value]
+  if (targets.length === 0) return
+  batchTesting.value = true
+  try {
+    await mapPool(targets, CLIENT_LATENCY_CONCURRENCY, async (node) => {
+      const endpoint = parseLatencyEndpoint(node.latency_endpoint)
+      if (!endpoint) return
+      const latency = await probeTcpLatency(endpoint.host, endpoint.port)
+      if (latency != null && latency > 0) latencyMap[node.id] = latency
     })
-    saveEntryLatenciesByNodeName(
-      targets.map((node) => ({
-        name: node.name,
-        latencyMs: latencyMap[node.id] ?? 0,
-      })),
-    )
-    message.success(`已测试 ${Object.keys(results).length} 个节点`)
+    const missing = targets.filter((node) => !(latencyMap[node.id] > 0))
+    await fillMissingFromServer(missing)
+    persistLatencyCache(targets)
+    const ok = targets.filter((node) => (latencyMap[node.id] ?? 0) > 0).length
+    message.success(`已测试 ${ok} 个节点`)
   } finally {
     batchTesting.value = false
   }

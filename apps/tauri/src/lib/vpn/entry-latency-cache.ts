@@ -1,5 +1,5 @@
 /** 节点页测速结果缓存，供连接页 Hero 展示「入口 xxms」。 */
-const STORAGE_KEY = 'ky_entry_latency_by_node'
+const STORAGE_KEY = 'ky_entry_latency_by_node_id'
 
 type LatencyMap = Record<string, number>
 
@@ -14,19 +14,18 @@ function readMap(): LatencyMap {
   }
 }
 
-export function saveEntryLatenciesByNodeName(entries: Array<{ name: string; latencyMs: number }>) {
+export function saveEntryLatenciesByNodeId(entries: Array<{ id: number; latencyMs: number }>) {
   if (typeof sessionStorage === 'undefined') return
   const map = readMap()
   for (const item of entries) {
-    const name = item.name?.trim()
-    if (!name || !(item.latencyMs > 0)) continue
-    map[name] = item.latencyMs
+    if (!(item.id > 0) || !(item.latencyMs > 0)) continue
+    map[String(item.id)] = item.latencyMs
   }
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(map))
 }
 
-export function getEntryLatencyMs(nodeName: string | null | undefined): number | null {
-  if (!nodeName?.trim() || typeof sessionStorage === 'undefined') return null
-  const value = readMap()[nodeName.trim()]
+export function getEntryLatencyMs(nodeId: number | null | undefined): number | null {
+  if (!(nodeId && nodeId > 0) || typeof sessionStorage === 'undefined') return null
+  const value = readMap()[String(nodeId)]
   return typeof value === 'number' && value > 0 ? value : null
 }

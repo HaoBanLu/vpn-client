@@ -49,6 +49,16 @@ describe('resolveConnectHeroCopy', () => {
     expect(copy.subtitle).toContain('正在连接 新加坡2')
   })
 
+  it('connecting with phase shows phase hint', () => {
+    const copy = resolveConnectHeroCopy({
+      connectionState: 'connecting',
+      selectedNode: '杭州1',
+      connectPhase: 'authorize',
+    })
+    expect(copy.subtitle).toContain('授权')
+    expect(copy.subtitle).toContain('杭州1')
+  })
+
   it('no subscription prompts purchase instead of one-click connect', () => {
     const copy = resolveConnectHeroCopy({
       connectionState: 'disconnected',

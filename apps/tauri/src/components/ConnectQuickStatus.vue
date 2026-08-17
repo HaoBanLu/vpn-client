@@ -2,13 +2,19 @@
   <KyCard class="quick-status">
     <p v-if="subscriptionLine" class="quick-status__meta">{{ subscriptionLine }}</p>
 
-    <button type="button" class="quick-status__node" @click="$emit('pick-node')">
+    <button
+      type="button"
+      class="quick-status__node"
+      :class="{ 'quick-status__node--disabled': connecting }"
+      :disabled="connecting"
+      @click="onPickNode"
+    >
       <CloudOutlined class="quick-status__icon" />
       <div class="quick-status__node-copy">
-        <span class="quick-status__label">{{ nodeLabel ? '当前节点' : '选择节点' }}</span>
-        <span class="quick-status__value">{{ nodeLabel || '去连接节点' }}</span>
+        <span class="quick-status__label">{{ connecting ? '连接中' : nodeLabel ? '当前节点' : '选择节点' }}</span>
+        <span class="quick-status__value">{{ connecting ? '请稍候…' : nodeLabel || '去连接节点' }}</span>
       </div>
-      <span class="quick-status__chevron">›</span>
+      <span v-if="!connecting" class="quick-status__chevron">›</span>
     </button>
   </KyCard>
 </template>
@@ -26,7 +32,12 @@ const props = defineProps<{
   connecting?: boolean
 }>()
 
-defineEmits<{ 'pick-node': [] }>()
+const emit = defineEmits<{ 'pick-node': [] }>()
+
+function onPickNode() {
+  if (props.connecting) return
+  emit('pick-node')
+}
 
 const nodeLabel = computed(() => displayNodeLabel(props.selectedNode))
 
@@ -72,6 +83,11 @@ const subscriptionLine = computed(() => {
   color: inherit;
   cursor: pointer;
   text-align: left;
+}
+
+.quick-status__node--disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 
 .quick-status__icon {

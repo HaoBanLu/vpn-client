@@ -73,18 +73,35 @@ import {
   emptyRateSmoother,
   type RateSmootherState,
 } from '@/lib/vpn/session-throughput'
+import type { ConnectPhase } from '@/lib/vpn/connect-phase'
+import type { ExitIpInfo } from '@/lib/vpn/exit-ip-probe'
 
 const REGION_KEY = 'tauri_region'
 const NODE_KEY = 'tauri_node'
+const NODE_ID_KEY = 'tauri_node_id'
+const NODE_NAME_SNAPSHOT_KEY = 'tauri_node_name'
+const NODES_CACHE_TTL_MS = 60_000
 
-function sanitizeStoredNode(): string | null {
-  const raw = localStorage.getItem(NODE_KEY)
+function sanitizeStoredNodeName(): string | null {
+  const raw = localStorage.getItem(NODE_NAME_SNAPSHOT_KEY) ?? localStorage.getItem(NODE_KEY)
   if (!raw) return null
   if (!isAcquirableNodeName(raw)) {
     localStorage.removeItem(NODE_KEY)
+    localStorage.removeItem(NODE_NAME_SNAPSHOT_KEY)
     return null
   }
   return raw
+}
+
+function sanitizeStoredNodeId(): number | null {
+  const raw = localStorage.getItem(NODE_ID_KEY)
+  if (!raw) return null
+  const value = Number.parseInt(raw, 10)
+  if (!Number.isFinite(value) || value <= 0) {
+    localStorage.removeItem(NODE_ID_KEY)
+    return null
+  }
+  return value
 }
 
 loadSavedRouteMode()
@@ -95,7 +112,13 @@ export const useConnectStore = defineStore('connect', () => {
   const loading = ref(false)
   const regions = ref<import('@/api/client').RegionItem[]>([])
   const selectedRegion = ref<string | null>(localStorage.getItem(REGION_KEY))
-  const selectedNode = ref<string | null>(sanitizeStoredNode())
+  const selectedNodeId = ref<number | null>(sanitizeStoredNodeId())
+  const selectedNodeNameSnapshot = ref<string | null>(sanitizeStoredNodeName())
+  const selectedNode = computed(() => {
+    if (selectedNodeId.value == null) return selectedNodeNameSnapshot.value
+    const current = connectNodesCache.find((item) => item.id === selectedNodeId.value)
+    return current?.name ?? selectedNodeNameSnapshot.value
+  })
   const routeMode = ref<AppRouteMode>(loadSavedRouteMode())
   const connectionScenario = ref<ConnectionScenarioValue>(CONNECTION_SCENARIO.AUTO)
   const connectionScenarioLabelText = ref('自动')
@@ -106,6 +129,7 @@ export const useConnectStore = defineStore('connect', () => {
   const actionHint = ref<string | null>(null)
   /** 对齐 Android connectPending：点连接/选节点后立刻为 true，先于 connectionState=connecting */
   const connectPending = ref(false)
+  const connectPhase = ref<ConnectPhase>('idle')
   const error = ref<string | null>(null)
   const platformInfo = ref<VpnPlatformInfo | null>(null)
   const stats = ref({
@@ -157,6 +181,56 @@ export const useConnectStore = defineStore('connect', () => {
 
   const MAX_AUTO_RECONNECT = AUTO_RECONNECT_POLICY.maxAttempts
   const refreshHolder: { current: Promise<void> | null } = { current: null }
+  let connectNodesCache: NodeItem[] = []
+  let connectNodesCachedAt = 0
+
+  async function fetchConnectNodes(force = false): Promise<NodeItem[]> {
+    const now = Date.now()
+    if (!force && connectNodesCache.length > 0 && now - connectNodesCachedAt < NODES_CACHE_TTL_MS) {
+      return connectNodesCache
+    }
+    const nodes = (await clientApi.getNodes()).data.nodes
+    connectNodesCache = nodes
+    connectNodesCachedAt = now
+    migrateLegacySelectedNode(nodes)
+    return nodes
+  }
+
+  function invalidateConnectNodesCache() {
+    connectNodesCache = []
+    connectNodesCachedAt = 0
+  }
+
+  function findSelectedNode(nodes: NodeItem[] = connectNodesCache): NodeItem | null {
+    if (selectedNodeId.value == null) return null
+    return nodes.find((item) => item.id === selectedNodeId.value) ?? null
+  }
+
+  function saveNodeIdentity(node: Pick<NodeItem, 'id' | 'name'> | null) {
+    selectedNodeId.value = node?.id ?? null
+    selectedNodeNameSnapshot.value = node?.name ?? null
+    if (node) {
+      localStorage.setItem(NODE_ID_KEY, String(node.id))
+      localStorage.setItem(NODE_NAME_SNAPSHOT_KEY, node.name)
+      localStorage.setItem(NODE_KEY, node.name)
+      return
+    }
+    localStorage.removeItem(NODE_ID_KEY)
+    localStorage.removeItem(NODE_NAME_SNAPSHOT_KEY)
+    localStorage.removeItem(NODE_KEY)
+  }
+
+  function migrateLegacySelectedNode(nodes: NodeItem[]) {
+    if (selectedNodeId.value != null) return
+    const legacyName = localStorage.getItem(NODE_KEY)
+    if (!legacyName || !isAcquirableNodeName(legacyName)) return
+    const matched = nodes.find((item) => item.name === legacyName)
+    if (matched) {
+      saveNodeIdentity(matched)
+      return
+    }
+    saveNodeIdentity(null)
+  }
 
   function bumpConnectGeneration(): number {
     connectGeneration += 1
@@ -388,7 +462,9 @@ export const useConnectStore = defineStore('connect', () => {
       applyResolvedConnectionConfig()
       message.success('使用场景已更新')
       const nodes = await clientApi.getNodes().then((r) => r.data.nodes).catch(() => [] as NodeItem[])
-      const current = nodes.find((n) => n.name === selectedNode.value)
+      const current = selectedNodeId.value == null
+        ? null
+        : nodes.find((n) => n.id === selectedNodeId.value)
       const mismatch = scenarioMismatchHint(normalized, current?.access_mode)
       if (mismatch) {
         actionHint.value = mismatch
@@ -442,26 +518,45 @@ export const useConnectStore = defineStore('connect', () => {
   }
 
   async function validateSelectedNode(nodes?: NodeItem[]) {
-    const nodeName = selectedNode.value
-    if (!nodeName) return
-    const list = nodes ?? (await clientApi.getNodes()).data.nodes
-    const node = list.find((item) => item.name === nodeName)
+    const list = nodes ?? (await fetchConnectNodes())
+    const node = findSelectedNode(list)
+    if (!node) {
+      saveNode(null)
+      return
+    }
     if (node && !isAppConnectable(node)) {
       saveNode(null)
       throw new Error(unsupportedReason(node) ?? '所选节点不支持 App 连接')
     }
   }
 
-  function saveNode(node: string | null) {
-    selectedNode.value = node
-    if (node) localStorage.setItem(NODE_KEY, node)
-    else localStorage.removeItem(NODE_KEY)
+  function saveNode(node: Pick<NodeItem, 'id' | 'name'> | string | null) {
+    if (!node) {
+      saveNodeIdentity(null)
+      return
+    }
+    if (typeof node === 'string') {
+      selectedNodeId.value = null
+      localStorage.removeItem(NODE_ID_KEY)
+      selectedNodeNameSnapshot.value = isAcquirableNodeName(node) ? node : null
+      if (selectedNodeNameSnapshot.value) {
+        localStorage.setItem(NODE_KEY, selectedNodeNameSnapshot.value)
+        localStorage.setItem(NODE_NAME_SNAPSHOT_KEY, selectedNodeNameSnapshot.value)
+      }
+      return
+    }
+    saveNodeIdentity(node)
   }
 
   async function syncSavedNodeWithNodes(nodes: NodeItem[]) {
-    const nodeName = selectedNode.value
-    if (!nodeName) return
-    const node = nodes.find((item) => item.name === nodeName)
+    if (selectedNodeId.value == null) {
+      migrateLegacySelectedNode(nodes)
+    }
+    const node = findSelectedNode(nodes)
+    if (!node && selectedNodeId.value != null) {
+      saveNode(null)
+      return
+    }
     if (node && !isAppConnectable(node)) {
       saveNode(null)
     }
@@ -584,6 +679,7 @@ export const useConnectStore = defineStore('connect', () => {
     syncTrayTooltip()
     if (next === 'connected' && prev !== 'connected') {
       connectPending.value = false
+      connectPhase.value = 'idle'
       autoReconnectAttempts.value = 0
       userInitiatedDisconnect.value = false
       markVpnSession(true)
@@ -596,6 +692,7 @@ export const useConnectStore = defineStore('connect', () => {
     if (next === 'disconnected' || next === 'failed') {
       // 在途连接中的 disconnected 已在 applyExternalVpnStatus 过滤；此处仅处理真实结束
       connectPending.value = false
+      connectPhase.value = 'idle'
       cancelProbe()
       stopHealthProbeLoop()
       resetSessionStats()
@@ -738,36 +835,47 @@ export const useConnectStore = defineStore('connect', () => {
   async function resolveConnectConfig() {
     let accessMode: string | null = null
     let nodeRegion: string | null = selectedRegion.value
-    if (selectedNode.value) {
-      const nodes = (await clientApi.getNodes()).data.nodes
-      const node = nodes.find((n) => n.name === selectedNode.value)
+    if (selectedNodeId.value != null) {
+      const nodes = await fetchConnectNodes()
+      const node = nodes.find((n) => n.id === selectedNodeId.value)
       accessMode = node?.access_mode ?? null
       if (node?.region) nodeRegion = node.region
     }
     return resolveConnectionConfig(connectionScenario.value, nodeRegion, accessMode)
   }
 
-  async function performConnect(hint?: string | null, generation?: number) {
+  async function performConnect(
+    hint?: string | null,
+    generation?: number,
+    baselinePromise?: Promise<ExitIpInfo | null> | null,
+  ) {
     const token = generation ?? connectGeneration
     if (platformInfo.value && !platformInfo.value.vpnSupported) {
       throw new Error(platformInfo.value.notes || '当前平台暂不支持 VPN 连接')
     }
+    connectPhase.value = 'config'
     const params = getConfigParams()
     const resolved = await resolveConnectConfig()
     if (!isConnectGenerationCurrent(token)) return
     activeProfile.value = resolved.profile
     routeMode.value = resolved.routeMode
     saveRouteMode(resolved.routeMode)
-    const configResp = (
-      await clientApi.getClientConfig(
+    const baselineTask =
+      baselinePromise?.then((baseline) => {
+        if (baseline?.ip) savePrivacyBaselineIp(baseline.ip)
+      }) ?? Promise.resolve()
+    const [configResp] = await Promise.all([
+      clientApi.getClientConfig(
         params.region,
         params.node,
         resolved.routeMode,
         resolved.profile,
-      )
-    ).data
+      ),
+      baselineTask,
+    ])
     if (!isConnectGenerationCurrent(token)) return
-    const patchedConfig = injectDirectBypassRules(configResp.config)
+    const patchedConfig = injectDirectBypassRules(configResp.data.config)
+    connectPhase.value = 'authorize'
     const prepared = await prepareVpn()
     if (!isConnectGenerationCurrent(token)) return
     if (!prepared) {
@@ -783,6 +891,7 @@ export const useConnectStore = defineStore('connect', () => {
       scenario: connectionScenario.value,
       region: selectedRegion.value ?? '',
     })
+    connectPhase.value = 'tunnel'
     await connectVpn({
       configJson: patchedConfig,
       nodeName: selectedNode.value ?? '智能选路',
@@ -790,6 +899,7 @@ export const useConnectStore = defineStore('connect', () => {
     })
     if (!isConnectGenerationCurrent(token)) return
     // Android 原生 connect 异步返回 CONNECTING，需轮询到 connected/failed，避免秒报「VPN 未就绪」
+    connectPhase.value = 'verify'
     const ready = await waitForVpnReady({
       getStatus: getVpnStatus,
       isCurrent: () => isConnectGenerationCurrent(token),
@@ -840,6 +950,7 @@ export const useConnectStore = defineStore('connect', () => {
     stopHealthProbeLoop()
     isSwitching.value = false
     connectPending.value = false
+    connectPhase.value = 'idle'
     markVpnSession(false)
     appendDebugLog('connect', '用户中断连接中的隧道', 'info')
     void flushDebugLogs()
@@ -858,10 +969,10 @@ export const useConnectStore = defineStore('connect', () => {
   /**
    * 选节点后、跳转连接页之前调用：立刻进入「连接中」UI，避免底部 hint 与 Hero「一键连接」打架。
    */
-  function beginConnectPending(nodeName: string) {
-    const name = nodeName.trim()
+  function beginConnectPending(node: Pick<NodeItem, 'id' | 'name'>) {
+    const name = node.name.trim()
     if (!name) return
-    saveNode(name)
+    saveNode(node)
     connectPending.value = true
     error.value = null
     actionHint.value = `正在连接 ${name}…`
@@ -912,14 +1023,13 @@ export const useConnectStore = defineStore('connect', () => {
     isSwitching.value = false
     syncTrayTooltip()
 
+    let baselinePromise: Promise<ExitIpInfo | null> | undefined
     if (needBaseline) {
-      const baseline = await probeExitIp().catch(() => null)
-      if (!isConnectGenerationCurrent(token)) return 'done'
-      if (baseline?.ip) savePrivacyBaselineIp(baseline.ip)
+      baselinePromise = probeExitIp().catch(() => null)
     }
 
     try {
-      await performConnect(undefined, token)
+      await performConnect(undefined, token, baselinePromise)
       if (!isConnectGenerationCurrent(token)) return 'done'
       // performConnect 会更新 connectionState；用 computed 避免赋值后的字面量收窄误报
       if (isConnected.value) {
@@ -929,6 +1039,7 @@ export const useConnectStore = defineStore('connect', () => {
     } catch (e: unknown) {
       if (!isConnectGenerationCurrent(token)) return 'done'
       connectPending.value = false
+      connectPhase.value = 'idle'
       connectionState.value = 'failed'
       const msg = e instanceof Error ? e.message : '连接失败'
       setVpnError(msg)
@@ -946,6 +1057,7 @@ export const useConnectStore = defineStore('connect', () => {
     cancelProbe()
     isSwitching.value = true
     connectPending.value = true
+    connectPhase.value = 'config'
     actionHint.value = switchingHint ?? '正在切换节点…'
     connectionState.value = 'connecting'
     error.value = null
@@ -970,12 +1082,14 @@ export const useConnectStore = defineStore('connect', () => {
       ).data
       if (!isConnectGenerationCurrent(token)) return
       const patchedConfig = injectDirectBypassRules(config.config)
+      connectPhase.value = 'tunnel'
       await reconnectVpn({
         configJson: patchedConfig,
         nodeName: selectedNode.value ?? '智能选路',
         connectionMode: effectiveConnectionMode(),
       })
       if (!isConnectGenerationCurrent(token)) return
+      connectPhase.value = 'verify'
       const ready = await waitForVpnReady({
         getStatus: getVpnStatus,
         isCurrent: () => isConnectGenerationCurrent(token),
@@ -989,9 +1103,11 @@ export const useConnectStore = defineStore('connect', () => {
       }
       await syncStatusAndProbe()
       connectPending.value = false
+      connectPhase.value = 'idle'
     } catch (e: unknown) {
       if (!isConnectGenerationCurrent(token)) return
       connectPending.value = false
+      connectPhase.value = 'idle'
       connectionState.value = 'failed'
       const msg = e instanceof Error ? e.message : '切换失败'
       setVpnError(msg)
@@ -1017,7 +1133,7 @@ export const useConnectStore = defineStore('connect', () => {
       await interruptInFlightConnect()
     }
     const wasConnected = connectionState.value === 'connected'
-    saveNode(node.name)
+    saveNode(node)
     saveRegion(node.region)
     applyResolvedConnectionConfig(node.access_mode)
     error.value = null
@@ -1039,7 +1155,7 @@ export const useConnectStore = defineStore('connect', () => {
         clearConnectPending()
         actionHint.value = mismatch ?? `已选择 ${node.name}，购买套餐后可连接`
       } else {
-        beginConnectPending(node.name)
+        beginConnectPending(node)
       }
       const result = await connect()
       if (mismatch && connectionState.value === 'connected') actionHint.value = mismatch
@@ -1076,6 +1192,7 @@ export const useConnectStore = defineStore('connect', () => {
     stopHealthProbeLoop()
     isSwitching.value = false
     connectPending.value = false
+    connectPhase.value = 'idle'
     markVpnSession(false)
     syncTrayTooltip()
     appendDebugLog('connect', '用户手动断开连接', 'info')
@@ -1200,6 +1317,7 @@ export const useConnectStore = defineStore('connect', () => {
     usage,
     regions,
     selectedRegion,
+    selectedNodeId,
     selectedNode,
     routeMode,
     connectionScenario,
@@ -1210,6 +1328,7 @@ export const useConnectStore = defineStore('connect', () => {
     probeLatencyMs,
     actionHint,
     connectPending,
+    connectPhase,
     error,
     platformInfo,
     stats,
@@ -1246,5 +1365,6 @@ export const useConnectStore = defineStore('connect', () => {
     clearNodeRequiredFailure,
     consumeNavigateToNodesRequest,
     consumeNavigateToPackagesRequest,
+    invalidateConnectNodesCache,
   }
 })
