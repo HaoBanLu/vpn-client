@@ -286,7 +286,8 @@ class VpnTunnelService : VpnService() {
     }
 
     /** 切网后若不更新 underlying，系统 VPN 路径易僵死（Compose 同款注释）。 */
-    private fun rebindUnderlyingNetworks(reason: String) {
+    /** @param notifyWeb 仅切网（onAvailable/onLost）时通知前端完整重连，capabilities 抖动只 rebind */
+    private fun rebindUnderlyingNetworks(reason: String, notifyWeb: Boolean = true) {
         runCatching {
             val cm = getSystemService(ConnectivityManager::class.java) ?: return@runCatching
             val physical = findBestPhysicalNetwork(cm)
@@ -298,6 +299,7 @@ class VpnTunnelService : VpnService() {
                 setUnderlyingNetworks(null)
                 Log.w(TAG, "rebindUnderlyingNetworks no physical reason=$reason")
             }
+            if (notifyWeb) VpnNetworkEventBus.emit(reason)
         }.onFailure { e ->
             Log.e(TAG, "rebindUnderlyingNetworks failed reason=$reason", e)
         }
@@ -317,7 +319,7 @@ class VpnTunnelService : VpnService() {
                 }
 
                 override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-                    if (running) rebindUnderlyingNetworks("onCapabilitiesChanged")
+                    if (running) rebindUnderlyingNetworks("onCapabilitiesChanged", notifyWeb = false)
                 }
             }
         val request =

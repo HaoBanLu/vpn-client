@@ -112,7 +112,7 @@ describe('network-restore-policy', () => {
   })
 
   it('debounce constant aligns with Android', () => {
-    expect(DESKTOP_NETWORK_RESTORE.reconnectDebounceMs).toBe(1_500)
+    expect(DESKTOP_NETWORK_RESTORE.reconnectDebounceMs).toBe(800)
   })
 
   it('auto reconnect waits without network', () => {

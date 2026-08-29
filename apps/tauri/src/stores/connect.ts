@@ -15,6 +15,7 @@ import {
   probeVpn,
   reconnectVpn,
   watchVpnStatus,
+  watchVpnNetworkChanged,
 } from '@/lib/vpn/bridge'
 import { probeConnectivity, probeHint, probeResultToStatus, normalizeProbeResult } from '@/lib/vpn/probe'
 import { probeExitIp } from '@/lib/vpn/exit-ip-probe'
@@ -48,7 +49,9 @@ import {
 import {
   decideDesktopNetworkRestore,
   DESKTOP_NETWORK_RESTORE,
+  nextDesktopHealthFailStreak,
   shouldProceedDesktopAutoReconnect,
+  shouldReconnectOnDesktopHealthStreak,
 } from '@/lib/vpn/network-restore-policy'
 import {
   effectiveConnectionMode,
@@ -160,6 +163,13 @@ export const useConnectStore = defineStore('connect', () => {
   const requestNavigateToPackages = ref(false)
 
   const isConnected = computed(() => connectionState.value === 'connected')
+  /** 防假绿：隧道已连但探针已失败时不算有效保护 */
+  const isEffectivelyProtected = computed(
+    () => connectionState.value === 'connected' && probeStatus.value !== 'failed',
+  )
+  const recoveringConnection = ref(false)
+  /** 物理网络是否可用（断网立刻 false，恢复后再 true） */
+  const networkReachable = ref(true)
   const isConnecting = computed(
     () => connectionState.value === 'connecting' || connectPending.value,
   )
@@ -176,13 +186,25 @@ export const useConnectStore = defineStore('connect', () => {
   let healthProbeTimer: ReturnType<typeof setInterval> | null = null
   /** 连接世代号：中断/新连接时递增，丢弃过期的 in-flight connect。 */
   let connectGeneration = 0
+  let healthFailStreak = 0
   let onOnlineHandler: (() => void) | null = null
   let onOfflineHandler: (() => void) | null = null
+  let unlistenNetworkChanged: (() => void) | null = null
 
   const MAX_AUTO_RECONNECT = AUTO_RECONNECT_POLICY.maxAttempts
   const refreshHolder: { current: Promise<void> | null } = { current: null }
   let connectNodesCache: NodeItem[] = []
   let connectNodesCachedAt = 0
+
+  async function fetchConnectNodesWithRecovery(force = false): Promise<NodeItem[]> {
+    try {
+      return await fetchConnectNodes(force)
+    } catch (error) {
+      if (!isNetworkConnectivityError(error)) throw error
+      await dropLeftoverTunnel('nodes_fetch_blocked')
+      return fetchConnectNodes(force)
+    }
+  }
 
   async function fetchConnectNodes(force = false): Promise<NodeItem[]> {
     const now = Date.now()
@@ -244,6 +266,10 @@ export const useConnectStore = defineStore('connect', () => {
   function syncTrayTooltip() {
     const node = selectedNode.value ?? '智能选路'
     if (connectionState.value === 'connected') {
+      if (!networkReachable.value) {
+        void updateTrayTooltip(`跨云 · 无网络 · ${node}`)
+        return
+      }
       const label =
         probeStatus.value === 'ok'
           ? '已保护'
@@ -413,6 +439,27 @@ export const useConnectStore = defineStore('connect', () => {
     return shareInflight(refreshHolder, runRefresh)
   }
 
+  async function onForegroundResume() {
+    try {
+      await syncStatusAndProbe()
+    } catch {
+      // 状态同步失败不阻断前台恢复链
+    }
+    if (connectionState.value === 'connected') {
+      void startProbe()
+      return
+    }
+    if (
+      !userInitiatedDisconnect.value &&
+      loadDesktopSettings().autoReconnect &&
+      (connectionState.value === 'disconnected' ||
+        connectionState.value === 'failed' ||
+        recoveringConnection.value)
+    ) {
+      markNetworkRestored('foreground_resume')
+    }
+  }
+
   async function runRefresh() {
     loading.value = true
     error.value = null
@@ -420,7 +467,15 @@ export const useConnectStore = defineStore('connect', () => {
       await refreshAccountRecoveringTunnel()
       const [regionsRes, dashRes, prefRes] = await Promise.all([
         clientApi.getRegions(),
-        clientApi.getConnectDashboard(selectedNode.value),
+        (async () => {
+          try {
+            return await clientApi.getConnectDashboard(selectedNode.value)
+          } catch (error) {
+            if (!isNetworkConnectivityError(error)) throw error
+            await dropLeftoverTunnel('dashboard_fetch_blocked')
+            return clientApi.getConnectDashboard(selectedNode.value)
+          }
+        })(),
         clientApi.getUserPreferences().catch(() => null),
       ])
       regions.value = regionsRes.data.regions
@@ -590,15 +645,37 @@ export const useConnectStore = defineStore('connect', () => {
     probeStatus.value = probeResultToStatus(result, true)
     const probeFailed = probeStatus.value === 'failed' || probeStatus.value === 'degraded'
 
-    // 全端对齐 Clash Verge：探针只做软诊断（出口 IP / 心跳），不拆隧道、不自动切节点、不刷失败文案
+    // 探针连续失败 → 完整重连（对齐 Android 3.15.7）
     if (probeFailed) {
       recordProbeFailure()
-      appendDebugLog('probe', '连接后质量探测未通过，保持隧道', 'warn', {
+      healthFailStreak = nextDesktopHealthFailStreak({
+        navigatorOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        probeFailed: true,
+        previousStreak: healthFailStreak,
+      })
+      appendDebugLog('probe', '连接后质量探测未通过', 'warn', {
         probe: probeStatus.value ?? '',
+        streak: String(healthFailStreak),
       })
       void flushDebugLogs()
+      if (
+        shouldReconnectOnDesktopHealthStreak({
+          navigatorOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+          failStreak: healthFailStreak,
+        }) &&
+        loadDesktopSettings().autoReconnect &&
+        !userInitiatedDisconnect.value
+      ) {
+        appendDebugLog('reconnect', 'probe_streak_reconnect', 'warn', {
+          streak: String(healthFailStreak),
+        })
+        healthFailStreak = 0
+        actionHint.value = '连接不稳定，正在自动恢复…'
+        void handleUnexpectedTunnelStop()
+        return
+      }
       if (connectionState.value === 'connected') {
-        actionHint.value = null
+        actionHint.value = probeStatus.value === 'degraded' ? '连接不稳定，正在监测…' : null
         error.value = null
       }
       syncTrayTooltip()
@@ -606,6 +683,7 @@ export const useConnectStore = defineStore('connect', () => {
     }
 
     recordProbeSuccess()
+    healthFailStreak = 0
     syncTrayTooltip()
 
     const info = await probeExitIp()
@@ -640,6 +718,7 @@ export const useConnectStore = defineStore('connect', () => {
     exitIp.value = null
     exitCountry.value = null
     exitCity.value = null
+    healthFailStreak = 0
   }
 
   async function syncStatusAndProbe() {
@@ -682,6 +761,7 @@ export const useConnectStore = defineStore('connect', () => {
       connectPhase.value = 'idle'
       autoReconnectAttempts.value = 0
       userInitiatedDisconnect.value = false
+      networkReachable.value = true
       markVpnSession(true)
       resetSessionStats()
       startHealthProbeLoop()
@@ -716,7 +796,7 @@ export const useConnectStore = defineStore('connect', () => {
    * 断网再连 / 网卡恢复（对齐 Android 3.15.7）：
    * 自动重连开 → 防抖后直接完整重连；关且仍已连接 → 仅重刷系统代理。
    */
-  async function recoverAfterNetworkOnline() {
+  async function recoverAfterNetworkOnline(reason = 'unknown') {
     if (isSwitching.value) return
     const action = decideDesktopNetworkRestore({
       connectionState: connectionState.value,
@@ -730,7 +810,7 @@ export const useConnectStore = defineStore('connect', () => {
         actionHint.value = '网络已断开，恢复后将自动重连'
         return
       }
-      appendDebugLog('network', '网络恢复，准备完整重连', 'warn')
+      appendDebugLog('network', `网络恢复，准备完整重连 · ${reason}`, 'warn')
       actionHint.value = '网络已恢复，正在自动重连…'
       void handleUnexpectedTunnelStop()
       return
@@ -759,26 +839,42 @@ export const useConnectStore = defineStore('connect', () => {
     }
   }
 
-  function onBrowserOnline() {
+  function scheduleNetworkRecovery(reason: string) {
     if (networkRestoreDebounceTimer) {
       clearTimeout(networkRestoreDebounceTimer)
-      networkRestoreDebounceTimer = null
     }
     networkRestoreDebounceTimer = setTimeout(() => {
       networkRestoreDebounceTimer = null
-      void recoverAfterNetworkOnline()
+      void recoverAfterNetworkOnline(reason)
     }, DESKTOP_NETWORK_RESTORE.reconnectDebounceMs)
   }
 
-  function onBrowserOffline() {
+  function markNetworkLost(reason: string) {
     if (networkRestoreDebounceTimer) {
       clearTimeout(networkRestoreDebounceTimer)
       networkRestoreDebounceTimer = null
     }
+    networkReachable.value = false
     if (connectionState.value === 'connected' && !userInitiatedDisconnect.value) {
       actionHint.value = '网络已断开，恢复后将自动重连'
-      appendDebugLog('network', '物理网断开，保持会话等待恢复', 'info')
+      void startProbe()
     }
+    appendDebugLog('network', `物理网断开 · ${reason}`, 'info')
+    syncTrayTooltip()
+  }
+
+  function markNetworkRestored(reason: string) {
+    networkReachable.value = true
+    scheduleNetworkRecovery(reason)
+    syncTrayTooltip()
+  }
+
+  function onBrowserOnline() {
+    markNetworkRestored('browser_online')
+  }
+
+  function onBrowserOffline() {
+    markNetworkLost('browser_offline')
   }
 
   async function handleUnexpectedTunnelStop() {
@@ -801,6 +897,7 @@ export const useConnectStore = defineStore('connect', () => {
       return
     }
     autoReconnectInProgress = true
+    recoveringConnection.value = true
     autoReconnectAttempts.value += 1
     const attempt = autoReconnectAttempts.value
     const token = bumpConnectGeneration()
@@ -829,6 +926,7 @@ export const useConnectStore = defineStore('connect', () => {
       }
     } finally {
       autoReconnectInProgress = false
+      recoveringConnection.value = false
     }
   }
 
@@ -836,7 +934,7 @@ export const useConnectStore = defineStore('connect', () => {
     let accessMode: string | null = null
     let nodeRegion: string | null = selectedRegion.value
     if (selectedNodeId.value != null) {
-      const nodes = await fetchConnectNodes()
+      const nodes = await fetchConnectNodesWithRecovery()
       const node = nodes.find((n) => n.id === selectedNodeId.value)
       accessMode = node?.access_mode ?? null
       if (node?.region) nodeRegion = node.region
@@ -1248,6 +1346,18 @@ export const useConnectStore = defineStore('connect', () => {
       unlistenStatus = await watchVpnStatus((status) => {
         applyExternalVpnStatus(status)
       })
+      unlistenNetworkChanged = await watchVpnNetworkChanged((payload) => {
+        const reason = payload.reason?.trim() || 'android_network_changed'
+        if (reason === 'onLost') {
+          markNetworkLost(reason)
+          return
+        }
+        if (reason === 'onAvailable') {
+          markNetworkRestored(reason)
+          return
+        }
+        appendDebugLog('network', `物理网络变化 · ${reason}`, 'info')
+      })
       pollTimer = setInterval(() => {
         void syncStatusAndProbe()
         if (connectionState.value === 'connected') {
@@ -1267,6 +1377,8 @@ export const useConnectStore = defineStore('connect', () => {
 
   function stopWatchers() {
     unlistenStatus?.()
+    unlistenNetworkChanged?.()
+    unlistenNetworkChanged = null
     stopHealthProbeLoop()
     if (networkRestoreDebounceTimer) {
       clearTimeout(networkRestoreDebounceTimer)
@@ -1336,6 +1448,9 @@ export const useConnectStore = defineStore('connect', () => {
     requestNavigateToNodes,
     requestNavigateToPackages,
     isConnected,
+    isEffectivelyProtected,
+    recoveringConnection,
+    networkReachable,
     isConnecting,
     isSwitching,
     initVpnBridge,
@@ -1360,6 +1475,7 @@ export const useConnectStore = defineStore('connect', () => {
     updateIpBindingMode,
     startWatchers,
     stopWatchers,
+    onForegroundResume,
     restoreSessionIfNeeded,
     syncTrayTooltip,
     clearNodeRequiredFailure,

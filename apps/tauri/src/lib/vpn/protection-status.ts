@@ -2,15 +2,31 @@ export type ProtectionLevel = 'disconnected' | 'protected' | 'degraded'
 
 export function resolveProtectionStatus(input: {
   connected: boolean
+  probeFailed?: boolean
+  recovering?: boolean
   appDirectCount: number
   ruleCount: number
   hardeningIncomplete?: boolean
 }): { level: ProtectionLevel; title: string; summary: string } {
+  if (input.recovering) {
+    return {
+      level: 'degraded',
+      title: '正在恢复连接',
+      summary: '网络变化或隧道异常后自动重连中，设置项仍可调整。',
+    }
+  }
   if (!input.connected) {
     return {
       level: 'disconnected',
       title: '未连接',
       summary: '连接后流量默认走隧道。可在下方调整重连与系统加固。',
+    }
+  }
+  if (input.probeFailed) {
+    return {
+      level: 'degraded',
+      title: '连接异常',
+      summary: '隧道可能已失效，正在尝试自动恢复；若长时间无网请手动断开再连。',
     }
   }
   const bypass: string[] = []

@@ -38,6 +38,7 @@
         :duration-ms="store.stats.durationMs"
         :download-bps="store.stats.downloadBps"
         :upload-bps="store.stats.uploadBps"
+        :network-paused="!store.networkReachable"
         :remaining-gb="store.usage?.remaining ?? null"
         :expires-at="store.subscription?.expires_at"
         :selected-node="store.selectedNode"
@@ -95,6 +96,7 @@ import { useAccountStore } from '@/stores/account'
 import { useAuthStore } from '@/stores/auth'
 import { probeHint } from '@/lib/vpn/probe'
 import { buildRenewalHint } from '@/lib/subscription'
+import { loadDesktopSettings } from '@/lib/vpn/desktop-settings'
 
 const router = useRouter()
 const store = useConnectStore()
@@ -134,6 +136,11 @@ const heroCopy = computed(() =>
     tunnelLatencyMs: store.probeLatencyMs,
     entryLatencyMs: entryLatencyMs.value,
     connectPhase: store.connectPhase,
+    probeStatus: store.probeStatus,
+    recoveringConnection: store.recoveringConnection,
+    effectivelyProtected: store.isEffectivelyProtected,
+    networkReachable: store.networkReachable,
+    autoReconnectEnabled: loadDesktopSettings().autoReconnect,
   }),
 )
 
@@ -152,7 +159,11 @@ const errorHeroCopy = computed(() =>
 )
 
 const displayHint = computed(() => {
-  if (store.isConnected || store.isConnecting || store.connectPending || store.isSwitching) {
+  if (store.isConnecting || store.connectPending || store.isSwitching) {
+    return null
+  }
+  if (store.isConnected) {
+    if (!store.networkReachable && store.actionHint) return store.actionHint
     return null
   }
   const hint = store.actionHint || probeHint(store.probeStatus)

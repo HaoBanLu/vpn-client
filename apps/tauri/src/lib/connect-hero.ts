@@ -1,4 +1,4 @@
-import type { VpnConnectionState } from '@/lib/vpn/types'
+import type { VpnConnectionState, VpnProbeStatus } from '@/lib/vpn/types'
 import type { ConnectPhase } from '@/lib/vpn/connect-phase'
 import { connectPhaseLabel } from '@/lib/vpn/connect-phase'
 
@@ -26,8 +26,7 @@ function formatLatencyHint(tunnelLatencyMs?: number | null, entryLatencyMs?: num
 }
 
 /**
- * 对齐 Android ConnectHero.resolveConnectHeroCopy：
- * CONNECTED 一律「已保护」，不因 probeStatus 改主标题（主区不展示探测降级）。
+ * 连接页 Hero 文案。已连接时结合探针/恢复态，避免假绿。
  */
 export function resolveConnectHeroCopy(input: {
   connectionState: VpnConnectionState
@@ -38,6 +37,11 @@ export function resolveConnectHeroCopy(input: {
   entryLatencyMs?: number | null
   connectPhase?: ConnectPhase
   emptyReason?: 'no_subscription' | 'load_error'
+  probeStatus?: VpnProbeStatus
+  recoveringConnection?: boolean
+  effectivelyProtected?: boolean
+  networkReachable?: boolean
+  autoReconnectEnabled?: boolean
 }): ConnectHeroCopy {
   const {
     connectionState,
@@ -48,6 +52,11 @@ export function resolveConnectHeroCopy(input: {
     entryLatencyMs,
     connectPhase = 'idle',
     emptyReason,
+    probeStatus = 'idle',
+    recoveringConnection = false,
+    effectivelyProtected,
+    networkReachable = true,
+    autoReconnectEnabled = true,
   } = input
 
   if (emptyReason === 'load_error') {
@@ -105,6 +114,40 @@ export function resolveConnectHeroCopy(input: {
   }
 
   if (connected) {
+    const protectedOk = effectivelyProtected ?? (probeStatus !== 'failed')
+    if (recoveringConnection || (!protectedOk && probeStatus === 'failed')) {
+      return {
+        title: '正在恢复连接…',
+        subtitle: latencyHint || '网络变化后自动重连',
+        buttonLabel: '恢复中',
+        variant: 'connecting',
+        titleTone: 'warning',
+        connected: false,
+        connecting: true,
+      }
+    }
+    if (!networkReachable) {
+      return {
+        title: '网络已断开',
+        subtitle: autoReconnectEnabled ? '恢复后将自动重连' : '请检查网络后手动重连',
+        buttonLabel: '断开',
+        variant: 'connected',
+        titleTone: 'warning',
+        connected: true,
+        connecting: false,
+      }
+    }
+    if (probeStatus === 'degraded') {
+      return {
+        title: '连接不稳定',
+        subtitle: latencyHint ? `${latencyHint} · 正在监测` : '正在监测连接质量',
+        buttonLabel: '断开',
+        variant: 'connected',
+        titleTone: 'warning',
+        connected: true,
+        connecting: false,
+      }
+    }
     // 节点详情在会话卡；Hero 副标题留空，避免重复
     return {
       title: '已保护',

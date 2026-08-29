@@ -126,6 +126,7 @@ function startHeartbeatTimer() {
 function onVisibilityChange() {
   if (document.visibilityState === 'visible') {
     void sendHeartbeat()
+    void connect.onForegroundResume()
     void appUpdate.reconcileAfterResume()
   }
   startHeartbeatTimer()

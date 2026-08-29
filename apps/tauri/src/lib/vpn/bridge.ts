@@ -24,6 +24,11 @@ const CMD = {
 } as const
 
 export const VPN_STATUS_EVENT = 'vpn://status'
+export const VPN_NETWORK_CHANGED_EVENT = 'vpn://network-changed'
+
+export interface VpnNetworkChangedPayload {
+  reason: string
+}
 
 function toRustConnectOptions(options: VpnConnectOptions) {
   return {
@@ -96,6 +101,14 @@ export async function watchVpnStatus(
   handler: (status: VpnConnectionStatus) => void,
 ): Promise<UnlistenFn> {
   return listen<VpnConnectionStatus>(VPN_STATUS_EVENT, (event) => {
+    handler(event.payload)
+  })
+}
+
+export async function watchVpnNetworkChanged(
+  handler: (payload: VpnNetworkChangedPayload) => void,
+): Promise<UnlistenFn> {
+  return listen<VpnNetworkChangedPayload>(VPN_NETWORK_CHANGED_EVENT, (event) => {
     handler(event.payload)
   })
 }

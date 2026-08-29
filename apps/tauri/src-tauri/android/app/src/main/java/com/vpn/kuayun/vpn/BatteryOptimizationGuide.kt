@@ -32,11 +32,14 @@ object BatteryOptimizationGuide {
             }
     }
 
-    fun openVpnSettings(context: Context) {
+    fun openVpnSettings(context: Context): Boolean {
         val intent =
             Intent(Settings.ACTION_VPN_SETTINGS).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-        runCatching { context.startActivity(intent) }
+        return runCatching {
+            context.startActivity(intent)
+            true
+        }.getOrDefault(false)
     }
 }

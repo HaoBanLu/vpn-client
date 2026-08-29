@@ -15,7 +15,7 @@ export type DesktopNetworkRestoreAction = 'heal' | 'schedule_reconnect' | 'none'
 
 export const DESKTOP_NETWORK_RESTORE = {
   /** 合并 online 抖动，避免连扣重连（对齐 Android RECONNECT_DEBOUNCE_MS） */
-  reconnectDebounceMs: 1_500,
+  reconnectDebounceMs: 800,
   /** 关闭自动重连时轻量自愈：重刷系统代理后稍等 */
   settleAfterHealMs: 1_500,
   /** 周期探活连续失败达此次数且 navigator.onLine → 自动重连 */

@@ -2,6 +2,39 @@ import { describe, expect, it } from 'vitest'
 import { resolveConnectHeroCopy } from '@/lib/connect-hero'
 
 describe('resolveConnectHeroCopy', () => {
+  it('connected with network down shows offline title', () => {
+    const copy = resolveConnectHeroCopy({
+      connectionState: 'connected',
+      networkReachable: false,
+      autoReconnectEnabled: true,
+    })
+    expect(copy.title).toBe('网络已断开')
+    expect(copy.subtitle).toBe('恢复后将自动重连')
+    expect(copy.titleTone).toBe('warning')
+  })
+
+  it('connected with failed probe shows recovering copy', () => {
+    const copy = resolveConnectHeroCopy({
+      connectionState: 'connected',
+      probeStatus: 'failed',
+      effectivelyProtected: false,
+    })
+    expect(copy.title).toBe('正在恢复连接…')
+    expect(copy.connecting).toBe(true)
+    expect(copy.connected).toBe(false)
+  })
+
+  it('connected with degraded probe shows unstable title', () => {
+    const copy = resolveConnectHeroCopy({
+      connectionState: 'connected',
+      probeStatus: 'degraded',
+      tunnelLatencyMs: 800,
+    })
+    expect(copy.title).toBe('连接不稳定')
+    expect(copy.titleTone).toBe('warning')
+    expect(copy.connected).toBe(true)
+  })
+
   it('connected shows 已保护 without repeating node in subtitle', () => {
     const copy = resolveConnectHeroCopy({
       connectionState: 'connected',

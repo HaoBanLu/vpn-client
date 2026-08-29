@@ -127,7 +127,7 @@ import { appendDebugLog } from '@/lib/debug/app-debug-log'
 import { message } from '@/lib/ui/message'
 
 const connect = useConnectStore()
-const { isConnected } = storeToRefs(connect)
+const { isConnected, recoveringConnection, probeStatus } = storeToRefs(connect)
 const isAndroid = detectClientPlatform() === 'android'
 const appDirectCount = ref(0)
 const ruleCount = ref(enabledDirectBypassRules().length)
@@ -135,6 +135,8 @@ const ruleCount = ref(enabledDirectBypassRules().length)
 const protection = computed(() =>
   resolveProtectionStatus({
     connected: isConnected.value,
+    probeFailed: probeStatus.value === 'failed',
+    recovering: recoveringConnection.value,
     appDirectCount: appDirectCount.value,
     ruleCount: ruleCount.value,
     hardeningIncomplete: isAndroid
@@ -188,6 +190,9 @@ async function refreshStability() {
 }
 
 async function onOpenVpnSettings() {
+  if (connect.isConnecting || connect.connectPending || connect.recoveringConnection) {
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
+  }
   try {
     await openVpnSettings()
     message.info('请在系统设置中开启 Always-on / 禁止绕过')

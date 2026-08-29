@@ -32,4 +32,25 @@ describe('resolveProtectionStatus', () => {
     expect(view.level).toBe('protected')
     expect(view.title).toBe('已保护')
   })
+
+  it('recovering shows restoring title', () => {
+    const status = resolveProtectionStatus({
+      connected: true,
+      recovering: true,
+      appDirectCount: 0,
+      ruleCount: 0,
+    })
+    expect(status.title).toBe('正在恢复连接')
+    expect(status.level).toBe('degraded')
+  })
+
+  it('probe failed shows connection anomaly', () => {
+    const status = resolveProtectionStatus({
+      connected: true,
+      probeFailed: true,
+      appDirectCount: 0,
+      ruleCount: 0,
+    })
+    expect(status.title).toBe('连接异常')
+  })
 })

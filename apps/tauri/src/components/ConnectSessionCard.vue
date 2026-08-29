@@ -19,7 +19,7 @@
         </div>
         <strong
           class="session-card__speed-value"
-          :class="{ idle: downloadBps <= 0 }"
+          :class="{ idle: effectiveDownloadBps <= 0 }"
         >{{ downloadSpeedText }}</strong>
       </div>
       <div class="session-card__divider" />
@@ -30,7 +30,7 @@
         </div>
         <strong
           class="session-card__speed-value"
-          :class="{ idle: uploadBps <= 0 }"
+          :class="{ idle: effectiveUploadBps <= 0 }"
         >{{ uploadSpeedText }}</strong>
       </div>
       <div class="session-card__divider" />
@@ -39,6 +39,8 @@
         <strong>{{ durationText }}</strong>
       </div>
     </div>
+
+    <p v-if="networkPaused" class="session-card__network-paused">当前无网络，实时速率为 0</p>
 
     <p v-if="subscriptionLine" class="session-card__meta">{{ subscriptionLine }}</p>
 
@@ -82,6 +84,7 @@ const props = defineProps<{
   remainingGb?: number | null
   expiresAt?: string | null
   selectedNode?: string | null
+  networkPaused?: boolean
 }>()
 
 defineEmits<{ 'switch-node': [] }>()
@@ -104,8 +107,13 @@ const subscriptionLine = computed(() => {
   return ''
 })
 
-const downloadSpeedText = computed(() => formatDisplaySpeed(props.downloadBps))
-const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
+const networkPaused = computed(() => props.networkPaused === true)
+
+const effectiveDownloadBps = computed(() => (networkPaused.value ? 0 : props.downloadBps))
+const effectiveUploadBps = computed(() => (networkPaused.value ? 0 : props.uploadBps))
+
+const downloadSpeedText = computed(() => formatDisplaySpeed(effectiveDownloadBps.value))
+const uploadSpeedText = computed(() => formatDisplaySpeed(effectiveUploadBps.value))
 </script>
 
 <style scoped>
@@ -166,6 +174,13 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(props.uploadBps))
   padding: 10px;
   border-radius: 12px;
   background: rgba(15, 23, 41, 0.04);
+}
+
+.session-card__network-paused {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ky-text-tertiary);
 }
 
 .session-card__speed-item {

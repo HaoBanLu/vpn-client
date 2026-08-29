@@ -30,6 +30,13 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         MihomoInitializer.ensureReady(activity.application)
         AppUpdateInstaller.eventEmitter = { event, payload -> trigger(event, payload) }
         scope.launch {
+            VpnNetworkEventBus.events.collect { reason ->
+                val payload = JSObject()
+                payload.put("reason", reason)
+                trigger("vpn://network-changed", payload)
+            }
+        }
+        scope.launch {
             VpnConnectionBus.status.collectLatest { status ->
                 emitStatus(status)
             }
@@ -325,7 +332,12 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
 
     @Command
     fun openVpnSettings(invoke: Invoke) {
-        BatteryOptimizationGuide.openVpnSettings(activity)
+        val opened = BatteryOptimizationGuide.openVpnSettings(activity)
+        if (!opened) {
+            android.widget.Toast.makeText(activity, "无法打开 VPN 设置", android.widget.Toast.LENGTH_SHORT).show()
+            invoke.reject("无法打开 VPN 设置")
+            return
+        }
         invoke.resolveObject(true)
     }
 
