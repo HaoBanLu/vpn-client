@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_API_BASE_URL, resolveApiBaseUrl } from './api-config'
+import { resolveAbsoluteDownloadUrl, resolveAppOrigin } from '@/lib/api-config'
 
-describe('api-config', () => {
-  it('defaultsToAndroidReleaseApi', () => {
-    expect(DEFAULT_API_BASE_URL).toBe('http://192.229.87.112:44080/api')
+describe('api-config download url', () => {
+  const apiBase = 'http://192.229.87.112:44080/api'
+
+  it('resolveAppOrigin strips /api suffix', () => {
+    expect(resolveAppOrigin(apiBase)).toBe('http://192.229.87.112:44080')
   })
 
-  it('resolveApiBaseUrlPrefersEnv', () => {
-    expect(resolveApiBaseUrl('http://127.0.0.1:48080/api')).toBe('http://127.0.0.1:48080/api')
+  it('resolveAbsoluteDownloadUrl expands relative upload path', () => {
+    expect(resolveAbsoluteDownloadUrl('/api/uploads/apk/android_148.apk', apiBase)).toBe(
+      'http://192.229.87.112:44080/api/uploads/apk/android_148.apk',
+    )
+  })
+
+  it('resolveAbsoluteDownloadUrl keeps absolute https url', () => {
+    const url = 'https://cdn.example.com/app.apk'
+    expect(resolveAbsoluteDownloadUrl(url, apiBase)).toBe(url)
   })
 })

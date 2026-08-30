@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { clientApi } from '@/api/client'
+import { resolveAbsoluteDownloadUrl } from '@/lib/api-config'
 import { APP_VERSION_CODE, APP_VERSION_NAME, detectClientPlatform } from '@/lib/app-meta'
 import { openExternalUrl } from '@/lib/open-url'
 import { isDesktopPlatform } from '@/lib/layout'
@@ -54,7 +55,7 @@ async function fetchApiUpdate(): Promise<AppUpdateResult> {
     message: data.has_update
       ? `发现新版本 ${versionLabel}${data.release_notes ? `\n\n${data.release_notes}` : ''}`
       : '当前已是最新版本',
-    downloadUrl: data.download_url,
+    downloadUrl: resolveAbsoluteDownloadUrl(data.download_url),
     forceUpdate: data.force_update,
     latestVersionCode: data.latest_version_code,
     latestVersionName: data.latest_version_name,

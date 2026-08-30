@@ -3,11 +3,12 @@
 > **单一事实来源**：本文件记录功能实现状态，与路由、页面、节点协议、订阅类型保持一致。  
 > 状态：`✅ 已完成` · `🚧 开发中/需联调` · `📋 待开发` · `❌ 未集成`
 
-最后核对：**2026-08-29**（版本线 `1.2.28` / code `148`）
+最后核对：**2026-08-30**（版本线 `1.2.29` / code `149`）
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
-| 发版 1.2.28 / code 148 | ✅ | 2026-08-29 | 无网态 UI（Hero/会话卡/恢复防抖）；Android `VpnNetworkEventBus` SharedFlow 桥接 `vpn://network-changed`。Tag `v1.2.28` |
+| 发版 1.2.29 / code 149 | ✅ | 2026-08-30 | 修复 OTA：`download_url` 相对路径转绝对 URL（DownloadManager）。Tag `v1.2.29` |
+| 发版 1.2.28 / code 148 | ✅ | 2026-08-29 | 无网态 UI（Hero/会话卡/恢复防抖）；Android `VpnNetworkEventBus` SharedFlow。Tag `v1.2.28` |
 | 无网态 UI：断网文案 + 速率为 0 | ✅ | 2026-08-29 | `networkReachable`；`onLost` 只改 UI、`onAvailable` 才重连；Hero「网络已断开」；会话卡 `networkPaused` 速率归零；恢复防抖 800ms。验证：`npm test` 149 项 |
 | VPN 连接稳定性：网络变化完整重连 + 探针 streak + 防假绿 | ✅ | 2026-08-29 | `scheduleNetworkRecovery`（online/回前台/Android `vpn://network-changed`）；探针连续 2 次失败 `probe_streak_reconnect`；`isEffectivelyProtected` Hero/设置页；API 死隧道 `dropLeftoverTunnel` 扩展 dashboard；`openVpnSettings` 失败 Toast。验证：`cd apps/tauri && npm test`；真机矩阵待补（飞行模式/WiFi↔4G/回前台/重连中开设置） |
 | luban7733 生产日志调查（1.2.x） | ✅ | 2026-08-29 | 14 日内 1.2.27 共 31 条；8/21 四次 `probe`「探测未通过，保持隧道」（假绿根因）；8/21–23 三次 `network`「准备完整重连」。脚本 `_diag_luban7733_tauri_12x.py` / `_diag_luban7733_broad.py` |
