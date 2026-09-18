@@ -2,7 +2,8 @@
 
 export const AUTO_RECONNECT_POLICY = {
   maxAttempts: 3,
-  backoffMs: [3000, 6000, 10000] as const,
+  /** 首轮 0：断网刚恢复时尽快重连，避免固定卡 3s「连接中」 */
+  backoffMs: [0, 3000, 6000] as const,
   periodicHealthProbeMs: 120_000,
   degradedHealthProbeMs: 60_000,
   /** 历史字段：桌面端不再因探测降级主动断开 */

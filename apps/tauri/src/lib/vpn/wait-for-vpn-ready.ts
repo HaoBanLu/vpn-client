@@ -15,13 +15,18 @@ export async function waitForVpnReady(options: {
   isCurrent?: () => boolean
   timeoutMs?: number
   intervalMs?: number
+  /** 连续 connecting 无进展超过此时长则按 timeout 失败（默认 8s） */
+  stalledConnectingMs?: number
   sleep?: (ms: number) => Promise<void>
 }): Promise<VpnReadyOutcome> {
   const timeoutMs = options.timeoutMs ?? 25_000
   const intervalMs = options.intervalMs ?? 400
+  /** 连续处于 connecting 且无进展时提前失败，避免空等满超时 */
+  const stalledConnectingMs = options.stalledConnectingMs ?? 8_000
   const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)))
   const deadline = Date.now() + timeoutMs
   let seenConnecting = false
+  let connectingSince: number | null = null
 
   while (Date.now() < deadline) {
     if (options.isCurrent && !options.isCurrent()) {
@@ -36,6 +41,12 @@ export async function waitForVpnReady(options: {
     }
     if (status.state === 'connecting') {
       seenConnecting = true
+      if (connectingSince == null) connectingSince = Date.now()
+      else if (Date.now() - connectingSince >= stalledConnectingMs) {
+        return { kind: 'timeout' }
+      }
+    } else {
+      connectingSince = null
     }
     // 上一轮残留的 failed 会在服务尚未切到 connecting 时被读到，必须忽略
     if (status.state === 'failed' && seenConnecting) {

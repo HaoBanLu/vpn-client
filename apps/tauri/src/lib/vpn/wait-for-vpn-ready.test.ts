@@ -49,11 +49,25 @@ describe('waitForVpnReady', () => {
     expect(outcome).toEqual({ kind: 'connected' })
   })
 
+  it('returns timeout when connecting stalls without progress', async () => {
+    vi.useFakeTimers()
+    const promise = waitForVpnReady({
+      intervalMs: 100,
+      timeoutMs: 25_000,
+      stalledConnectingMs: 500,
+      getStatus: async () => ({ state: 'connecting' }),
+    })
+    await vi.advanceTimersByTimeAsync(700)
+    await expect(promise).resolves.toEqual({ kind: 'timeout' })
+    vi.useRealTimers()
+  })
+
   it('returns timeout when never settles', async () => {
     vi.useFakeTimers()
     const promise = waitForVpnReady({
       intervalMs: 100,
       timeoutMs: 250,
+      stalledConnectingMs: 10_000,
       getStatus: async () => ({ state: 'connecting' }),
     })
     await vi.advanceTimersByTimeAsync(400)

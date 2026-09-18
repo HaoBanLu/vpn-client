@@ -76,7 +76,12 @@ class VpnTunnelService : VpnService() {
             stopSelf()
             return
         }
-        if (running) return
+        // 断网恢复若仍走 CONNECT：隧道可能还在 running，裸 return 会让前端卡在 CONNECTING。
+        // 已运行时改为重建 mihomo，与 ACTION_RECONNECT 对齐。
+        if (running) {
+            reconnect(config, nodeName)
+            return
+        }
 
         VpnConnectionBus.update(ConnectionState.CONNECTING, error = null)
         startVpnForeground()

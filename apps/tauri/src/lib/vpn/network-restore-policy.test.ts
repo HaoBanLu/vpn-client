@@ -19,8 +19,8 @@ describe('network-restore-policy', () => {
     ).toBe('schedule_reconnect')
   })
 
-  it('online while disconnected/failed/connecting → schedule_reconnect', () => {
-    for (const connectionState of ['disconnected', 'failed', 'connecting'] as const) {
+  it('online while disconnected/failed → schedule_reconnect', () => {
+    for (const connectionState of ['disconnected', 'failed'] as const) {
       expect(
         decideDesktopNetworkRestore({
           connectionState,
@@ -29,6 +29,16 @@ describe('network-restore-policy', () => {
         }),
       ).toBe('schedule_reconnect')
     }
+  })
+
+  it('online while connecting → none (do not cancel in-flight)', () => {
+    expect(
+      decideDesktopNetworkRestore({
+        connectionState: 'connecting',
+        userInitiatedDisconnect: false,
+        autoReconnectEnabled: true,
+      }),
+    ).toBe('none')
   })
 
   it('user disconnect → none', () => {

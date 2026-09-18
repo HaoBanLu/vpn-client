@@ -898,6 +898,7 @@ export const useConnectStore = defineStore('connect', () => {
     }
     autoReconnectInProgress = true
     recoveringConnection.value = true
+    connectPending.value = true
     autoReconnectAttempts.value += 1
     const attempt = autoReconnectAttempts.value
     const token = bumpConnectGeneration()
@@ -909,14 +910,32 @@ export const useConnectStore = defineStore('connect', () => {
     await new Promise((resolve) => setTimeout(resolve, autoReconnectBackoffMs(attempt - 1)))
     if (!isConnectGenerationCurrent(token)) {
       autoReconnectInProgress = false
+      recoveringConnection.value = false
+      connectPending.value = false
+      connectPhase.value = 'idle'
       return
     }
     try {
-      await performConnect(undefined, token)
-      if (!isConnectGenerationCurrent(token)) return
+      // 自动恢复走 reconnect：Android 上隧道常仍 running，CONNECT 会空转
+      await performConnect(undefined, token, null, { useReconnect: true })
+      if (!isConnectGenerationCurrent(token)) {
+        recoveringConnection.value = false
+        connectPending.value = false
+        connectPhase.value = 'idle'
+        return
+      }
       autoReconnectAttempts.value = 0
+      connectPending.value = false
+      connectPhase.value = 'idle'
     } catch (e: unknown) {
-      if (!isConnectGenerationCurrent(token)) return
+      if (!isConnectGenerationCurrent(token)) {
+        recoveringConnection.value = false
+        connectPending.value = false
+        connectPhase.value = 'idle'
+        return
+      }
+      connectPending.value = false
+      connectPhase.value = 'idle'
       connectionState.value = 'failed'
       setVpnError(e instanceof Error ? e.message : '自动重连失败')
       if (attempt < MAX_AUTO_RECONNECT) {
@@ -946,6 +965,7 @@ export const useConnectStore = defineStore('connect', () => {
     hint?: string | null,
     generation?: number,
     baselinePromise?: Promise<ExitIpInfo | null> | null,
+    options?: { useReconnect?: boolean },
   ) {
     const token = generation ?? connectGeneration
     if (platformInfo.value && !platformInfo.value.vpnSupported) {
@@ -990,11 +1010,16 @@ export const useConnectStore = defineStore('connect', () => {
       region: selectedRegion.value ?? '',
     })
     connectPhase.value = 'tunnel'
-    await connectVpn({
+    const tunnelOpts = {
       configJson: patchedConfig,
       nodeName: selectedNode.value ?? '智能选路',
       connectionMode: mode,
-    })
+    }
+    if (options?.useReconnect) {
+      await reconnectVpn(tunnelOpts)
+    } else {
+      await connectVpn(tunnelOpts)
+    }
     if (!isConnectGenerationCurrent(token)) return
     // Android 原生 connect 异步返回 CONNECTING，需轮询到 connected/failed，避免秒报「VPN 未就绪」
     connectPhase.value = 'verify'
@@ -1128,14 +1153,22 @@ export const useConnectStore = defineStore('connect', () => {
 
     try {
       await performConnect(undefined, token, baselinePromise)
-      if (!isConnectGenerationCurrent(token)) return 'done'
+      if (!isConnectGenerationCurrent(token)) {
+        connectPending.value = false
+        connectPhase.value = 'idle'
+        return 'done'
+      }
       // performConnect 会更新 connectionState；用 computed 避免赋值后的字面量收窄误报
       if (isConnected.value) {
         connectPending.value = false
         actionHint.value = probeHint(probeStatus.value) ?? '已建立 VPN 隧道'
       }
     } catch (e: unknown) {
-      if (!isConnectGenerationCurrent(token)) return 'done'
+      if (!isConnectGenerationCurrent(token)) {
+        connectPending.value = false
+        connectPhase.value = 'idle'
+        return 'done'
+      }
       connectPending.value = false
       connectPhase.value = 'idle'
       connectionState.value = 'failed'

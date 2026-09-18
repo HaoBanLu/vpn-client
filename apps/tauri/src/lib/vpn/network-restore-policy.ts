@@ -42,8 +42,10 @@ export function decideDesktopNetworkRestore(input: {
     case 'connected':
     case 'disconnected':
     case 'failed':
-    case 'connecting':
       return 'schedule_reconnect'
+    // connecting 中勿再调度完整重连，避免打断在途恢复 / 首连（对齐 Compose）
+    case 'connecting':
+      return 'none'
     default:
       return 'none'
   }

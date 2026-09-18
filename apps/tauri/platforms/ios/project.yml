@@ -8,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.2.29"
-    CURRENT_PROJECT_VERSION: "149"
+    MARKETING_VERSION: "1.2.30"
+    CURRENT_PROJECT_VERSION: "150"
 
 targets:
   KuayunVPN:
