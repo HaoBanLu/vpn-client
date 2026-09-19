@@ -29,7 +29,10 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          # v3 默认安装已下架的 tools 包会失败；仅装 platform-tools
+          packages: platform-tools
 
       - name: Install Android SDK packages
         run: |
