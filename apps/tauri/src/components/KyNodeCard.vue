@@ -256,8 +256,8 @@ const isSwitch = computed(() => props.actionLabel === '切换')
 }
 
 .ky-pill--online {
-  background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  background: var(--ky-success-bg);
+  color: var(--ky-success);
 }
 
 .ky-pill--offline {
@@ -266,18 +266,18 @@ const isSwitch = computed(() => props.actionLabel === '切换')
 }
 
 .ky-pill--primary {
-  background: rgba(27, 77, 255, 0.15);
-  color: var(--ky-accent);
+  background: var(--ky-accent-bg);
+  color: var(--ky-accent-deep);
 }
 
 .ky-pill--cyan {
-  background: rgba(0, 212, 255, 0.18);
-  color: #0088a8;
+  background: rgba(0, 168, 232, 0.14);
+  color: #0284c7;
 }
 
 .ky-pill--fastest {
-  background: rgba(46, 125, 50, 0.15);
-  color: #2e7d32;
+  background: var(--ky-success-bg);
+  color: var(--ky-success);
 }
 
 .ky-node-row__bottom {

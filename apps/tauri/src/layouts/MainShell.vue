@@ -247,7 +247,7 @@ watch(
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  background: linear-gradient(135deg, var(--ky-accent-deep) 0%, var(--ky-accent-cyan) 100%);
+  background: linear-gradient(135deg, var(--ky-accent-brand) 0%, var(--ky-accent-cyan) 100%);
   box-shadow: var(--ky-shadow-sm);
 }
 

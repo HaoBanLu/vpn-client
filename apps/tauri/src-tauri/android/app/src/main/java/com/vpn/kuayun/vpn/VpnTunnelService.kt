@@ -33,6 +33,8 @@ class VpnTunnelService : VpnService() {
     private var autoReconnectAttempts = 0
     private var notificationJob: Job? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    /** 上次通知前端的物理网句柄；用于抑制建隧时 onAvailable 连发 */
+    private var lastNotifiedPhysical: Network? = null
     /** native 已持有 fd 时为 true，cleanup 不可再 close PFD，防 double-close。 */
     private var tunFdDetached = false
 
@@ -316,11 +318,24 @@ class VpnTunnelService : VpnService() {
         val callback =
             object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
-                    if (running) rebindUnderlyingNetworks("onAvailable")
+                    // 建隧瞬间会连发 onAvailable；仅物理网句柄变化才通知前端完整重连
+                    if (running) rebindUnderlyingNetworks("onAvailable", notifyWeb = false)
+                    val physical = getSystemService(ConnectivityManager::class.java)
+                        ?.let { findBestPhysicalNetwork(it) }
+                    if (physical != null && physical != lastNotifiedPhysical) {
+                        lastNotifiedPhysical = physical
+                        VpnNetworkEventBus.emit("onAvailable")
+                    }
                 }
 
                 override fun onLost(network: Network) {
-                    if (running) rebindUnderlyingNetworks("onLost")
+                    if (running) rebindUnderlyingNetworks("onLost", notifyWeb = false)
+                    val physical = getSystemService(ConnectivityManager::class.java)
+                        ?.let { findBestPhysicalNetwork(it) }
+                    if (physical == null || physical != lastNotifiedPhysical) {
+                        lastNotifiedPhysical = physical
+                        VpnNetworkEventBus.emit("onLost")
+                    }
                 }
 
                 override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
@@ -371,6 +386,7 @@ class VpnTunnelService : VpnService() {
 
     private fun cleanup() {
         running = false
+        lastNotifiedPhysical = null
         unregisterNetworkCallback()
         stopNotificationUpdater()
         stopMihomo()

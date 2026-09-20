@@ -1,5 +1,5 @@
 :root {
-  /* 默认浅色：对齐 Android KuayunTheme LightColors（截图主路径） */
+  /* 默认浅色：对齐会员中心 / VPN07 soft slate + accent */
   color-scheme: light;
   font-family: 'Segoe UI', system-ui, -apple-system, 'PingFang SC', sans-serif;
 
@@ -7,45 +7,46 @@
   --android-safe-top: 0px;
   --android-safe-bottom: 0px;
 
-  /* 背景 */
-  --ky-bg: #f4f7fc;
+  /* 背景 — 对齐会员中心 / VPN07 soft slate */
+  --ky-bg: #f8fafc;
   --ky-bg-elevated: #ffffff;
   --ky-bg-card: #ffffff;
-  --ky-bg-card-hover: #eef3fb;
+  --ky-bg-card-hover: #f1f5f9;
   --ky-bg-input: #ffffff;
   --ky-bg-overlay: rgba(255, 255, 255, 0.96);
-  --ky-bg-hero: #d6e4ff;
-  --ky-bg-hero-soft: rgba(0, 212, 255, 0.12);
-  --ky-surface-variant: #e8eef8;
-  --ky-on-primary-container: #0a2463;
-  --ky-nav-active-pill: #e8eef8;
+  --ky-bg-hero: #eff6ff;
+  --ky-bg-hero-soft: rgba(59, 130, 246, 0.1);
+  --ky-surface-variant: #f1f5f9;
+  --ky-on-primary-container: #1e3a8a;
+  --ky-nav-active-pill: #eff6ff;
 
   /* 边框 */
-  --ky-border: #c5d0e0;
-  --ky-border-strong: rgba(27, 77, 255, 0.35);
-  --ky-border-soft: rgba(15, 23, 41, 0.08);
+  --ky-border: #e2e8f0;
+  --ky-border-strong: rgba(37, 99, 235, 0.35);
+  --ky-border-soft: rgba(15, 23, 42, 0.08);
 
   /* 文字 */
-  --ky-text: #0f1729;
-  --ky-text-secondary: #5a6b82;
-  --ky-text-muted: #5a6b82;
-  --ky-text-hint: #8a9bb0;
+  --ky-text: #0f172a;
+  --ky-text-secondary: #64748b;
+  --ky-text-muted: #64748b;
+  --ky-text-hint: #94a3b8;
   --ky-on-accent: #ffffff;
 
-  /* 主色：对齐 Android LightColors.primary = KuayunBlue */
-  --ky-accent: #1b4dff;
-  --ky-accent-soft: #4f7cff;
-  --ky-accent-deep: #1b4dff;
-  --ky-accent-cyan: #00d4ff;
-  --ky-accent-bg: rgba(27, 77, 255, 0.1);
+  /* 主色 — 对齐会员站 accent #3b82f6；Logo 渐变仍用 deep→cyan */
+  --ky-accent: #3b82f6;
+  --ky-accent-soft: #60a5fa;
+  --ky-accent-deep: #2563eb;
+  --ky-accent-brand: #1b4dff;
+  --ky-accent-cyan: #00a8e8;
+  --ky-accent-bg: rgba(59, 130, 246, 0.1);
 
   /* 语义色 */
-  --ky-success: #2e7d32;
-  --ky-success-bg: rgba(76, 175, 80, 0.14);
-  --ky-warning: #f57c00;
-  --ky-warning-bg: rgba(255, 167, 38, 0.16);
-  --ky-danger: #d32f2f;
-  --ky-danger-bg: rgba(211, 47, 47, 0.1);
+  --ky-success: #10b981;
+  --ky-success-bg: rgba(16, 185, 129, 0.12);
+  --ky-warning: #f59e0b;
+  --ky-warning-bg: rgba(245, 158, 11, 0.14);
+  --ky-danger: #e11d48;
+  --ky-danger-bg: rgba(225, 29, 72, 0.1);
 
   /* 圆角 */
   --ky-radius-sm: 8px;
@@ -411,13 +412,13 @@ html {
 }
 
 .bottom-nav button.active {
-  color: var(--ky-text);
+  color: var(--ky-accent-deep);
   font-weight: 650;
 }
 
 .bottom-nav button.active .tab-icon {
   background: var(--ky-nav-active-pill);
-  color: var(--ky-text);
+  color: var(--ky-accent-deep);
 }
 
 /* ── 通用工具类 ── */

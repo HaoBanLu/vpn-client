@@ -67,15 +67,16 @@ const buttonType = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px;
+  padding: 18px 16px;
   border-radius: 16px;
-  background: rgba(232, 238, 248, 0.55);
-  border: 1px solid var(--ky-border-soft);
+  background: var(--ky-bg-card);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: var(--ky-shadow-sm);
 }
 
 .ky-package-card--tint {
-  background: rgba(214, 228, 255, 0.55);
-  border-color: rgba(27, 77, 255, 0.12);
+  background: var(--ky-nav-active-pill);
+  border-color: rgba(59, 130, 246, 0.18);
 }
 
 .ky-package-card__head {
@@ -101,10 +102,10 @@ const buttonType = computed(() =>
 
 .ky-package-card__price {
   margin: 0;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   line-height: 1.15;
-  color: var(--ky-accent);
+  color: var(--ky-text);
   min-width: 0;
 }
 
@@ -129,11 +130,11 @@ const buttonType = computed(() =>
   min-width: 88px;
   padding: 8px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--ky-surface-variant);
 }
 
 .ky-package-card__stat--hl {
-  background: rgba(27, 77, 255, 0.1);
+  background: var(--ky-accent-bg);
 }
 
 .ky-package-card__stat-label {

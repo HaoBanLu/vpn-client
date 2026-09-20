@@ -43,8 +43,8 @@ defineProps<{
   border-color: transparent;
   background: linear-gradient(
     135deg,
-    rgba(214, 228, 255, 0.9) 0%,
-    rgba(232, 238, 248, 0.95) 100%
+    var(--ky-nav-active-pill) 0%,
+    var(--ky-surface-variant) 100%
   );
 }
 

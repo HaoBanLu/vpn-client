@@ -9,30 +9,40 @@ describe('resolveConnectHeroCopy', () => {
       autoReconnectEnabled: true,
     })
     expect(copy.title).toBe('网络已断开')
-    expect(copy.subtitle).toBe('恢复后将自动重连')
+    expect(copy.subtitle).toBe('网络恢复后将自动重连')
     expect(copy.titleTone).toBe('warning')
   })
 
-  it('connected with failed probe shows recovering copy', () => {
+  it('connected with failed probe still shows 已保护 (no scare title)', () => {
     const copy = resolveConnectHeroCopy({
       connectionState: 'connected',
       probeStatus: 'failed',
       effectivelyProtected: false,
     })
-    expect(copy.title).toBe('正在恢复连接…')
-    expect(copy.connecting).toBe(true)
-    expect(copy.connected).toBe(false)
+    expect(copy.title).toBe('已保护')
+    expect(copy.connected).toBe(true)
+    expect(copy.connecting).toBe(false)
   })
 
-  it('connected with degraded probe shows unstable title', () => {
+  it('connected with degraded probe still shows 已保护', () => {
     const copy = resolveConnectHeroCopy({
       connectionState: 'connected',
       probeStatus: 'degraded',
       tunnelLatencyMs: 800,
     })
-    expect(copy.title).toBe('连接不稳定')
-    expect(copy.titleTone).toBe('warning')
+    expect(copy.title).toBe('已保护')
+    expect(copy.titleTone).toBe('success')
     expect(copy.connected).toBe(true)
+    expect(copy.subtitle).toContain('隧道 800ms')
+  })
+
+  it('recoveringConnection shows soft reconnect title', () => {
+    const copy = resolveConnectHeroCopy({
+      connectionState: 'connected',
+      recoveringConnection: true,
+    })
+    expect(copy.title).toBe('正在重连…')
+    expect(copy.connecting).toBe(true)
   })
 
   it('connected shows 已保护 without repeating node in subtitle', () => {
@@ -49,13 +59,14 @@ describe('resolveConnectHeroCopy', () => {
     expect(copy.subtitle).not.toContain('武汉')
   })
 
-  it('failed shows 连接失败', () => {
+  it('failed softens to 未连接 instead of 连接失败', () => {
     const copy = resolveConnectHeroCopy({
       connectionState: 'failed',
       selectedNode: '武汉',
     })
-    expect(copy.title).toBe('连接失败')
+    expect(copy.title).toBe('未连接')
     expect(copy.buttonLabel).toBe('一键连接')
+    expect(copy.titleTone).toBe('default')
   })
 
   it('connecting shows tunnel subtitle without cancel hint', () => {

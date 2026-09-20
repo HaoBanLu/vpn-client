@@ -457,7 +457,7 @@ onUnmounted(stopPolling)
   padding: 16px;
   border-radius: 16px;
   background: linear-gradient(135deg, rgba(214, 228, 255, 0.95), rgba(232, 238, 248, 0.9));
-  border: 1px solid rgba(27, 77, 255, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.12);
   margin-bottom: 14px;
 }
 
@@ -492,18 +492,18 @@ onUnmounted(stopPolling)
 }
 
 .pill--info {
-  background: rgba(27, 77, 255, 0.1);
-  color: var(--ky-accent);
+  background: var(--ky-accent-bg);
+  color: var(--ky-accent-deep);
 }
 
 .pill--ok {
-  background: rgba(76, 175, 80, 0.14);
-  color: #2e7d32;
+  background: var(--ky-success-bg);
+  color: var(--ky-success);
 }
 
 .pill--warn {
-  background: rgba(255, 152, 0, 0.16);
-  color: #e65100;
+  background: var(--ky-warning-bg);
+  color: var(--ky-warning);
 }
 
 .amount-card,
@@ -621,8 +621,8 @@ onUnmounted(stopPolling)
   height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(27, 77, 255, 0.1);
-  color: var(--ky-accent);
+  background: var(--ky-accent-bg);
+  color: var(--ky-accent-deep);
   font-size: 12px;
   font-weight: 650;
 }

@@ -29,30 +29,30 @@ defineEmits<{ click: [] }>()
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 0 0 4px;
+  gap: 6px;
+  padding: 4px 0 8px;
   width: 100%;
 }
 
 .connect-hero__title {
   margin: 0;
-  font-size: var(--ky-font-xl);
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   color: var(--ky-text);
   text-align: center;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .connect-hero__title--success {
-  color: #16a34a; /* ConnectVisual.protectedGreen */
+  color: var(--ky-success);
 }
 
 .connect-hero__title--error {
-  color: #dc2626; /* ConnectVisual.errorRed */
+  color: var(--ky-danger);
 }
 
 .connect-hero__title--info {
-  color: #2563eb; /* ConnectVisual.connectingBlue */
+  color: var(--ky-accent-deep);
 }
 
 .connect-hero__subtitle {
@@ -60,7 +60,7 @@ defineEmits<{ click: [] }>()
   padding: 0 var(--ky-space-xl);
   font-size: var(--ky-font-sm);
   line-height: 1.45;
-  color: var(--ky-text-secondary);
+  color: var(--ky-text-muted);
   text-align: center;
 }
 </style>

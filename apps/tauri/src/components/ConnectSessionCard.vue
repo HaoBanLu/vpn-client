@@ -118,17 +118,17 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(effectiveUploadBps.val
 
 <style scoped>
 .session-card {
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--ky-bg-card);
-  border: 1px solid var(--ky-border-soft);
+  border: 1px solid rgba(226, 232, 240, 0.9);
   box-shadow: var(--ky-shadow-sm);
 }
 
 .session-card :deep(.ky-card__body) {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 16px 18px;
 }
 
 .session-card__switch {
@@ -139,14 +139,14 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(effectiveUploadBps.val
   padding: 10px 12px;
   border: 0;
   border-radius: 12px;
-  background: rgba(15, 23, 41, 0.04);
+  background: var(--ky-surface-variant);
   color: inherit;
   cursor: pointer;
   text-align: left;
 }
 
 .session-card__switch:hover {
-  background: rgba(15, 23, 41, 0.07);
+  background: var(--ky-bg-card-hover);
 }
 
 .session-card__switch-value {
@@ -173,7 +173,7 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(effectiveUploadBps.val
   gap: 6px;
   padding: 10px;
   border-radius: 12px;
-  background: rgba(15, 23, 41, 0.04);
+  background: var(--ky-surface-variant);
 }
 
 .session-card__network-paused {
@@ -217,20 +217,20 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(effectiveUploadBps.val
 }
 
 .session-card__speed-dot--down {
-  background: rgba(74, 222, 128, 0.12);
+  background: var(--ky-success-bg);
 }
 
 .session-card__speed-dot--down::after {
-  border-top: 5px solid #4ade80;
+  border-top: 5px solid var(--ky-success);
   margin-top: 2px;
 }
 
 .session-card__speed-dot--up {
-  background: rgba(37, 99, 235, 0.12);
+  background: var(--ky-accent-bg);
 }
 
 .session-card__speed-dot--up::after {
-  border-bottom: 5px solid #2563eb;
+  border-bottom: 5px solid var(--ky-accent-deep);
   margin-bottom: 2px;
 }
 
@@ -253,7 +253,7 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(effectiveUploadBps.val
   width: 1px;
   height: 32px;
   flex-shrink: 0;
-  background: rgba(15, 23, 41, 0.08);
+  background: var(--ky-border-soft);
 }
 
 .session-card__duration {
@@ -331,12 +331,12 @@ const uploadSpeedText = computed(() => formatDisplaySpeed(effectiveUploadBps.val
 }
 
 .session-card__traffic-down {
-  color: #4ade80;
+  color: var(--ky-success);
   font-size: var(--ky-font-md);
 }
 
 .session-card__traffic-up {
-  color: #60a5fa;
+  color: var(--ky-accent-soft);
   font-size: var(--ky-font-md);
 }
 

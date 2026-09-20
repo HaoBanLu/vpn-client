@@ -26,7 +26,8 @@ function formatLatencyHint(tunnelLatencyMs?: number | null, entryLatencyMs?: num
 }
 
 /**
- * 连接页 Hero 文案。已连接时结合探针/恢复态，避免假绿。
+ * 连接页 Hero 文案。
+ * 隧道已建立时主标题固定「已保护」，不因探针/高延迟改成「不稳定」「失败」吓人话术。
  */
 export function resolveConnectHeroCopy(input: {
   connectionState: VpnConnectionState
@@ -52,12 +53,14 @@ export function resolveConnectHeroCopy(input: {
     entryLatencyMs,
     connectPhase = 'idle',
     emptyReason,
-    probeStatus = 'idle',
+    probeStatus: _probeStatus = 'idle',
     recoveringConnection = false,
-    effectivelyProtected,
+    effectivelyProtected: _effectivelyProtected,
     networkReachable = true,
     autoReconnectEnabled = true,
   } = input
+  void _probeStatus
+  void _effectivelyProtected
 
   if (emptyReason === 'load_error') {
     return {
@@ -114,14 +117,14 @@ export function resolveConnectHeroCopy(input: {
   }
 
   if (connected) {
-    const protectedOk = effectivelyProtected ?? (probeStatus !== 'failed')
-    if (recoveringConnection || (!protectedOk && probeStatus === 'failed')) {
+    // 仅真正在自动重连流程中才显示恢复态；探针差不改主标题（避免「软件不稳」观感）
+    if (recoveringConnection) {
       return {
-        title: '正在恢复连接…',
-        subtitle: latencyHint || '网络变化后自动重连',
-        buttonLabel: '恢复中',
+        title: '正在重连…',
+        subtitle: latencyHint || '请稍候',
+        buttonLabel: '重连中',
         variant: 'connecting',
-        titleTone: 'warning',
+        titleTone: 'info',
         connected: false,
         connecting: true,
       }
@@ -129,7 +132,7 @@ export function resolveConnectHeroCopy(input: {
     if (!networkReachable) {
       return {
         title: '网络已断开',
-        subtitle: autoReconnectEnabled ? '恢复后将自动重连' : '请检查网络后手动重连',
+        subtitle: autoReconnectEnabled ? '网络恢复后将自动重连' : '请检查网络后手动重连',
         buttonLabel: '断开',
         variant: 'connected',
         titleTone: 'warning',
@@ -137,18 +140,7 @@ export function resolveConnectHeroCopy(input: {
         connecting: false,
       }
     }
-    if (probeStatus === 'degraded') {
-      return {
-        title: '连接不稳定',
-        subtitle: latencyHint ? `${latencyHint} · 正在监测` : '正在监测连接质量',
-        buttonLabel: '断开',
-        variant: 'connected',
-        titleTone: 'warning',
-        connected: true,
-        connecting: false,
-      }
-    }
-    // 节点详情在会话卡；Hero 副标题留空，避免重复
+    // 隧道已建立：统一「已保护」。延迟/探针质量只放副标题，不喊「不稳定」
     return {
       title: '已保护',
       subtitle: latencyHint || '',
@@ -162,11 +154,11 @@ export function resolveConnectHeroCopy(input: {
 
   if (connectionState === 'failed') {
     return {
-      title: '连接失败',
-      subtitle: '请检查网络或切换节点',
+      title: '未连接',
+      subtitle: '请稍后重试，或换一个节点',
       buttonLabel: '一键连接',
       variant: 'default',
-      titleTone: 'error',
+      titleTone: 'default',
       connected: false,
       connecting: false,
     }

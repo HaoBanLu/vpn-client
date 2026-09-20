@@ -3,6 +3,7 @@ import {
   decideDesktopNetworkRestore,
   DESKTOP_NETWORK_RESTORE,
   nextDesktopHealthFailStreak,
+  shouldIgnoreBrowserNetworkFlap,
   shouldProceedDesktopAutoReconnect,
   shouldReconnectAfterDesktopNetworkRecovery,
   shouldReconnectOnDesktopHealthStreak,
@@ -123,6 +124,45 @@ describe('network-restore-policy', () => {
 
   it('debounce constant aligns with Android', () => {
     expect(DESKTOP_NETWORK_RESTORE.reconnectDebounceMs).toBe(800)
+  })
+
+  it('ignores browser online/offline on Android and post-connect grace', () => {
+    expect(
+      shouldIgnoreBrowserNetworkFlap({
+        reason: 'browser_online',
+        platformIsAndroid: true,
+        connectPending: false,
+        isConnecting: false,
+        msSinceLastConnected: 60_000,
+      }),
+    ).toBe(true)
+    expect(
+      shouldIgnoreBrowserNetworkFlap({
+        reason: 'onAvailable',
+        platformIsAndroid: true,
+        connectPending: false,
+        isConnecting: false,
+        msSinceLastConnected: 100,
+      }),
+    ).toBe(false)
+    expect(
+      shouldIgnoreBrowserNetworkFlap({
+        reason: 'browser_offline',
+        platformIsAndroid: false,
+        connectPending: false,
+        isConnecting: false,
+        msSinceLastConnected: 500,
+      }),
+    ).toBe(true)
+    expect(
+      shouldIgnoreBrowserNetworkFlap({
+        reason: 'browser_online',
+        platformIsAndroid: false,
+        connectPending: false,
+        isConnecting: false,
+        msSinceLastConnected: 10_000,
+      }),
+    ).toBe(false)
   })
 
   it('auto reconnect waits without network', () => {

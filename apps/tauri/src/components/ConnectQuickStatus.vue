@@ -58,12 +58,12 @@ const subscriptionLine = computed(() => {
   gap: 10px;
   border-radius: 16px !important;
   background: var(--ky-bg-card) !important;
-  border: 1px solid var(--ky-border-soft) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
   box-shadow: var(--ky-shadow-sm);
 }
 
 .quick-status :deep(.ky-card__body) {
-  padding: 14px 16px;
+  padding: 16px 18px;
 }
 
 .quick-status__meta {

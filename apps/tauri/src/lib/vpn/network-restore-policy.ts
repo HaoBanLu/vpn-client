@@ -20,7 +20,34 @@ export const DESKTOP_NETWORK_RESTORE = {
   settleAfterHealMs: 1_500,
   /** 周期探活连续失败达此次数且 navigator.onLine → 自动重连 */
   healthFailStreakToReconnect: 2,
+  /**
+   * 刚连上 VPN 后忽略 browser online/offline。
+   * Android WebView 建隧时常假抖 navigator.onLine，会误触发「完整重连」与「正在恢复连接」。
+   */
+  postConnectBrowserFlapGraceMs: 5_000,
 } as const
+
+/**
+ * 是否应忽略 browser online/offline（VPN 建隧诱发的假抖动）。
+ * Android 原生网变走 `vpn://network-changed`；browser 事件不可靠。
+ */
+export function shouldIgnoreBrowserNetworkFlap(input: {
+  reason: string
+  platformIsAndroid: boolean
+  connectPending: boolean
+  isConnecting: boolean
+  msSinceLastConnected: number | null
+  graceMs?: number
+}): boolean {
+  if (!input.reason.startsWith('browser_')) return false
+  if (input.platformIsAndroid) return true
+  if (input.connectPending || input.isConnecting) return true
+  const grace = input.graceMs ?? DESKTOP_NETWORK_RESTORE.postConnectBrowserFlapGraceMs
+  if (input.msSinceLastConnected != null && input.msSinceLastConnected < grace) {
+    return true
+  }
+  return false
+}
 
 /**
  * 物理网从无到有（`online` 事件）时的动作。

@@ -11,7 +11,7 @@
         <KyChipGroup :model-value="region" :items="regionItems" @update:model-value="setRegion" />
 
         <KyButton
-          type="primary"
+          type="default"
           block
           class="nodes-batch-btn"
           :loading="batchTesting"
@@ -259,32 +259,34 @@ onMounted(load)
   width: 100%;
   height: 40px !important;
   min-height: 40px !important;
-  border-radius: 999px !important;
-  border: 0 !important;
-  background: var(--ky-accent) !important;
-  color: #fff !important;
-  font-weight: 700 !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  background: var(--ky-nav-active-pill) !important;
+  color: var(--ky-accent-deep) !important;
+  font-weight: 650 !important;
   font-size: 15px !important;
   letter-spacing: 0.2px;
   box-shadow: none !important;
 }
 
 .nodes-batch-btn:not(:disabled):hover {
-  background: var(--ky-accent-soft) !important;
-  color: #fff !important;
+  background: #dbeafe !important;
+  color: var(--ky-accent-deep) !important;
+  border-color: rgba(37, 99, 235, 0.45) !important;
 }
 
 .nodes-list-card {
   margin-top: 2px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 0;
-  box-shadow: none;
+  background: var(--ky-bg-card);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: var(--ky-shadow-sm);
   overflow: hidden;
 }
 
 .nodes-list-card--muted {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--ky-bg-card);
+  opacity: 0.92;
 }
 
 .nodes-list-divider {

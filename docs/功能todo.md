@@ -7,6 +7,9 @@
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
+| 跨端色调统一 + 连接页改版 | ✅ | 2026-09-20 | 客户端 `--ky-*` 对齐会员站 soft-blue（accent `#3b82f6`、bg `#f8fafc`、success `#10b981`）；连接页 Hero/会话卡 dash-card 质感；节点/套餐/我的/底栏同色调；会员 `BRAND_COLORS` 收口 Logo 渐变与按钮主色。验证：`npm test` 153；`npm run build` 产物含新 token |
+| 连接后状态连闪（恢复连接） | ✅ | 2026-09-20 | 根因：Android WebView 建隧抖 `browser_online/offline` 误触发完整重连。Android 不再听 browser 网变；忽略建隧后 grace 内假抖；原生 onAvailable 仅物理网句柄变化才通知前端 |
+| 连接页去掉「不稳定/失败」吓人标题 | ✅ | 2026-09-20 | 隧道已建统一「已保护」；failed 态改为「未连接」；探针 degraded 不再改主标题。模拟器日志：探针未通过但隧道仍 connected |
 | 发版 1.2.32 / code 152 | ✅ | 2026-09-20 | 热修：真机下拉刷新（touch 手势）；控制面 API 直连避免已连 VPN 时节点/套餐网络异常。Tag `v1.2.32` |
 | 真机下拉刷新失效 + VPN 下 API 异常 | ✅ | 2026-09-20 | KyPullRefresh 改 touch 事件并放宽 canPull；`injectDirectBypassRules` 注入控制面 IP/域名 DIRECT；节点/套餐加载失败拆残留隧道重试 |
 | 发版 1.2.31 / code 151 | ✅ | 2026-09-20 | 更新复检 30min、失败可重试/取消下载；KySubPage/Tab 下拉与桌面顶栏刷新。模拟器 CDP 验收通过。Tag `v1.2.31` |

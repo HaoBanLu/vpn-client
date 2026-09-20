@@ -516,15 +516,11 @@ onMounted(refresh)
 }
 
 .sub-hero {
-  border-radius: 20px;
-  padding: 16px;
-  background: linear-gradient(
-    135deg,
-    rgba(214, 228, 255, 0.95) 0%,
-    rgba(232, 238, 248, 0.92) 55%,
-    rgba(0, 212, 255, 0.12) 100%
-  );
-  border: 1px solid rgba(27, 77, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px 16px;
+  background: var(--ky-bg-card);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: var(--ky-shadow-sm);
 }
 
 .sub-hero__head {
@@ -542,7 +538,7 @@ onMounted(refresh)
 
 .sub-hero__name {
   margin: 4px 0 0;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--ky-text);
 }
@@ -554,8 +550,8 @@ onMounted(refresh)
   gap: 6px;
   padding: 4px 10px;
   border-radius: var(--ky-radius-full);
-  background: rgba(255, 255, 255, 0.85);
-  color: #2e7d32;
+  background: var(--ky-success-bg);
+  color: var(--ky-success);
   font-size: 12px;
   font-weight: 650;
 }
@@ -569,30 +565,32 @@ onMounted(refresh)
 }
 
 .sub-hero__badge--warn {
-  color: #b78103;
+  background: var(--ky-warning-bg);
+  color: var(--ky-warning);
 }
 
 .sub-hero__badge--danger {
-  color: #c62828;
+  background: var(--ky-danger-bg);
+  color: var(--ky-danger);
 }
 
 .sub-hero__summary {
   margin: 10px 0 0;
   font-size: var(--ky-font-sm);
-  color: var(--ky-text-secondary);
+  color: var(--ky-text-muted);
 }
 
 .sub-hero__bar {
-  margin-top: 8px;
-  height: 4px;
+  margin-top: 10px;
+  height: 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.65);
+  background: var(--ky-surface-variant);
   overflow: hidden;
 }
 
 .sub-hero__fill {
   height: 100%;
-  background: var(--ky-accent);
+  background: var(--ky-success);
 }
 
 .sub-hero__actions {

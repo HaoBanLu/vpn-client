@@ -120,7 +120,7 @@ onUnmounted(clearTimer)
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2.5px solid rgba(27, 77, 255, 0.16);
+  border: 2.5px solid rgba(59, 130, 246, 0.16);
   border-top-color: var(--ky-accent);
   animation: ky-spin-rotate 0.7s linear infinite;
   background: transparent;

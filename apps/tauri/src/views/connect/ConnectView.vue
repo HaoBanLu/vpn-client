@@ -217,17 +217,23 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 对齐 Android：顶对齐可滚动，不做垂直居中 */
+/* 状态优先：顶对齐 + 轻量顶部洗色 */
 :deep(.connect-page) {
-  gap: 8px;
+  gap: 10px;
   justify-content: flex-start;
+}
+
+:deep(.connect-page.ky-page) {
+  background:
+    radial-gradient(ellipse 120% 48% at 50% -8%, var(--ky-bg-hero) 0%, transparent 62%),
+    var(--ky-bg);
 }
 
 .renewal-hint {
   padding: var(--ky-space-md);
   border-radius: var(--ky-radius-md);
   background: var(--ky-danger-bg);
-  border: 1px solid rgba(248, 113, 113, 0.25);
+  border: 1px solid rgba(225, 29, 72, 0.2);
   color: var(--ky-danger);
   font-size: var(--ky-font-sm);
 }

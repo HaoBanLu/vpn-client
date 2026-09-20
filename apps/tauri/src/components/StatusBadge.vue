@@ -58,8 +58,8 @@ const showDot = computed(() => {
 
 .ky-status-badge.success,
 .ky-status-badge.online {
-  background: rgba(76, 175, 80, 0.14);
-  color: #2e7d32;
+  background: var(--ky-success-bg);
+  color: var(--ky-success);
 }
 
 .ky-status-badge.warning {

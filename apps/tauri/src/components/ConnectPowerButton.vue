@@ -1,13 +1,13 @@
 <template>
   <div class="power-wrap">
-    <!-- 连接中：向外扩散波纹（对齐 Android ExpandingRippleRings） -->
+    <!-- 连接中：向外扩散波纹 -->
     <div v-if="connecting" class="ripple-layer" aria-hidden="true">
       <span class="ripple-ring" style="--i: 0" />
       <span class="ripple-ring" style="--i: 1" />
       <span class="ripple-ring" style="--i: 2" />
     </div>
 
-    <!-- 已连接：稳态护盾环（对齐 Android ConnectedSteadyShield） -->
+    <!-- 已连接：稳态护盾环 -->
     <div v-else-if="variant === 'connected'" class="shield-layer" aria-hidden="true">
       <span class="shield-glow" />
       <span class="shield-ring shield-ring--1" />
@@ -44,7 +44,7 @@ const props = defineProps<{
   label: string
   variant?: 'default' | 'connected' | 'connecting'
   connecting?: boolean
-  /** 对齐 Android：连接中仍可点，用于中断；不要 disabled */
+  /** 连接中仍可点，用于中断；不要 disabled */
   disabled?: boolean
 }>()
 
@@ -65,36 +65,34 @@ function onClick() {
   justify-content: center;
   align-items: center;
   width: 100%;
-  /* 对齐 Android：halo 172 + 波纹外扩余量 */
-  min-height: 210px;
+  min-height: 200px;
   padding: 0;
 }
 
-/* —— 色板对齐 Android ConnectVisual —— */
 .power-halo {
   position: relative;
   z-index: 1;
-  width: 172px;
-  height: 172px;
+  width: 168px;
+  height: 168px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle, rgba(27, 77, 255, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--ky-accent-bg) 0%, transparent 70%);
 }
 
 .power-halo.connected {
-  background: radial-gradient(circle, rgba(22, 163, 74, 0.18) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--ky-success-bg) 0%, transparent 70%);
 }
 
 .power-halo.connecting {
-  background: radial-gradient(circle, rgba(37, 99, 235, 0.14) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--ky-accent-bg) 0%, transparent 70%);
 }
 
 .power-btn {
   position: relative;
-  width: 138px;
-  height: 138px;
+  width: 132px;
+  height: 132px;
   border-radius: 50%;
   border: 0;
   display: flex;
@@ -103,13 +101,12 @@ function onClick() {
   justify-content: center;
   gap: 4px;
   cursor: pointer;
-  color: #fff;
+  color: var(--ky-on-accent);
   overflow: hidden;
-  /* 对齐 connectButtonBrush: #1B4DFF → #4F7CFF */
-  background: linear-gradient(135deg, #1b4dff 0%, #4f7cff 100%);
+  background: linear-gradient(135deg, var(--ky-accent-deep) 0%, var(--ky-accent-soft) 100%);
   box-shadow:
-    0 10px 28px rgba(27, 77, 255, 0.35),
-    0 4px 12px rgba(0, 0, 0, 0.2);
+    0 10px 28px rgba(59, 130, 246, 0.32),
+    0 4px 12px rgba(15, 23, 42, 0.12);
   transform: scale(1);
   transition: transform 0.18s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.18s ease;
   -webkit-tap-highlight-color: transparent;
@@ -125,18 +122,18 @@ function onClick() {
 }
 
 .power-btn.connected {
-  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  background: linear-gradient(135deg, #059669 0%, var(--ky-success) 100%);
   border: 2.5px solid rgba(255, 255, 255, 0.3);
   box-shadow:
-    0 16px 36px rgba(22, 163, 74, 0.42),
-    0 6px 14px rgba(0, 0, 0, 0.18);
+    0 16px 36px rgba(16, 185, 129, 0.38),
+    0 6px 14px rgba(15, 23, 42, 0.12);
 }
 
 .power-btn.connecting {
-  background: linear-gradient(135deg, #2563eb 0%, #4f7cff 100%);
+  background: linear-gradient(135deg, var(--ky-accent-deep) 0%, var(--ky-accent-soft) 100%);
   box-shadow:
-    0 10px 28px rgba(37, 99, 235, 0.4),
-    0 4px 12px rgba(0, 0, 0, 0.2);
+    0 10px 28px rgba(37, 99, 235, 0.36),
+    0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
 .power-btn__sheen {
@@ -173,7 +170,6 @@ function onClick() {
   letter-spacing: 0.05em;
 }
 
-/* ExpandingRippleRings：3 环、2.4s 周期（对齐 Android Canvas 210dp / base 72dp / expand 42dp） */
 .ripple-layer {
   position: absolute;
   width: 210px;
@@ -188,7 +184,7 @@ function onClick() {
   width: 144px;
   height: 144px;
   border-radius: 50%;
-  border: 2px solid rgba(37, 99, 235, 0.42);
+  border: 2px solid rgba(59, 130, 246, 0.4);
   animation: ripple-expand 2.4s linear infinite;
   animation-delay: calc(var(--i) * -0.8s);
 }
@@ -204,7 +200,6 @@ function onClick() {
   }
 }
 
-/* ConnectedSteadyShield */
 .shield-layer {
   position: absolute;
   width: 220px;
@@ -216,7 +211,7 @@ function onClick() {
   position: absolute;
   inset: 20px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(22, 163, 74, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
 }
 
 .shield-ring {
@@ -225,7 +220,7 @@ function onClick() {
   margin: auto;
   border-radius: 50%;
   border-style: solid;
-  border-color: rgba(22, 163, 74, 0.24);
+  border-color: rgba(16, 185, 129, 0.28);
 }
 
 .shield-ring--1 {
@@ -239,14 +234,14 @@ function onClick() {
   width: 156px;
   height: 156px;
   border-width: 1.8px;
-  border-color: rgba(22, 163, 74, 0.17);
+  border-color: rgba(16, 185, 129, 0.18);
 }
 
 .shield-ring--3 {
   width: 172px;
   height: 172px;
   border-width: 1.5px;
-  border-color: rgba(22, 163, 74, 0.11);
+  border-color: rgba(16, 185, 129, 0.12);
   animation: shield-shimmer 9s ease-in-out infinite alternate;
 }
 

@@ -54,8 +54,8 @@ defineEmits<{ 'update:modelValue': [value: string | null] }>()
 
 .ky-chip.active {
   border-color: transparent;
-  background: #d6e4ff;
-  color: #0a2463;
+  background: var(--ky-nav-active-pill);
+  color: var(--ky-on-primary-container);
   font-weight: 650;
 }
 </style>

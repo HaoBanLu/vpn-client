@@ -50,6 +50,7 @@ import {
   decideDesktopNetworkRestore,
   DESKTOP_NETWORK_RESTORE,
   nextDesktopHealthFailStreak,
+  shouldIgnoreBrowserNetworkFlap,
   shouldProceedDesktopAutoReconnect,
   shouldReconnectOnDesktopHealthStreak,
 } from '@/lib/vpn/network-restore-policy'
@@ -65,7 +66,7 @@ import { appendDebugLog, flushDebugLogs } from '@/lib/debug/app-debug-log'
 import { shouldIgnoreDisconnectedWhileConnecting } from '@/lib/vpn/connect-inflight'
 import { shareInflight } from '@/lib/account-view-state'
 import { isNetworkConnectivityError, mapApiError } from '@/lib/api-error'
-import { APP_VERSION_CODE } from '@/lib/app-meta'
+import { APP_VERSION_CODE, detectClientPlatform } from '@/lib/app-meta'
 import {
   persistAppVersionCode,
   readPersistedAppVersionCode,
@@ -187,6 +188,8 @@ export const useConnectStore = defineStore('connect', () => {
   /** 连接世代号：中断/新连接时递增，丢弃过期的 in-flight connect。 */
   let connectGeneration = 0
   let healthFailStreak = 0
+  /** 上次进入 connected 的时间戳；用于忽略建隧诱发的 browser online/offline */
+  let lastConnectedAtMs: number | null = null
   let onOnlineHandler: (() => void) | null = null
   let onOfflineHandler: (() => void) | null = null
   let unlistenNetworkChanged: (() => void) | null = null
@@ -670,12 +673,13 @@ export const useConnectStore = defineStore('connect', () => {
           streak: String(healthFailStreak),
         })
         healthFailStreak = 0
-        actionHint.value = '连接不稳定，正在自动恢复…'
+        actionHint.value = '正在重连…'
         void handleUnexpectedTunnelStop()
         return
       }
       if (connectionState.value === 'connected') {
-        actionHint.value = probeStatus.value === 'degraded' ? '连接不稳定，正在监测…' : null
+        // 探针较差不写吓人提示；隧道仍在，Hero 用「已保护」
+        actionHint.value = null
         error.value = null
       }
       syncTrayTooltip()
@@ -762,6 +766,7 @@ export const useConnectStore = defineStore('connect', () => {
       autoReconnectAttempts.value = 0
       userInitiatedDisconnect.value = false
       networkReachable.value = true
+      lastConnectedAtMs = Date.now()
       markVpnSession(true)
       resetSessionStats()
       startHealthProbeLoop()
@@ -849,7 +854,23 @@ export const useConnectStore = defineStore('connect', () => {
     }, DESKTOP_NETWORK_RESTORE.reconnectDebounceMs)
   }
 
+  function shouldDropBrowserNetworkReason(reason: string): boolean {
+    const msSince =
+      lastConnectedAtMs == null ? null : Math.max(0, Date.now() - lastConnectedAtMs)
+    return shouldIgnoreBrowserNetworkFlap({
+      reason,
+      platformIsAndroid: detectClientPlatform() === 'android',
+      connectPending: connectPending.value,
+      isConnecting: connectionState.value === 'connecting',
+      msSinceLastConnected: msSince,
+    })
+  }
+
   function markNetworkLost(reason: string) {
+    if (shouldDropBrowserNetworkReason(reason)) {
+      appendDebugLog('network', `忽略假断网 · ${reason}`, 'info')
+      return
+    }
     if (networkRestoreDebounceTimer) {
       clearTimeout(networkRestoreDebounceTimer)
       networkRestoreDebounceTimer = null
@@ -864,6 +885,10 @@ export const useConnectStore = defineStore('connect', () => {
   }
 
   function markNetworkRestored(reason: string) {
+    if (shouldDropBrowserNetworkReason(reason)) {
+      appendDebugLog('network', `忽略假恢复 · ${reason}`, 'info')
+      return
+    }
     networkReachable.value = true
     scheduleNetworkRecovery(reason)
     syncTrayTooltip()
@@ -1400,7 +1425,8 @@ export const useConnectStore = defineStore('connect', () => {
     } catch {
       // web dev
     }
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && detectClientPlatform() !== 'android') {
+      // Android WebView 建隧会抖 navigator.onLine；网变以 vpn://network-changed 为准
       onOnlineHandler = onBrowserOnline
       onOfflineHandler = onBrowserOffline
       window.addEventListener('online', onOnlineHandler)

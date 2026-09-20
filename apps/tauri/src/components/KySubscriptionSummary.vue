@@ -48,10 +48,11 @@ const summaryLine = computed(
 
 <style scoped>
 .ky-subscription-summary {
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-radius: 16px;
   background: var(--ky-bg-card);
-  border: 1px solid var(--ky-border-soft);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: var(--ky-shadow-sm);
 }
 
 .ky-subscription-summary__label {
@@ -61,9 +62,9 @@ const summaryLine = computed(
 }
 
 .ky-subscription-summary__line {
-  margin: 4px 0 0;
-  font-size: var(--ky-font-sm);
-  font-weight: 600;
+  margin: 6px 0 0;
+  font-size: var(--ky-font-md);
+  font-weight: 650;
   color: var(--ky-text);
   line-height: 1.45;
 }
