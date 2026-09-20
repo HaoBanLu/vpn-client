@@ -286,21 +286,9 @@ html {
   padding-bottom: 24px;
 }
 
-/* 节点页通栏：去掉左右留白，列表贴边铺满（通讯录感） */
-.app-shell:not(.app-shell--desktop) .app-content:has(.nodes-page) {
-  padding-left: 0;
-  padding-right: 0;
-  padding-bottom: var(--ky-bottom-nav-height);
-}
-
-.app-shell:not(.app-shell--desktop) .app-content:has(.nodes-page) .ky-tab-brand {
-  padding-left: 20px;
-  padding-right: 20px;
-}
-
+/* 节点页与其它主 Tab 共用 app-content 左右 20px 留白 */
 .app-content .ky-page.nodes-page {
   padding-bottom: 0;
-  max-width: none;
 }
 
 .ky-fade-enter-active,
