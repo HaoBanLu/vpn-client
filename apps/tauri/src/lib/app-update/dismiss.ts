@@ -5,8 +5,14 @@ export const UPDATE_DISMISSED_KEY = 'tauri_update_dismissed_version'
 export const UPDATE_ACCEPTED_KEY = 'tauri_update_accepted_version'
 export const UPDATE_LAST_CHECK_KEY = 'tauri_update_last_check_at'
 
-/** 30 分钟前台复检间隔：发版后更快弹出，避免 24h 才发现新包 */
-export const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000
+/**
+ * 回到前台最短复检间隔。
+ * 每次显示 App 都会查版本；用短冷却避免快速切前后台刷爆接口。
+ */
+export const UPDATE_FOREGROUND_CHECK_COOLDOWN_MS = 60 * 1000
+
+/** @deprecated 使用 UPDATE_FOREGROUND_CHECK_COOLDOWN_MS；保留别名兼容旧测试引用 */
+export const UPDATE_CHECK_INTERVAL_MS = UPDATE_FOREGROUND_CHECK_COOLDOWN_MS
 
 export function resolveUpdateVersionKey(result: Pick<AppUpdateResult, 'latestVersionCode' | 'latestVersionName'>): string {
   if (result.latestVersionCode != null && result.latestVersionCode > 0) {
@@ -40,12 +46,21 @@ export function recordUpdateCheckTime() {
   localStorage.setItem(UPDATE_LAST_CHECK_KEY, String(Date.now()))
 }
 
-export function shouldRunPeriodicUpdateCheck(now = Date.now()): boolean {
+/** 启动 / 回到前台是否该打版本接口（默认 60s 冷却） */
+export function shouldRunPeriodicUpdateCheck(
+  now = Date.now(),
+  cooldownMs = UPDATE_FOREGROUND_CHECK_COOLDOWN_MS,
+): boolean {
   const raw = localStorage.getItem(UPDATE_LAST_CHECK_KEY)
   if (!raw) return true
   const last = Number(raw)
   if (!Number.isFinite(last)) return true
-  return now - last >= UPDATE_CHECK_INTERVAL_MS
+  return now - last >= cooldownMs
+}
+
+/** 每次显示 App 时复检（与 shouldRunPeriodicUpdateCheck 同策略） */
+export function shouldRunForegroundUpdateCheck(now = Date.now()): boolean {
+  return shouldRunPeriodicUpdateCheck(now, UPDATE_FOREGROUND_CHECK_COOLDOWN_MS)
 }
 
 /** 本地版本已不低于待更新目标时，不再弹发现新版本。 */

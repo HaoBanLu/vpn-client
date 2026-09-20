@@ -283,11 +283,24 @@ html {
 
 /* 节点页：末张卡片与窗底必须留白（不用依赖 scoped :deep） */
 .app-shell--desktop .app-content .ky-page.nodes-page {
-  padding-bottom: 48px;
+  padding-bottom: 24px;
+}
+
+/* 节点页通栏：去掉左右留白，列表贴边铺满（通讯录感） */
+.app-shell:not(.app-shell--desktop) .app-content:has(.nodes-page) {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: var(--ky-bottom-nav-height);
+}
+
+.app-shell:not(.app-shell--desktop) .app-content:has(.nodes-page) .ky-tab-brand {
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 .app-content .ky-page.nodes-page {
-  padding-bottom: 48px;
+  padding-bottom: 0;
+  max-width: none;
 }
 
 .ky-fade-enter-active,

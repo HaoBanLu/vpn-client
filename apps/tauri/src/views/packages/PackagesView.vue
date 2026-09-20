@@ -1,7 +1,6 @@
 <template>
   <KyTabPage
     title="加速套餐"
-    subtitle="选择适合你的流量方案，余额支付即时生效"
     :on-refresh="load"
     :loading="loading && packages.length === 0 && !loadError"
   >
@@ -106,7 +105,9 @@ async function load() {
   } catch (error) {
     if (isNetworkConnectivityError(error)) {
       try {
-        await connect.dropLeftoverTunnel('packages_fetch_blocked')
+        if (!connect.isConnected && !connect.isConnecting && !connect.connectPending) {
+          await connect.dropLeftoverTunnel('packages_fetch_blocked')
+        }
         packages.value = (await clientApi.getPackages()).data.packages
         loadError.value = null
         return

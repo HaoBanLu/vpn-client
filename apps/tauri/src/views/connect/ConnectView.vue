@@ -118,10 +118,13 @@ const renewalHint = computed(() =>
   store.subscription ? buildRenewalHint(store.subscription.expires_at) : null,
 )
 
-/** 仅展示真正的连接失败；拉取失败走三态，不挡「已保护」 */
+/** 仅展示真正的连接失败；已保护/连接中/网络抖动文案都不显示，避免红字闪一下 */
 const showConnectError = computed(() => {
   if (accountView.value !== 'ready') return false
+  if (store.isConnected || store.isEffectivelyProtected) return false
+  if (store.isConnecting || store.connectPending || store.isSwitching) return false
   if (!store.error) return false
+  if (/网络异常|连接超时|暂时无法连接/.test(store.error)) return false
   return !store.error.includes(NODE_REQUIRED_HINT)
 })
 

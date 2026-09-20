@@ -154,7 +154,7 @@ def main() -> int:
               const text = document.body.innerText || '';
               return {
                 hasError: text.includes('网络异常'),
-                hasNodes: /日本|新加坡|批量测速/.test(text),
+                hasNodes: /日本|新加坡|中国|全部/.test(text),
                 text: text.slice(0, 300),
               };
             })()

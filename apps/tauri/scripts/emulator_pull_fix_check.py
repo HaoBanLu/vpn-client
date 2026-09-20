@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Emulator: verify touch pull-refresh + login + nodes network recovery."""
 from __future__ import annotations
 
@@ -352,7 +352,7 @@ def main() -> int:
               const text = document.body.innerText || '';
               return {
                 hasError: text.includes('网络异常'),
-                hasNodes: /日本|新加坡|中国|全部|批量测速/.test(text),
+                hasNodes: /日本|新加坡|中国|全部/.test(text),
                 hasPull: !!document.querySelector('.ky-pull-refresh'),
                 text: text.slice(0, 320),
               };

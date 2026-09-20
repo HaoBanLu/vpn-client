@@ -63,6 +63,7 @@ import {
 } from '@/lib/vpn/desktop-settings'
 import { updateTrayTooltip } from '@/lib/desktop/tray'
 import { appendDebugLog, flushDebugLogs } from '@/lib/debug/app-debug-log'
+import { quietNetworkErrorToasts } from '@/lib/vpn/network-error-toast'
 import { shouldIgnoreDisconnectedWhileConnecting } from '@/lib/vpn/connect-inflight'
 import { shareInflight } from '@/lib/account-view-state'
 import { isNetworkConnectivityError, mapApiError } from '@/lib/api-error'
@@ -204,9 +205,24 @@ export const useConnectStore = defineStore('connect', () => {
       return await fetchConnectNodes(force)
     } catch (error) {
       if (!isNetworkConnectivityError(error)) throw error
+      // 已连/连接中勿拆隧道：短暂 API 失败很常见，拆了会抖成「连不上又马上成功」
+      if (shouldKeepTunnelOnApiFailure()) {
+        if (connectNodesCache.length > 0) return connectNodesCache
+        throw error
+      }
       await dropLeftoverTunnel('nodes_fetch_blocked')
       return fetchConnectNodes(force)
     }
+  }
+
+  /** 隧道仍在或正在建隧时，API 失败不作为「残留死隧道」处理 */
+  function shouldKeepTunnelOnApiFailure() {
+    return (
+      connectionState.value === 'connected' ||
+      connectionState.value === 'connecting' ||
+      connectPending.value ||
+      isSwitching.value
+    )
   }
 
   async function fetchConnectNodes(force = false): Promise<NodeItem[]> {
@@ -433,6 +449,10 @@ export const useConnectStore = defineStore('connect', () => {
       await account.refreshAccount()
     } catch (error) {
       if (!isNetworkConnectivityError(error)) throw error
+      if (shouldKeepTunnelOnApiFailure()) {
+        appendDebugLog('connect', '账户刷新跳过（隧道仍在）', 'warn')
+        return
+      }
       await dropLeftoverTunnel('account_fetch_blocked')
       await account.refreshAccount()
     }
@@ -475,6 +495,10 @@ export const useConnectStore = defineStore('connect', () => {
             return await clientApi.getConnectDashboard(selectedNode.value)
           } catch (error) {
             if (!isNetworkConnectivityError(error)) throw error
+            if (shouldKeepTunnelOnApiFailure()) {
+              appendDebugLog('connect', '仪表盘刷新跳过（隧道仍在）', 'warn')
+              return { data: dashboard.value }
+            }
             await dropLeftoverTunnel('dashboard_fetch_blocked')
             return clientApi.getConnectDashboard(selectedNode.value)
           }
@@ -482,7 +506,7 @@ export const useConnectStore = defineStore('connect', () => {
         clientApi.getUserPreferences().catch(() => null),
       ])
       regions.value = regionsRes.data.regions
-      dashboard.value = dashRes.data
+      if (dashRes?.data) dashboard.value = dashRes.data
       if (prefRes?.data) {
         const scenario = normalizeConnectionScenario(prefRes.data.connection_scenario)
         connectionScenario.value = scenario
@@ -491,7 +515,16 @@ export const useConnectStore = defineStore('connect', () => {
         applyResolvedConnectionConfig()
       }
     } catch (e: unknown) {
-      error.value = mapApiError(e, '加载失败')
+      // 隧道已在/建隧中时，刷新 API 的短暂网络失败不要写成连接错误（底部会红闪「网络异常」）
+      if (shouldKeepTunnelOnApiFailure() && isNetworkConnectivityError(e)) {
+        appendDebugLog(
+          'connect',
+          `刷新跳过（隧道仍在）：${mapApiError(e, '网络异常')}`,
+          'warn',
+        )
+      } else {
+        error.value = mapApiError(e, '加载失败')
+      }
     } finally {
       loading.value = false
     }
@@ -669,6 +702,24 @@ export const useConnectStore = defineStore('connect', () => {
         loadDesktopSettings().autoReconnect &&
         !userInitiatedDisconnect.value
       ) {
+        // 软探针失败但原生隧道仍在：不拆隧重连（模拟器/部分机型探针常误报）
+        let tunnelStillUp = connectionState.value === 'connected'
+        try {
+          const native = await getVpnStatus()
+          tunnelStillUp = native.state === 'connected'
+        } catch {
+          // 读不到原生态时以本地 connected 为准
+        }
+        if (tunnelStillUp) {
+          appendDebugLog('probe', '探针未通过但隧道仍在，跳过重连', 'info')
+          healthFailStreak = 0
+          if (connectionState.value === 'connected') {
+            actionHint.value = null
+            error.value = null
+          }
+          syncTrayTooltip()
+          return
+        }
         appendDebugLog('reconnect', 'probe_streak_reconnect', 'warn', {
           streak: String(healthFailStreak),
         })
@@ -753,6 +804,13 @@ export const useConnectStore = defineStore('connect', () => {
     ) {
       return
     }
+    // 建隧过程中原生可能短暂带上 error 文案；连上后一律清掉，避免底部红字闪一下
+    if (status.state === 'connected') {
+      connectionState.value = 'connected'
+      error.value = null
+      handleConnectionTransition(prev, 'connected')
+      return
+    }
     connectionState.value = status.state
     setVpnError(status.error ?? null)
     handleConnectionTransition(prev, status.state)
@@ -767,6 +825,7 @@ export const useConnectStore = defineStore('connect', () => {
       userInitiatedDisconnect.value = false
       networkReachable.value = true
       lastConnectedAtMs = Date.now()
+      error.value = null
       markVpnSession(true)
       resetSessionStats()
       startHealthProbeLoop()
@@ -924,6 +983,7 @@ export const useConnectStore = defineStore('connect', () => {
     autoReconnectInProgress = true
     recoveringConnection.value = true
     connectPending.value = true
+    quietNetworkErrorToasts()
     autoReconnectAttempts.value += 1
     const attempt = autoReconnectAttempts.value
     const token = bumpConnectGeneration()
@@ -1077,6 +1137,8 @@ export const useConnectStore = defineStore('connect', () => {
       profile: activeProfile.value,
     })
     void flushDebugLogs()
+    quietNetworkErrorToasts(8_000)
+    lastConnectedAtMs = Date.now()
     try {
       dashboard.value = (await clientApi.getConnectDashboard(selectedNode.value)).data
     } catch {
@@ -1163,6 +1225,7 @@ export const useConnectStore = defineStore('connect', () => {
     cancelProbe()
     userInitiatedDisconnect.value = false
     connectPending.value = true
+    quietNetworkErrorToasts()
     connectionState.value = 'connecting'
     actionHint.value = selectedNode.value?.trim()
       ? `正在连接 ${selectedNode.value.trim()}…`
@@ -1194,16 +1257,43 @@ export const useConnectStore = defineStore('connect', () => {
         connectPhase.value = 'idle'
         return 'done'
       }
+      const msg = e instanceof Error ? e.message : '连接失败'
+      // 配置拉取抖动时原生隧道可能已起来：按成功收尾，避免底部红字闪一下再变「已保护」
+      try {
+        const native = await getVpnStatus()
+        if (native.state === 'connected' && isConnectGenerationCurrent(token)) {
+          const prev = connectionState.value
+          connectionState.value = 'connected'
+          error.value = null
+          connectPending.value = false
+          connectPhase.value = 'idle'
+          handleConnectionTransition(prev, 'connected')
+          appendDebugLog('connect', '连接成功（异常后对账）', 'info')
+          void flushDebugLogs()
+          return 'done'
+        }
+      } catch {
+        // ignore
+      }
+      const softNetwork =
+        isNetworkConnectivityError(e) || /网络异常|连接超时|VPN 未就绪|启动超时/.test(msg)
       connectPending.value = false
       connectPhase.value = 'idle'
-      connectionState.value = 'failed'
-      const msg = e instanceof Error ? e.message : '连接失败'
-      setVpnError(msg)
+      connectionState.value = softNetwork ? 'disconnected' : 'failed'
+      // 网络类抖动不写底部红字；真失败才展示
+      if (softNetwork) {
+        error.value = null
+        actionHint.value = '连接未完成，请再点一次'
+      } else {
+        setVpnError(msg)
+        actionHint.value = null
+      }
       appendDebugLog('connect', `连接失败：${msg}`, 'error')
       void flushDebugLogs()
-      actionHint.value = null
       cancelProbe()
-      message.error(msg)
+      if (!softNetwork) {
+        message.error(msg)
+      }
     }
     return 'done'
   }
@@ -1213,6 +1303,7 @@ export const useConnectStore = defineStore('connect', () => {
     cancelProbe()
     isSwitching.value = true
     connectPending.value = true
+    quietNetworkErrorToasts()
     connectPhase.value = 'config'
     actionHint.value = switchingHint ?? '正在切换节点…'
     connectionState.value = 'connecting'
@@ -1262,13 +1353,34 @@ export const useConnectStore = defineStore('connect', () => {
       connectPhase.value = 'idle'
     } catch (e: unknown) {
       if (!isConnectGenerationCurrent(token)) return
+      const msg = e instanceof Error ? e.message : '切换失败'
+      try {
+        const native = await getVpnStatus()
+        if (native.state === 'connected' && isConnectGenerationCurrent(token)) {
+          const prev = connectionState.value
+          connectionState.value = 'connected'
+          error.value = null
+          connectPending.value = false
+          connectPhase.value = 'idle'
+          handleConnectionTransition(prev, 'connected')
+          return
+        }
+      } catch {
+        // ignore
+      }
+      const softNetwork =
+        isNetworkConnectivityError(e) || /网络异常|连接超时|切换节点超时/.test(msg)
       connectPending.value = false
       connectPhase.value = 'idle'
-      connectionState.value = 'failed'
-      const msg = e instanceof Error ? e.message : '切换失败'
-      setVpnError(msg)
-      actionHint.value = null
-      message.error(msg)
+      connectionState.value = softNetwork ? 'disconnected' : 'failed'
+      if (softNetwork) {
+        error.value = null
+        actionHint.value = '切换未完成，请再试一次'
+      } else {
+        setVpnError(msg)
+        actionHint.value = null
+        message.error(msg)
+      }
     } finally {
       if (isConnectGenerationCurrent(token)) {
         isSwitching.value = false

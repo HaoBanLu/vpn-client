@@ -387,13 +387,15 @@ export const clientApi = {
       ...SKIP_TOAST,
     }),
 
-  testNodeLatency: (nodeId: number) =>
-    request.get<{ latency: number }>(`/v1/nodes/${nodeId}/test/latency`),
-
   batchTestLatency: (nodeIds: number[]) =>
-    request.post<BatchLatencyData>('/v1/nodes/test/batch-latency', {
-      node_ids: nodeIds,
-    }),
+    request.post<BatchLatencyData>(
+      '/v1/nodes/test/batch-latency',
+      { node_ids: nodeIds },
+      SKIP_TOAST,
+    ),
+
+  testNodeLatency: (nodeId: number) =>
+    request.get<{ latency: number }>(`/v1/nodes/${nodeId}/test/latency`, SKIP_TOAST),
 
   getTickets: (page = 1, pageSize = 20) =>
     request.get<{ tickets: TicketItem[]; total: number }>('/v1/tickets', {

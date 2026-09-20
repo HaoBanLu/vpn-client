@@ -92,24 +92,22 @@ object AppStatusNotification {
     ): Notification {
         val node = nodeName.trim().ifBlank { "智能选路" }
         val total = stats.uploadBytes + stats.downloadBytes
-        val text =
+        val down = VpnSessionStatsTracker.formatSpeed(rates.downloadBps)
+        val up = VpnSessionStatsTracker.formatSpeed(rates.uploadBps)
+        val duration = VpnSessionStatsTracker.formatDuration(stats.durationMs)
+        val totalText = VpnSessionStatsTracker.formatBytes(total)
+        // 收起：一行摘要；展开：分行表格，更易扫读
+        val collapsed = "$node · ↓ $down · ↑ $up"
+        val expanded =
             buildString {
-                append(node)
-                append(" · ↑ ")
-                append(VpnSessionStatsTracker.formatSpeed(rates.uploadBps))
-                append(" ↓ ")
-                append(VpnSessionStatsTracker.formatSpeed(rates.downloadBps))
-                append(" · ")
-                append(VpnSessionStatsTracker.formatDuration(stats.durationMs))
-                append(" · 累计 ")
-                append(VpnSessionStatsTracker.formatBytes(total))
+                appendLine(node)
+                appendLine()
+                appendLine("下载    $down")
+                appendLine("上传    $up")
+                appendLine("时长    $duration")
+                append("累计    $totalText")
             }
-        return notify(
-            context,
-            title = "跨云已连接",
-            text = text,
-            showDisconnect = true,
-        )
+        return notifyConnected(context, collapsed, expanded)
     }
 
     fun notify(
@@ -119,6 +117,53 @@ object AppStatusNotification {
         showDisconnect: Boolean,
     ): Notification {
         val notification = build(context, title, text, showDisconnect)
+        if (hasPostPermission(context)) {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager?.notify(NOTIFICATION_ID, notification)
+        }
+        return notification
+    }
+
+    private fun notifyConnected(
+        context: Context,
+        collapsedText: String,
+        expandedText: String,
+    ): Notification {
+        ensureChannel(context)
+        val openIntent =
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val disconnectIntent =
+            PendingIntent.getService(
+                context,
+                1,
+                Intent(context, VpnTunnelService::class.java).apply {
+                    action = VpnTunnelService.ACTION_DISCONNECT
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val notification =
+            NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("跨云已连接")
+                .setContentText(collapsedText)
+                .setStyle(
+                    NotificationCompat.BigTextStyle()
+                        .bigText(expandedText)
+                        .setBigContentTitle("跨云已连接"),
+                )
+                .setSmallIcon(R.drawable.ic_kuayun_cloud_small)
+                .setContentIntent(openIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setSilent(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+                .addAction(0, "断开", disconnectIntent)
+                .build()
         if (hasPostPermission(context)) {
             val manager = context.getSystemService(NotificationManager::class.java)
             manager?.notify(NOTIFICATION_ID, notification)

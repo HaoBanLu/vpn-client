@@ -57,3 +57,49 @@ export function findFastestNodeId(
   }
   return bestId
 }
+
+export type NodeRegionSection<T extends { region?: string; region_name?: string }> = {
+  key: string
+  title: string
+  nodes: T[]
+}
+
+/**
+ * 按控制面地区顺序分组（通讯录分区）。
+ * 未出现在 regionOrder 的地区排在末尾。
+ */
+export function groupNodesByRegionOrder<T extends { region?: string; region_name?: string }>(
+  nodes: T[],
+  regionOrder: Array<{ code: string; name?: string }>,
+): NodeRegionSection<T>[] {
+  const buckets = new Map<string, T[]>()
+  for (const node of nodes) {
+    const key = (node.region || '').trim() || '_unknown'
+    const list = buckets.get(key)
+    if (list) list.push(node)
+    else buckets.set(key, [node])
+  }
+
+  const sections: NodeRegionSection<T>[] = []
+  const used = new Set<string>()
+  for (const region of regionOrder) {
+    const key = region.code
+    const list = buckets.get(key)
+    if (!list?.length) continue
+    const title = (region.name || '').trim() || key.toUpperCase()
+    sections.push({ key, title, nodes: list })
+    used.add(key)
+  }
+  for (const [key, list] of buckets) {
+    if (used.has(key) || list.length === 0) continue
+    const title = (list[0]?.region_name || '').trim() || key.toUpperCase()
+    sections.push({ key, title, nodes: list })
+  }
+  return sections
+}
+
+/** 右侧索引短字：取地区名首字（日本→日）。 */
+export function regionIndexGlyph(title: string): string {
+  const text = title.trim()
+  return text ? text[0]! : '?'
+}

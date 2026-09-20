@@ -17,7 +17,7 @@ import {
   markUpdateAccepted,
   markUpdateDismissed,
   recordUpdateCheckTime,
-  shouldRunPeriodicUpdateCheck,
+  shouldRunForegroundUpdateCheck,
   shouldShowUpdatePrompt,
 } from '@/lib/app-update/dismiss'
 import { message } from '@/lib/ui/message'
@@ -253,7 +253,8 @@ async function reconcileAfterResume() {
       return
     }
   }
-  if (shouldRunPeriodicUpdateCheck()) {
+  // 每次回到前台都查版本（60s 内冷却），发版后打开 App 即可弹出
+  if (shouldRunForegroundUpdateCheck()) {
     await runCheck({ showPrompt: true })
   }
 }

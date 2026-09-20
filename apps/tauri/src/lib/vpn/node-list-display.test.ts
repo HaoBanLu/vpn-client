@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   displaySceneTags,
   findFastestNodeId,
+  groupNodesByRegionOrder,
+  regionIndexGlyph,
   shouldShowRegionLine,
   sortNodesByLatency,
 } from '@/lib/vpn/node-list-display'
@@ -27,5 +29,28 @@ describe('node-list-display', () => {
   it('finds fastest measured node', () => {
     expect(findFastestNodeId([{ id: 1 }, { id: 2 }], { 1: 90, 2: 50 })).toBe(2)
     expect(findFastestNodeId([{ id: 1 }], {})).toBeNull()
+  })
+
+  it('groups nodes by region order for contacts-style sections', () => {
+    const sections = groupNodesByRegionOrder(
+      [
+        { id: 1, region: 'sg', region_name: '新加坡' },
+        { id: 2, region: 'jp', region_name: '日本' },
+        { id: 3, region: 'sg', region_name: '新加坡' },
+      ],
+      [
+        { code: 'jp', name: '日本' },
+        { code: 'sg', name: '新加坡' },
+        { code: 'cn', name: '中国大陆' },
+      ],
+    )
+    expect(sections.map((s) => s.key)).toEqual(['jp', 'sg'])
+    expect(sections[0]!.nodes.map((n) => n.id)).toEqual([2])
+    expect(sections[1]!.nodes.map((n) => n.id)).toEqual([1, 3])
+  })
+
+  it('takes first glyph for index rail', () => {
+    expect(regionIndexGlyph('日本')).toBe('日')
+    expect(regionIndexGlyph('新加坡')).toBe('新')
   })
 })

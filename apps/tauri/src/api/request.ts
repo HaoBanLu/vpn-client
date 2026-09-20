@@ -7,6 +7,7 @@ import { sessionInvalidationMessage, shouldLogoutOnApiFailure } from '@/lib/sess
 import { saveLastInvalidation, loginInvalidationTitle } from '@/lib/last-invalidation-store'
 import { ApiBusinessError, mapApiError } from '@/lib/api-error'
 import { resolveApiBaseUrl } from '@/lib/api-config'
+import { shouldQuietNetworkErrorToast } from '@/lib/vpn/network-error-toast'
 import type { ApiResponse } from './client'
 
 export { ApiBusinessError }
@@ -163,7 +164,14 @@ service.interceptors.response.use(
     const pathSkipsToast = path.includes('/auth/login')
     const statusSkipsToast = status === 404 || status === 503
     const mapped = mapApiError(error, '操作失败，请稍后重试', API_BASE)
-    if (!statusSkipsToast && !pathSkipsToast && !shouldSkipGlobalToast(error.config)) {
+    const quietNetworkToast =
+      shouldQuietNetworkErrorToast() && /网络异常|连接超时/.test(mapped)
+    if (
+      !statusSkipsToast &&
+      !pathSkipsToast &&
+      !shouldSkipGlobalToast(error.config) &&
+      !quietNetworkToast
+    ) {
       message.error(mapped)
     }
 

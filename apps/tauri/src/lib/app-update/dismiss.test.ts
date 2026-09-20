@@ -6,6 +6,7 @@ import {
   markUpdateDismissed,
   resolveUpdateVersionKey,
   shouldRunPeriodicUpdateCheck,
+  shouldRunForegroundUpdateCheck,
   shouldShowUpdatePrompt,
   UPDATE_ACCEPTED_KEY,
   UPDATE_DISMISSED_KEY,
@@ -63,12 +64,21 @@ describe('app-update dismiss', () => {
     expect(isLocalVersionUpToDate(baseResult({ latestVersionCode: olderCode, latestVersionName: '0.0.0' }))).toBe(true)
   })
 
-  it('shouldRunPeriodicUpdateCheck uses 30min window', () => {
+  it('shouldRunPeriodicUpdateCheck uses 60s foreground cooldown', () => {
     const now = 1_700_000_000_000
     localStorage.setItem(UPDATE_LAST_CHECK_KEY, String(now - UPDATE_CHECK_INTERVAL_MS + 1))
     expect(shouldRunPeriodicUpdateCheck(now)).toBe(false)
     localStorage.setItem(UPDATE_LAST_CHECK_KEY, String(now - UPDATE_CHECK_INTERVAL_MS - 1))
     expect(shouldRunPeriodicUpdateCheck(now)).toBe(true)
+  })
+
+  it('shouldRunForegroundUpdateCheck matches cooldown window', () => {
+    const now = 1_700_000_000_000
+    expect(shouldRunForegroundUpdateCheck(now)).toBe(true)
+    localStorage.setItem(UPDATE_LAST_CHECK_KEY, String(now - 30_000))
+    expect(shouldRunForegroundUpdateCheck(now)).toBe(false)
+    localStorage.setItem(UPDATE_LAST_CHECK_KEY, String(now - UPDATE_CHECK_INTERVAL_MS - 1))
+    expect(shouldRunForegroundUpdateCheck(now)).toBe(true)
   })
 
   it('clearUpdateAccepted removes accepted marker', () => {

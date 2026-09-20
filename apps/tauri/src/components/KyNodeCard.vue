@@ -5,69 +5,43 @@
       'ky-node-row--active': isActive,
       'ky-node-row--selected': selected && !isActive,
       'ky-node-row--unsupported': variant === 'unsupported',
+      'ky-node-row--clickable': variant === 'connectable' && !isActive,
     }"
+    role="button"
+    :tabindex="variant === 'connectable' && !isActive ? 0 : undefined"
+    @click="onRowActivate"
+    @keydown.enter.prevent="onRowActivate"
   >
-    <div class="ky-node-row__top">
-      <span class="ky-node-row__name">{{ displayName }}</span>
-      <span v-if="isActive" class="ky-node-row__connected">
-        <CheckCircleFilled class="ky-node-row__connected-icon" />
-        已连接
-      </span>
-      <span v-else-if="selected" class="ky-node-row__selected-label">已选</span>
-      <span
-        v-else
-        class="ky-pill"
-        :class="statusOnline ? 'ky-pill--online' : 'ky-pill--offline'"
-      >
-        <span class="ky-pill__dot" aria-hidden="true" />
-        {{ statusOnline ? '在线' : '离线' }}
-      </span>
-    </div>
-
-    <p v-if="showRegionLine" class="ky-node-row__meta">地区 {{ regionLabel }}</p>
-
-    <div v-if="variant === 'connectable' && featureTags.length" class="ky-node-row__tags">
-      <span
-        v-for="tag in featureTags"
-        :key="tag.text"
-        class="ky-pill"
-        :class="tag.kind === 'pool' ? 'ky-pill--cyan' : 'ky-pill--primary'"
-      >
-        <span class="ky-pill__dot" aria-hidden="true" />
-        {{ tag.text }}
-      </span>
-    </div>
-
-    <div v-if="variant === 'connectable'" class="ky-node-row__bottom">
-      <div class="ky-node-row__latency-wrap">
-        <span
-          v-if="hasLatency"
-          class="ky-pill"
-          :style="latencyPillStyle"
-        >
-          <span class="ky-pill__dot" aria-hidden="true" />
-          {{ latencyLabel }}
-        </span>
-        <span v-else-if="latencyPending" class="ky-node-row__latency-plain">测速中…</span>
-        <span v-else class="ky-node-row__latency-plain">未测速</span>
-        <span v-if="fastest && hasLatency" class="ky-pill ky-pill--fastest">
-          <span class="ky-pill__dot" aria-hidden="true" />
-          最快
-        </span>
+    <div class="ky-node-row__main">
+      <div class="ky-node-row__info">
+        <div class="ky-node-row__title-line">
+          <span class="ky-node-row__name">{{ displayName }}</span>
+          <span v-if="isActive" class="ky-node-row__badge ky-node-row__badge--ok">已连接</span>
+          <span v-else-if="selected" class="ky-node-row__badge">已选</span>
+          <span v-else-if="!statusOnline" class="ky-node-row__badge ky-node-row__badge--off">离线</span>
+        </div>
+        <p v-if="metaLine" class="ky-node-row__meta">{{ metaLine }}</p>
       </div>
 
-      <button
-        v-if="!isActive"
-        type="button"
-        class="ky-node-row__action"
-        :disabled="actionDisabled || actionLoading"
-        @click="$emit('action')"
-      >
-        <span v-if="actionLoading" class="ky-node-row__action-spin" aria-hidden="true" />
-        <SwapOutlined v-else-if="isSwitch" class="ky-node-row__action-icon" />
-        <ThunderboltFilled v-else class="ky-node-row__action-icon" />
-        <span>{{ actionLoading ? '连接中' : actionLabel }}</span>
-      </button>
+      <div v-if="variant === 'connectable'" class="ky-node-row__trail">
+        <span
+          v-if="hasLatency"
+          class="ky-node-row__latency"
+          :style="{ color: latencyColorValue }"
+        >
+          {{ latencyLabel }}
+          <span v-if="fastest" class="ky-node-row__fast">最快</span>
+        </span>
+        <span v-else-if="latencyPending" class="ky-node-row__latency ky-node-row__latency--muted">
+          …
+        </span>
+        <span v-else class="ky-node-row__latency ky-node-row__latency--muted">—</span>
+
+        <span v-if="!isActive" class="ky-node-row__action" :aria-busy="actionLoading">
+          <span v-if="actionLoading" class="ky-node-row__action-spin" aria-hidden="true" />
+          <span>{{ actionLoading ? '…' : actionLabel }}</span>
+        </span>
+      </div>
     </div>
 
     <p v-if="variant === 'unsupported' && unsupportedText" class="ky-node-row__unsupported">
@@ -78,7 +52,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { CheckCircleFilled, SwapOutlined, ThunderboltFilled } from '@ant-design/icons-vue'
 import type { NodeItem } from '@/api/client'
 import { latencyColor, nodeRegionLabel } from '@/lib/subscription'
 import { displaySceneTags, shouldShowRegionLine } from '@/lib/vpn/node-list-display'
@@ -87,6 +60,8 @@ const props = withDefaults(
   defineProps<{
     node: NodeItem
     filterRegion?: string | null
+    /** 通讯录分区内：不再重复展示地区名 */
+    grouped?: boolean
     variant?: 'connectable' | 'unsupported'
     selected?: boolean
     isActive?: boolean
@@ -100,6 +75,7 @@ const props = withDefaults(
   }>(),
   {
     variant: 'connectable',
+    grouped: false,
     selected: false,
     isActive: false,
     filterRegion: null,
@@ -110,9 +86,14 @@ const props = withDefaults(
   },
 )
 
-defineEmits<{ action: [] }>()
+const emit = defineEmits<{ action: [] }>()
 
-/** 对齐 Android displayNodeName：去掉 @apps/ 前缀 */
+function onRowActivate() {
+  if (props.variant !== 'connectable' || props.isActive) return
+  if (props.actionDisabled || props.actionLoading) return
+  emit('action')
+}
+
 const displayName = computed(() => {
   let text = (props.node.name || '').trim()
   if (text.startsWith('@apps/')) text = text.slice(6)
@@ -122,43 +103,33 @@ const displayName = computed(() => {
 })
 
 const regionLabel = computed(() => nodeRegionLabel(props.node.region, props.node.region_name))
-const showRegionLine = computed(() =>
-  shouldShowRegionLine(props.filterRegion, props.node.region),
-)
-
+const showRegion = computed(() => {
+  if (props.grouped) return false
+  return shouldShowRegionLine(props.filterRegion, props.node.region)
+})
 const sceneTags = computed(() => displaySceneTags(props.node.scene_tags, props.filterRegion))
 
-const featureTags = computed(() => {
-  if (sceneTags.value.length > 0) {
-    return sceneTags.value.map((text) => ({ text, kind: 'scene' as const }))
+const metaLine = computed(() => {
+  const parts: string[] = []
+  if (showRegion.value && regionLabel.value) parts.push(regionLabel.value)
+  if (props.variant === 'connectable' && sceneTags.value.length > 0) {
+    parts.push(sceneTags.value.slice(0, 2).join(' · '))
   }
-  const mode = props.node.access_mode?.toLowerCase()
-  if (mode === 'relay') return [{ text: '回国专线', kind: 'pool' as const }]
-  if (mode === 'direct') return [{ text: '海外直连', kind: 'pool' as const }]
-  return []
+  return parts.join(' · ')
 })
 
 const statusOnline = computed(() => (props.node.status || '').toLowerCase() === 'online')
 
 const latencyLabel = computed(() => {
   if (typeof props.latencyMs === 'number' && props.latencyMs > 0) return `${props.latencyMs}ms`
-  if (props.latencyPending) return '测速中…'
-  return '未测速'
+  return ''
 })
 
 const hasLatency = computed(
   () => typeof props.latencyMs === 'number' && props.latencyMs > 0,
 )
 
-const latencyPillStyle = computed(() => {
-  const color = latencyColor(props.latencyMs || 0)
-  return {
-    color,
-    background: `${color}26`,
-  }
-})
-
-const isSwitch = computed(() => props.actionLabel === '切换')
+const latencyColorValue = computed(() => latencyColor(props.latencyMs || 0))
 </script>
 
 <style scoped>
@@ -167,25 +138,43 @@ const isSwitch = computed(() => props.actionLabel === '切换')
   background: transparent;
 }
 
+.ky-node-row--clickable {
+  cursor: pointer;
+}
+
+.ky-node-row--clickable:active {
+  background: rgba(241, 245, 249, 0.9);
+}
+
 .ky-node-row--active {
-  background: rgba(232, 245, 233, 0.92);
+  background: rgba(16, 185, 129, 0.08);
 }
 
 .ky-node-row--selected {
-  background: rgba(232, 238, 248, 0.55);
+  background: var(--ky-nav-active-pill);
 }
 
-.ky-node-row__top {
+.ky-node-row__main {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+}
+
+.ky-node-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ky-node-row__title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .ky-node-row__name {
-  flex: 1;
   min-width: 0;
-  font-size: var(--ky-font-md);
+  font-size: 15px;
   font-weight: 650;
   color: var(--ky-text);
   overflow: hidden;
@@ -193,139 +182,71 @@ const isSwitch = computed(() => props.actionLabel === '切换')
   white-space: nowrap;
 }
 
-.ky-node-row__connected {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.ky-node-row__badge {
   flex-shrink: 0;
-  font-size: var(--ky-font-sm);
-  font-weight: 600;
-  color: #4caf50;
-}
-
-.ky-node-row__connected-icon {
-  font-size: 16px;
-}
-
-.ky-node-row__selected-label {
-  flex-shrink: 0;
-  font-size: var(--ky-font-sm);
+  font-size: 11px;
   font-weight: 600;
   color: var(--ky-text-muted);
+}
+
+.ky-node-row__badge--ok {
+  color: var(--ky-success);
+}
+
+.ky-node-row__badge--off {
+  color: var(--ky-text-hint);
 }
 
 .ky-node-row__meta {
-  margin: 6px 0 0;
-  font-size: var(--ky-font-sm);
-  color: var(--ky-text-muted);
-}
-
-.ky-node-row__tags {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  margin-top: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.ky-node-row__tags::-webkit-scrollbar {
-  display: none;
-}
-
-/* 对齐 Android KuayunStatusBadge：色点 + 浅底 + 同色字 */
-.ky-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding: 4px 10px;
-  border-radius: 20px;
+  margin: 3px 0 0;
   font-size: 12px;
-  font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.35;
+  color: var(--ky-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ky-pill__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
+.ky-node-row__trail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.ky-pill--online {
-  background: var(--ky-success-bg);
-  color: var(--ky-success);
-}
-
-.ky-pill--offline {
-  background: var(--ky-surface-variant);
-  color: var(--ky-text-muted);
-}
-
-.ky-pill--primary {
-  background: var(--ky-accent-bg);
-  color: var(--ky-accent-deep);
-}
-
-.ky-pill--cyan {
-  background: rgba(0, 168, 232, 0.14);
-  color: #0284c7;
-}
-
-.ky-pill--fastest {
-  background: var(--ky-success-bg);
-  color: var(--ky-success);
-}
-
-.ky-node-row__bottom {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.ky-node-row__latency-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.ky-node-row__latency-plain {
+.ky-node-row__latency {
+  min-width: 44px;
+  text-align: right;
   font-size: 12px;
-  color: var(--ky-text-muted);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.ky-node-row__latency--muted {
+  color: var(--ky-text-hint);
+  font-weight: 500;
+}
+
+.ky-node-row__fast {
+  margin-left: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ky-success);
 }
 
 .ky-node-row__action {
-  appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  flex-shrink: 0;
-  min-height: 32px;
-  padding: 0 14px;
-  border: 0;
+  min-height: 28px;
+  min-width: 48px;
+  padding: 0 11px;
   border-radius: 999px;
   background: var(--ky-accent);
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
-  cursor: pointer;
-}
-
-.ky-node-row__action:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.ky-node-row__action-icon {
-  font-size: 14px;
+  pointer-events: none;
 }
 
 .ky-node-row__action-spin {
@@ -344,7 +265,7 @@ const isSwitch = computed(() => props.actionLabel === '切换')
 }
 
 .ky-node-row__unsupported {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   font-size: var(--ky-font-xs);
   color: var(--ky-danger);
 }
