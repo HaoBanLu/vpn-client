@@ -145,9 +145,13 @@ export function toClashLine(rule: DirectBypassRule): string {
 }
 
 /** 将控制面直连 + 用户规则直连注入 Mihomo config.yaml 的 rules 段（MATCH 前 → DIRECT）。 */
-export function injectDirectBypassRules(yaml: string, rules?: DirectBypassRule[]): string {
+export function injectDirectBypassRules(
+  yaml: string,
+  rules?: DirectBypassRule[],
+  apiBase?: string,
+): string {
   const enabled = dedupeForClash([
-    ...controlPlaneBypassRules(),
+    ...controlPlaneBypassRules(apiBase),
     ...(rules ?? enabledDirectBypassRules()),
   ])
   if (enabled.length === 0) return yaml

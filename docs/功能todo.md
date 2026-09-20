@@ -3,11 +3,12 @@
 > **单一事实来源**：本文件记录功能实现状态，与路由、页面、节点协议、订阅类型保持一致。  
 > 状态：`✅ 已完成` · `🚧 开发中/需联调` · `📋 待开发` · `❌ 未集成`
 
-最后核对：**2026-09-20**（版本线 `1.2.34` / code `154`）
+最后核对：**2026-09-20**（版本线 `1.2.35` / code `155`）
 
 | 功能 / 变更 | 状态 | 日期 | 备注 |
 |-------------|------|------|------|
-| 发版 1.2.34 / code 154 | ✅ | 2026-09-20 | 修复 package.json/Cargo.toml description 截断导致 npm ci 失败；功能同 1.2.33。Tag `v1.2.34` |
+| 发版 1.2.35 / code 155 | ✅ | 2026-09-20 | 修 direct-bypass 单测不依赖 CI 的 VITE_API_BASE_URL；功能同 1.2.33。Tag `v1.2.35` |
+| 发版 1.2.34 / code 154 | ❌ | 2026-09-20 | Android/Win 已出包；macOS 因 VITE_API_BASE_URL=域名导致 bypass 单测失败。Tag `v1.2.34` 作废 |
 | 发版 1.2.33 / code 153 | ❌ | 2026-09-20 | description UTF-8 截断（缺收尾引号），Android/Win/mac npm ci 秒失败。Tag `v1.2.33` 作废 |
 | 跨端色调统一 + 连接页改版 | ✅ | 2026-09-20 | 客户端 `--ky-*` 对齐会员站 soft-blue（accent `#3b82f6`、bg `#f8fafc`、success `#10b981`）；连接页 Hero/会话卡 dash-card 质感；节点/套餐/我的/底栏同色调；会员 `BRAND_COLORS` 收口 Logo 渐变与按钮主色。验证：`npm test` 153；`npm run build` 产物含新 token |
 | 连接后状态连闪（恢复连接） | ✅ | 2026-09-20 | 根因：Android WebView 建隧抖 `browser_online/offline` 误触发完整重连。Android 不再听 browser 网变；忽略建隧后 grace 内假抖；原生 onAvailable 仅物理网句柄变化才通知前端 |
