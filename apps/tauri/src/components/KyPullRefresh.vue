@@ -7,12 +7,7 @@
       'ky-pull-refresh--refreshing': refreshing,
       'ky-pull-refresh--desktop': isDesktop,
     }"
-    @pointerdown="onPointerDown"
-    @pointermove="onPointerMove"
-    @pointerup="onPointerUp"
-    @pointercancel="onPointerUp"
   >
-    <!-- 桌面已去掉右上角刷新钮；仅移动端保留下拉刷新指示 -->
     <div v-if="!isDesktop" class="ky-pull-refresh__indicator" :style="indicatorStyle">
       <template v-if="refreshing">
         <ReloadOutlined class="ky-pull-refresh__icon ky-pull-refresh__icon--spin" />
@@ -38,7 +33,7 @@ const props = withDefaults(
     disabled?: boolean
     threshold?: number
   }>(),
-  { disabled: false, threshold: 72 },
+  { disabled: false, threshold: 64 },
 )
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -46,7 +41,7 @@ const pullDistance = ref(0)
 const pulling = ref(false)
 const refreshing = ref(false)
 const startY = ref(0)
-const activePointerId = ref<number | null>(null)
+const tracking = ref(false)
 const isDesktop = ref(false)
 
 const indicatorStyle = computed(() => {
@@ -68,31 +63,45 @@ function updateLayout() {
   isDesktop.value = shouldUseDesktopLayout(window.innerWidth)
 }
 
+/** 只看本滚动容器：父级 overflow 在 App 壳层很常见，不能据此禁用下拉 */
 function canPull(): boolean {
   if (props.disabled || refreshing.value || isDesktop.value) return false
   const el = containerRef.value
   if (!el) return false
-  if (el.scrollTop > 0) return false
-  let node: HTMLElement | null = el.parentElement
-  while (node) {
-    if (node.scrollTop > 0) return false
-    node = node.parentElement
-  }
-  return window.scrollY <= 0
+  return el.scrollTop <= 0
 }
 
-function onPointerDown(event: PointerEvent) {
-  if (!canPull() || event.pointerType === 'mouse') return
-  startY.value = event.clientY
-  activePointerId.value = event.pointerId
+function beginTrack(clientY: number) {
+  if (!canPull()) return false
+  startY.value = clientY
+  tracking.value = true
   pulling.value = true
-  containerRef.value?.setPointerCapture(event.pointerId)
+  pullDistance.value = 0
+  return true
 }
 
-function onPointerMove(event: PointerEvent) {
-  if (!pulling.value || activePointerId.value !== event.pointerId) return
-  const delta = event.clientY - startY.value
+function moveTrack(clientY: number, event?: Event) {
+  if (!tracking.value) return
+  const delta = clientY - startY.value
+  if (delta <= 0) {
+    pullDistance.value = 0
+    return
+  }
+  // 已进入下拉：阻止浏览器把手势当成页面滚动/回弹
+  event?.preventDefault()
   pullDistance.value = Math.max(0, Math.min(delta, 120))
+}
+
+async function endTrack() {
+  if (!tracking.value) return
+  const shouldRefresh = pullDistance.value >= props.threshold
+  tracking.value = false
+  pulling.value = false
+  if (shouldRefresh) {
+    await triggerRefresh()
+  } else {
+    pullDistance.value = 0
+  }
 }
 
 async function triggerRefresh() {
@@ -106,25 +115,67 @@ async function triggerRefresh() {
   }
 }
 
+function onTouchStart(event: TouchEvent) {
+  if (event.touches.length !== 1) return
+  beginTrack(event.touches[0].clientY)
+}
+
+function onTouchMove(event: TouchEvent) {
+  if (!tracking.value || event.touches.length !== 1) return
+  moveTrack(event.touches[0].clientY, event)
+}
+
+function onTouchEnd() {
+  void endTrack()
+}
+
+function onPointerDown(event: PointerEvent) {
+  // Android WebView 真机主要走 touch；桌面鼠标仍可用 pointer（非 mouse 时）
+  if (event.pointerType === 'mouse') return
+  if (event.pointerType === 'touch') return // 交给 touch*，避免双触发
+  if (!beginTrack(event.clientY)) return
+  containerRef.value?.setPointerCapture(event.pointerId)
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (event.pointerType === 'touch' || event.pointerType === 'mouse') return
+  if (!tracking.value) return
+  moveTrack(event.clientY, event)
+}
+
 function onPointerUp(event: PointerEvent) {
-  if (activePointerId.value !== event.pointerId) return
-  const shouldRefresh = pullDistance.value >= props.threshold
-  pulling.value = false
-  activePointerId.value = null
-  if (shouldRefresh) {
-    void triggerRefresh()
-  } else {
-    pullDistance.value = 0
-  }
+  if (event.pointerType === 'touch' || event.pointerType === 'mouse') return
+  void endTrack()
 }
 
 onMounted(() => {
   updateLayout()
   window.addEventListener('resize', updateLayout)
+  const el = containerRef.value
+  if (!el) return
+  // passive:false 才能在下拉时 preventDefault
+  el.addEventListener('touchstart', onTouchStart, { passive: true })
+  el.addEventListener('touchmove', onTouchMove, { passive: false })
+  el.addEventListener('touchend', onTouchEnd)
+  el.addEventListener('touchcancel', onTouchEnd)
+  el.addEventListener('pointerdown', onPointerDown)
+  el.addEventListener('pointermove', onPointerMove)
+  el.addEventListener('pointerup', onPointerUp)
+  el.addEventListener('pointercancel', onPointerUp)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateLayout)
+  const el = containerRef.value
+  if (!el) return
+  el.removeEventListener('touchstart', onTouchStart)
+  el.removeEventListener('touchmove', onTouchMove)
+  el.removeEventListener('touchend', onTouchEnd)
+  el.removeEventListener('touchcancel', onTouchEnd)
+  el.removeEventListener('pointerdown', onPointerDown)
+  el.removeEventListener('pointermove', onPointerMove)
+  el.removeEventListener('pointerup', onPointerUp)
+  el.removeEventListener('pointercancel', onPointerUp)
 })
 </script>
 
@@ -132,6 +183,8 @@ onUnmounted(() => {
 .ky-pull-refresh {
   position: relative;
   width: 100%;
+  /* 允许纵向滑动，避免 body 的 touch-action:manipulation 把下拉吃掉 */
+  touch-action: pan-y;
 }
 
 .ky-pull-refresh.ky-tab-scroll--pinned {

@@ -57,7 +57,7 @@ import type { StatusBadgeVariant } from '@/components/StatusBadge.vue'
 import { clientApi, type PackageItem } from '@/api/client'
 import { ApiBusinessError } from '@/api/request'
 import { formatMoney } from '@/lib/format'
-import { mapApiError } from '@/lib/api-error'
+import { mapApiError, isNetworkConnectivityError } from '@/lib/api-error'
 import {
   isCurrentPackage,
   purchaseButtonState,
@@ -98,13 +98,23 @@ function buttonState(item: PackageItem) {
 async function load() {
   loading.value = true
   loadError.value = null
-  const pkgReq = clientApi.getPackages()
   void account.refreshAccount().catch(() => {
     /* 账户失败走 store.loadError，不挡套餐列表 */
   })
   try {
-    packages.value = (await pkgReq).data.packages
+    packages.value = (await clientApi.getPackages()).data.packages
   } catch (error) {
+    if (isNetworkConnectivityError(error)) {
+      try {
+        await connect.dropLeftoverTunnel('packages_fetch_blocked')
+        packages.value = (await clientApi.getPackages()).data.packages
+        loadError.value = null
+        return
+      } catch (retryError) {
+        loadError.value = mapApiError(retryError, '套餐加载失败')
+        return
+      }
+    }
     loadError.value = mapApiError(error, '套餐加载失败')
   } finally {
     loading.value = false

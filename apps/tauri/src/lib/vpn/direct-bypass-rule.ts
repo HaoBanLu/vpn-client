@@ -1,3 +1,5 @@
+import { resolveApiBaseUrl, resolveAppOrigin } from '@/lib/api-config'
+
 /** 用户自定义 Mihomo 规则直连（Clash rules → DIRECT），对齐 Android DirectBypassRuleStore。 */
 
 export const DIRECT_BYPASS_RULE_TYPES = {
@@ -105,6 +107,24 @@ export function enabledDirectBypassRules(): DirectBypassRule[] {
   return loadDirectBypassRules().filter((r) => r.enabled)
 }
 
+/**
+ * 控制面 API 必须直连：否则已连 VPN 时节点/套餐请求会打进隧道，
+ * 表现为「隧道正常但页面网络异常」，重登拆隧道后才恢复。
+ */
+export function controlPlaneBypassRules(apiBase?: string): DirectBypassRule[] {
+  try {
+    const origin = resolveAppOrigin(apiBase ?? resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL))
+    const host = new URL(origin).hostname.trim()
+    if (!host) return []
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+      return [{ id: 'control-plane-api', type: 'IP_CIDR', value: `${host}/32`, enabled: true }]
+    }
+    return [{ id: 'control-plane-api', type: 'DOMAIN', value: host.toLowerCase(), enabled: true }]
+  } catch {
+    return []
+  }
+}
+
 function dedupeForClash(rules: DirectBypassRule[]): DirectBypassRule[] {
   const seen = new Set<string>()
   const result: DirectBypassRule[] = []
@@ -124,9 +144,12 @@ export function toClashLine(rule: DirectBypassRule): string {
   return rule.type === 'IP_CIDR' ? `${base},no-resolve` : base
 }
 
-/** 将用户规则直连注入 Mihomo config.yaml 的 rules 段（MATCH 前 → DIRECT）。 */
+/** 将控制面直连 + 用户规则直连注入 Mihomo config.yaml 的 rules 段（MATCH 前 → DIRECT）。 */
 export function injectDirectBypassRules(yaml: string, rules?: DirectBypassRule[]): string {
-  const enabled = dedupeForClash(rules ?? enabledDirectBypassRules())
+  const enabled = dedupeForClash([
+    ...controlPlaneBypassRules(),
+    ...(rules ?? enabledDirectBypassRules()),
+  ])
   if (enabled.length === 0) return yaml
 
   const clashLines = enabled.map((rule) => `  ${toClashLine(rule)}`)

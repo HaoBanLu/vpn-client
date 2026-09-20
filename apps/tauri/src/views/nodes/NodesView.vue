@@ -153,11 +153,11 @@ async function load() {
   loadError.value = null
   try {
     connect.invalidateConnectNodesCache()
-    const nodesReq = clientApi.getNodes()
     if (connect.regions.length === 0 && !account.fetched) {
       await connect.refresh()
     }
-    nodes.value = (await nodesReq).data.nodes
+    // 已连 VPN 时若控制面被隧道劫持，先走带拆残留隧道的恢复拉取
+    nodes.value = await connect.fetchConnectNodesWithRecovery(true)
     await connect.syncSavedNodeWithNodes(nodes.value)
   } catch (error) {
     loadError.value = mapApiError(error, '节点加载失败')

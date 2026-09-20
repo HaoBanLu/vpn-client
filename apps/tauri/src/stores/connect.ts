@@ -1515,5 +1515,6 @@ export const useConnectStore = defineStore('connect', () => {
     consumeNavigateToNodesRequest,
     consumeNavigateToPackagesRequest,
     invalidateConnectNodesCache,
+    fetchConnectNodesWithRecovery,
   }
 })
