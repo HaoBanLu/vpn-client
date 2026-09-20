@@ -18,8 +18,21 @@
           <p v-if="state.statusMessage && showProgress" class="app-update-panel__hint">{{ state.statusMessage }}</p>
         </div>
         <div v-if="showFooter" class="app-update-panel__footer">
-          <KyButton v-if="showLater" size="small" :disabled="state.installing" @click="dismissPrompt">
+          <KyButton
+            v-if="showLater"
+            size="small"
+            :disabled="state.installing"
+            @click="onLater"
+          >
             稍后再说
+          </KyButton>
+          <KyButton
+            v-if="state.phase === 'downloading'"
+            size="small"
+            :disabled="state.installing"
+            @click="cancelDownload"
+          >
+            取消
           </KyButton>
           <KyButton
             v-if="state.phase === 'prompt'"
@@ -67,10 +80,22 @@ import { KyButton, KyProgress } from '@/components/ky'
 import { useAppUpdate } from '@/lib/app-update/use-app-update'
 import { isDesktopPlatform } from '@/lib/layout'
 
-const { state, acceptUpdate, dismissPrompt, installPendingApk, hideOverlay, bindAndroidEvents, disposeUpdateListeners, refreshPendingInstall } =
-  useAppUpdate()
+const {
+  state,
+  acceptUpdate,
+  dismissPrompt,
+  dismissError,
+  cancelDownload,
+  installPendingApk,
+  hideOverlay,
+  bindAndroidEvents,
+  disposeUpdateListeners,
+  refreshPendingInstall,
+} = useAppUpdate()
 
-const isBlocking = computed(() => state.phase !== 'prompt' || !!state.updateResult?.forceUpdate)
+const isBlocking = computed(
+  () => state.phase !== 'prompt' || !!state.updateResult?.forceUpdate,
+)
 
 const title = computed(() => {
   if (state.phase === 'pending_install') return '新版本已下载'
@@ -93,14 +118,24 @@ const showProgress = computed(() =>
 )
 
 const showFooter = computed(() =>
-  ['prompt', 'pending_install', 'error', 'done'].includes(state.phase),
+  ['prompt', 'pending_install', 'error', 'done', 'downloading'].includes(state.phase),
 )
 
 const showLater = computed(
-  () => state.phase === 'prompt' && !state.updateResult?.forceUpdate,
+  () =>
+    (state.phase === 'prompt' && !state.updateResult?.forceUpdate) ||
+    state.phase === 'error',
 )
 
 const isDesktopDone = computed(() => state.phase === 'done' && isDesktopPlatform())
+
+function onLater() {
+  if (state.phase === 'error') {
+    dismissError()
+    return
+  }
+  dismissPrompt()
+}
 
 function onBackdropClick() {
   if (!isBlocking.value) dismissPrompt()

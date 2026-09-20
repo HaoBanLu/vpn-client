@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="诊断日志">
+  <KySubPage title="诊断日志" :on-refresh="refresh">
 
     <div class="toolbar">
       <KyButton :loading="uploading" @click="upload">上传日志</KyButton>

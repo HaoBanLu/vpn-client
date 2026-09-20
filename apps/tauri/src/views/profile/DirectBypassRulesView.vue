@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="规则直连">
+  <KySubPage title="规则直连" :on-refresh="reloadRules">
 
     <KyAlert
       type="warning"
@@ -84,6 +84,10 @@ const typeOptions = Object.entries(DIRECT_BYPASS_TYPE_META).map(([key, meta]) =>
   label: meta.label,
   value: key,
 }))
+
+function reloadRules() {
+  rules.value = loadDirectBypassRules()
+}
 
 function typeLabel(type: DirectBypassRuleTypeName) {
   return DIRECT_BYPASS_TYPE_META[type]?.label ?? type

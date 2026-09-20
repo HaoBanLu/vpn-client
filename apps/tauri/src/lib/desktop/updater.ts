@@ -226,3 +226,9 @@ export async function tryInstallPendingApk(): Promise<string | null> {
     return null
   }
 }
+
+/** Android：取消进行中的 APK DownloadManager 任务 */
+export async function cancelApkDownload(): Promise<void> {
+  if (detectClientPlatform() !== 'android') return
+  await invoke('vpn_cancel_apk_update_download')
+}

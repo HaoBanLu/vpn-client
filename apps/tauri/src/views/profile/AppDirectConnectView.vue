@@ -1,8 +1,5 @@
 <template>
-  <KySubPage title="应用直连">
-    <template v-if="isAndroid" #extra>
-      <KyButton type="link" :loading="refreshing" @click="loadApps">刷新</KyButton>
-    </template>
+  <KySubPage title="应用直连" :on-refresh="loadApps" :loading="loading || refreshing">
 
     <KyAlert
       type="warning"

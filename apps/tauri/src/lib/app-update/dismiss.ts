@@ -5,8 +5,8 @@ export const UPDATE_DISMISSED_KEY = 'tauri_update_dismissed_version'
 export const UPDATE_ACCEPTED_KEY = 'tauri_update_accepted_version'
 export const UPDATE_LAST_CHECK_KEY = 'tauri_update_last_check_at'
 
-/** 24h 前台复检间隔（与 PRD 对齐） */
-export const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+/** 30 分钟前台复检间隔：发版后更快弹出，避免 24h 才发现新包 */
+export const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000
 
 export function resolveUpdateVersionKey(result: Pick<AppUpdateResult, 'latestVersionCode' | 'latestVersionName'>): string {
   if (result.latestVersionCode != null && result.latestVersionCode > 0) {

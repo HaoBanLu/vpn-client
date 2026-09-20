@@ -553,6 +553,25 @@ pub struct TryInstallPendingApkResponse {
     pub result: String,
 }
 
+/// Android：取消进行中的 APK 下载。
+#[tauri::command]
+pub async fn vpn_cancel_apk_update_download<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        return app
+            .state::<MobileVpnHandle<R>>()
+            .0
+            .run_mobile_plugin::<serde_json::Value>("cancelApkUpdateDownload", ())
+            .map(|_| ())
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Ok(())
+    }
+}
+
 /// Android：读取待安装 APK 状态。
 #[tauri::command]
 pub async fn vpn_get_pending_apk_update<R: Runtime>(

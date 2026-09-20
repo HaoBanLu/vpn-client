@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="在线客服">
+  <KySubPage title="在线客服" :on-refresh="load" :loading="loading">
     <KySpin :spinning="loading" overlay>
       <KyStack gap="md">
         <KyAlert

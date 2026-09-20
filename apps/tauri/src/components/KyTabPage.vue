@@ -1,5 +1,17 @@
 <template>
   <KyPage :class="[pageClass, { 'ky-page--tab-pinned': pinChrome }]">
+    <div v-if="isDesktop" class="ky-tab-desktop-bar">
+      <KyButton
+        type="text"
+        class="ky-tab-desktop-bar__refresh"
+        aria-label="刷新"
+        title="刷新"
+        :disabled="refreshDisabled || desktopRefreshing"
+        @click="triggerDesktopRefresh"
+      >
+        <ReloadOutlined :spin="desktopRefreshing || loading" />
+      </KyButton>
+    </div>
     <KuayunBrandHeader
       v-if="showMobileBrandHeader"
       class="ky-tab-brand"
@@ -38,11 +50,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ReloadOutlined } from '@ant-design/icons-vue'
 import KyPage from '@/components/KyPage.vue'
 import KyPullRefresh from '@/components/KyPullRefresh.vue'
 import KyStack from '@/components/KyStack.vue'
 import KuayunBrandHeader from '@/components/KuayunBrandHeader.vue'
-import { KySpin } from '@/components/ky'
+import { KyButton, KySpin } from '@/components/ky'
 import { shouldUseDesktopLayout } from '@/lib/layout'
 
 const props = withDefaults(
@@ -69,6 +82,7 @@ const props = withDefaults(
 )
 
 const isDesktop = ref(typeof window !== 'undefined' && shouldUseDesktopLayout(window.innerWidth))
+const desktopRefreshing = ref(false)
 
 function updateLayout() {
   isDesktop.value = shouldUseDesktopLayout(window.innerWidth)
@@ -77,6 +91,16 @@ function updateLayout() {
 const showMobileBrandHeader = computed(() => !!props.title && !isDesktop.value)
 /** 移动端固定品牌头 / sticky 区，列表单独滚动 */
 const pinChrome = computed(() => !isDesktop.value)
+
+async function triggerDesktopRefresh() {
+  if (props.refreshDisabled || desktopRefreshing.value) return
+  desktopRefreshing.value = true
+  try {
+    await props.onRefresh()
+  } finally {
+    desktopRefreshing.value = false
+  }
+}
 
 onMounted(() => {
   updateLayout()
@@ -88,6 +112,22 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.ky-tab-desktop-bar {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  margin: -4px 0 4px;
+}
+
+.ky-tab-desktop-bar__refresh {
+  color: var(--ky-text) !important;
+  padding: 0 !important;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
 .ky-tab-brand {
   margin-bottom: 4px;
   flex-shrink: 0;

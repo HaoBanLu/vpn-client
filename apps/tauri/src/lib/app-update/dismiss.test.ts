@@ -63,7 +63,7 @@ describe('app-update dismiss', () => {
     expect(isLocalVersionUpToDate(baseResult({ latestVersionCode: olderCode, latestVersionName: '0.0.0' }))).toBe(true)
   })
 
-  it('shouldRunPeriodicUpdateCheck uses 24h window', () => {
+  it('shouldRunPeriodicUpdateCheck uses 30min window', () => {
     const now = 1_700_000_000_000
     localStorage.setItem(UPDATE_LAST_CHECK_KEY, String(now - UPDATE_CHECK_INTERVAL_MS + 1))
     expect(shouldRunPeriodicUpdateCheck(now)).toBe(false)

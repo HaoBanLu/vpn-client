@@ -64,7 +64,7 @@ class AppUpdateInstaller private constructor(context: Context) {
             emitFailed("下载地址无效，请稍后重试")
             return
         }
-        cancelReceiver()
+        cancelActiveDownload(silent = true)
         clearPendingInstall()
         val fileName = "kuayun-${sanitize(versionLabel)}.apk"
         pendingFileName = fileName
@@ -81,6 +81,19 @@ class AppUpdateInstaller private constructor(context: Context) {
         registerReceiver(downloadId)
         emitEvent(EVENT_DOWNLOAD_STARTED, JSObject())
         toast("已开始下载，完成后将提示安装")
+    }
+
+    /** 取消当前 DownloadManager 任务，避免 VPN 下挂死后无法退出更新浮层 */
+    fun cancelActiveDownload(silent: Boolean = false) {
+        cancelReceiver()
+        val downloadId = prefs.getLong(KEY_DOWNLOAD_ID, -1L)
+        if (downloadId >= 0L) {
+            runCatching { downloadManager.remove(downloadId) }
+        }
+        clearActiveDownload()
+        if (!silent) {
+            toast("已取消下载")
+        }
     }
 
     fun hasPendingInstall(): Boolean = readPendingInstall() != null

@@ -178,6 +178,16 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
+    fun cancelApkUpdateDownload(invoke: Invoke) {
+        val installer = AppUpdateInstaller.getInstance(activity)
+        installer.attachActivity(activity)
+        installer.cancelActiveDownload()
+        val ret = JSObject()
+        ret.put("cancelled", true)
+        invoke.resolve(ret)
+    }
+
+    @Command
     fun getPendingApkUpdate(invoke: Invoke) {
         val installer = AppUpdateInstaller.getInstance(activity)
         installer.attachActivity(activity)

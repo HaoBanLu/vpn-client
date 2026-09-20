@@ -2,6 +2,7 @@ import { reactive, readonly } from 'vue'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { detectClientPlatform } from '@/lib/app-meta'
 import {
+  cancelApkDownload,
   checkAppUpdate,
   getPendingApkUpdate,
   installAppUpdate,
@@ -19,6 +20,8 @@ import {
   shouldRunPeriodicUpdateCheck,
   shouldShowUpdatePrompt,
 } from '@/lib/app-update/dismiss'
+import { message } from '@/lib/ui/message'
+import { useConnectStore } from '@/stores/connect'
 
 export type AppUpdateOverlayPhase =
   | 'idle'
@@ -58,9 +61,9 @@ const state = reactive<AppUpdateState>({
 let listenersBound = false
 let unlistenFns: UnlistenFn[] = []
 
-function setPhase(phase: AppUpdateOverlayPhase, message = '', progress = state.progress) {
+function setPhase(phase: AppUpdateOverlayPhase, messageText = '', progress = state.progress) {
   state.phase = phase
-  state.statusMessage = message
+  state.statusMessage = messageText
   state.progress = progress
   state.visible = phase !== 'idle'
 }
@@ -77,6 +80,17 @@ async function refreshPendingInstall() {
   state.pendingInstall = await getPendingApkUpdate()
   if (state.pendingInstall && state.phase === 'idle') {
     setPhase('pending_install', `版本 ${state.pendingInstall.versionLabel} 已下载完成`)
+  }
+}
+
+function maybeHintDisconnectVpn() {
+  if (detectClientPlatform() !== 'android') return
+  try {
+    if (useConnectStore().isConnected) {
+      message.info('建议断开 VPN 后再更新')
+    }
+  } catch {
+    // store 未就绪时忽略
   }
 }
 
@@ -122,7 +136,7 @@ async function runCheck(options: { showPrompt?: boolean; isManual?: boolean } = 
 async function acceptUpdate() {
   const result = state.updateResult
   if (!result) return
-  markUpdateAccepted(result)
+  maybeHintDisconnectVpn()
   state.installing = true
   setPhase('downloading', '正在准备更新', 0)
   try {
@@ -132,15 +146,18 @@ async function acceptUpdate() {
         versionLabel: result.latestVersionName,
         versionCode: result.latestVersionCode,
       },
-      ({ phase, percent, message }) => {
+      ({ phase, percent, message: progressMessage }) => {
         const overlayPhase = phase as AppUpdateOverlayPhase
-        setPhase(overlayPhase === 'idle' ? 'downloading' : overlayPhase, message ?? state.statusMessage, percent)
+        setPhase(overlayPhase === 'idle' ? 'downloading' : overlayPhase, progressMessage ?? state.statusMessage, percent)
       },
     )
     if (!installResult.ok) {
+      clearUpdateAccepted()
       setPhase('error', state.statusMessage || '更新失败，请稍后重试')
       return
     }
+    // 下载已真正开始后再标记 accepted，避免一点击失败就永久压制提示
+    markUpdateAccepted(result)
     if (installResult.usedExternalBrowser) {
       setPhase('done', '已在浏览器打开下载页')
       state.updateResult = null
@@ -153,11 +170,12 @@ async function acceptUpdate() {
       } else {
         setPhase('downloading', '正在下载，完成后将提示安装', 30)
       }
-      state.updateResult = null
+      // 保留 updateResult，便于下载失败后重试
       return
     }
     setPhase('done', '更新完成，正在重启', 100)
   } catch (e: unknown) {
+    clearUpdateAccepted()
     setPhase('error', e instanceof Error ? e.message : '更新失败')
   } finally {
     state.installing = false
@@ -169,6 +187,24 @@ function dismissPrompt() {
     markUpdateDismissed(state.updateResult)
   }
   state.updateResult = null
+  hideOverlay()
+}
+
+/** 错误态「稍后再说」：只清 accepted，不写入 dismiss，便于同版本再次提示 */
+function dismissError() {
+  clearUpdateAccepted()
+  hideOverlay()
+}
+
+async function cancelDownload() {
+  clearUpdateAccepted()
+  if (detectClientPlatform() === 'android') {
+    try {
+      await cancelApkDownload()
+    } catch {
+      // 插件不可用时仍关闭浮层，避免卡住
+    }
+  }
   hideOverlay()
 }
 
@@ -235,6 +271,7 @@ async function bindAndroidEvents() {
   for (const event of events) {
     const unlisten = await listen(event, async (payload) => {
       if (event === 'app-update://download-started') {
+        if (state.updateResult) markUpdateAccepted(state.updateResult)
         setPhase('downloading', '正在下载更新', 10)
       } else if (event === 'app-update://download-complete') {
         const data = payload.payload as PendingApkUpdate
@@ -243,6 +280,7 @@ async function bindAndroidEvents() {
         state.updateResult = null
       } else if (event === 'app-update://download-failed') {
         const data = payload.payload as { message?: string }
+        clearUpdateAccepted()
         setPhase('error', data.message || '下载失败，请稍后重试')
       } else if (event === 'app-update://install-launched') {
         setPhase('installing', '请按系统提示完成安装', 100)
@@ -268,6 +306,8 @@ export function useAppUpdate() {
     checkManual: () => runCheck({ isManual: true }),
     acceptUpdate,
     dismissPrompt,
+    dismissError,
+    cancelDownload,
     installPendingApk,
     reconcileAfterResume,
     refreshPendingInstall,

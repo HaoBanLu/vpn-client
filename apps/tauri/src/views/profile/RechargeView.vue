@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="充值">
+  <KySubPage title="充值" :on-refresh="load" :loading="loading">
     <template #extra>
       <KyButton type="link" @click="router.push({ name: 'Orders', query: { tab: 'recharge' } })">充值记录</KyButton>
     </template>

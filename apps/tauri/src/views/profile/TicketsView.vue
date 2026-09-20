@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="我的工单">
+  <KySubPage title="我的工单" :on-refresh="load" :loading="loading">
     <template #extra>
       <KyButton type="link" @click="showCreate = !showCreate">{{ showCreate ? '取消' : '新建' }}</KyButton>
     </template>

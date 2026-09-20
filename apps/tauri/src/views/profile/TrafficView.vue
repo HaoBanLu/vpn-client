@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="流量统计">
+  <KySubPage title="流量统计" :on-refresh="load" :loading="loading">
     <KySpin :spinning="loading" overlay>
       <div v-if="summary" class="metric-row">
         <KyMetricCard label="总流量" :value="`${summary.total_mb.toFixed(1)} MB`" highlight />

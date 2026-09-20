@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="登录设备">
+  <KySubPage title="登录设备" :on-refresh="load" :loading="loading">
     <template #extra>
       <span class="quota-extra">{{ quotaUsed }}/{{ quotaMax }}</span>
     </template>

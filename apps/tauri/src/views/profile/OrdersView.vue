@@ -1,55 +1,53 @@
 <template>
-  <KySubPage title="订单">
+  <KySubPage title="订单" :on-refresh="load" :loading="loading">
     <KyChipGroup :model-value="tab" :items="tabItems" @update:model-value="setTab" />
 
-    <KyPullRefresh :on-refresh="load">
-      <KySpin :spinning="loading" overlay>
-        <template v-if="tab === 'recharge'">
-          <KyEmpty v-if="!loading && rechargeOrders.length === 0" description="暂无充值记录">
-            <KyButton type="primary" size="large" @click="router.push({ name: 'Recharge' })">去充值</KyButton>
-          </KyEmpty>
-          <div v-else class="order-list">
-            <KyOrderCard
-              v-for="item in rechargeOrders"
-              :key="item.id"
-              :order-no="item.order_no"
-              :amount="formatUsdt(item.requested_usdt)"
-              :sub="item.credited_cny ? `到账约 ${formatMoney(item.credited_cny)}` : undefined"
-              :time="formatDateTime(item.created_at)"
-              :error="item.status === 'rejected' && item.reject_reason ? `驳回：${item.reject_reason}` : undefined"
-              @click="openRechargeDetail(item)"
-            >
-              <template #status>
-                <KyTag :color="rechargeStatusColor(item.status)">
-                  {{ rechargeStatusLabel(item.status, item.chain_auto_confirmed) }}
-                </KyTag>
-              </template>
-            </KyOrderCard>
-          </div>
-        </template>
+    <KySpin :spinning="loading" overlay>
+      <template v-if="tab === 'recharge'">
+        <KyEmpty v-if="!loading && rechargeOrders.length === 0" description="暂无充值记录">
+          <KyButton type="primary" size="large" @click="router.push({ name: 'Recharge' })">去充值</KyButton>
+        </KyEmpty>
+        <div v-else class="order-list">
+          <KyOrderCard
+            v-for="item in rechargeOrders"
+            :key="item.id"
+            :order-no="item.order_no"
+            :amount="formatUsdt(item.requested_usdt)"
+            :sub="item.credited_cny ? `到账约 ${formatMoney(item.credited_cny)}` : undefined"
+            :time="formatDateTime(item.created_at)"
+            :error="item.status === 'rejected' && item.reject_reason ? `驳回：${item.reject_reason}` : undefined"
+            @click="openRechargeDetail(item)"
+          >
+            <template #status>
+              <KyTag :color="rechargeStatusColor(item.status)">
+                {{ rechargeStatusLabel(item.status, item.chain_auto_confirmed) }}
+              </KyTag>
+            </template>
+          </KyOrderCard>
+        </div>
+      </template>
 
-        <template v-else>
-          <KyEmpty v-if="!loading && purchaseOrders.length === 0" description="暂无套餐订单">
-            <KyButton type="primary" size="large" @click="router.push({ name: 'Packages' })">去购买套餐</KyButton>
-          </KyEmpty>
-          <div v-else class="order-list">
-            <KyOrderCard
-              v-for="item in purchaseOrders"
-              :key="item.id"
-              :order-no="`订单 #${item.id}`"
-              :amount="formatMoney(item.amount)"
-              :sub="`支付方式：${item.payment_method || '-'}`"
-              :time="formatDateTime(item.created_at)"
-              @click="openPurchaseDetail(item)"
-            >
-              <template #status>
-                <KyTag :color="orderStatusColor(item.status)">{{ orderStatusLabel(item.status) }}</KyTag>
-              </template>
-            </KyOrderCard>
-          </div>
-        </template>
-      </KySpin>
-    </KyPullRefresh>
+      <template v-else>
+        <KyEmpty v-if="!loading && purchaseOrders.length === 0" description="暂无套餐订单">
+          <KyButton type="primary" size="large" @click="router.push({ name: 'Packages' })">去购买套餐</KyButton>
+        </KyEmpty>
+        <div v-else class="order-list">
+          <KyOrderCard
+            v-for="item in purchaseOrders"
+            :key="item.id"
+            :order-no="`订单 #${item.id}`"
+            :amount="formatMoney(item.amount)"
+            :sub="`支付方式：${item.payment_method || '-'}`"
+            :time="formatDateTime(item.created_at)"
+            @click="openPurchaseDetail(item)"
+          >
+            <template #status>
+              <KyTag :color="orderStatusColor(item.status)">{{ orderStatusLabel(item.status) }}</KyTag>
+            </template>
+          </KyOrderCard>
+        </div>
+      </template>
+    </KySpin>
 
     <KyModal
       v-model:open="rechargeDetailOpen"
@@ -143,7 +141,6 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import KySubPage from '@/components/KySubPage.vue'
-import KyPullRefresh from '@/components/KyPullRefresh.vue'
 import KyChipGroup from '@/components/KyChipGroup.vue'
 import KyDetailRow from '@/components/KyDetailRow.vue'
 import KyOrderCard from '@/components/KyOrderCard.vue'

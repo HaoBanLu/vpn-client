@@ -1,5 +1,5 @@
 <template>
-  <KySubPage title="连接与隐私">
+  <KySubPage title="连接与隐私" :on-refresh="onPageRefresh">
     <KyCard class="status-card aligned-card" :class="`status-card--${protection.level}`">
       <p class="status-label">保护状态</p>
       <p class="status-title">{{ protection.title }}</p>
@@ -226,6 +226,11 @@ onActivated(() => {
   void refreshStability()
   void refreshBypassCounts()
 })
+
+async function onPageRefresh() {
+  await Promise.all([refreshStability(), refreshBypassCounts()])
+  probeHistory.value = loadPrivacyProbeHistory()
+}
 
 async function runPrivacyProbe() {
   if (!isConnected.value || probeRunning.value) return

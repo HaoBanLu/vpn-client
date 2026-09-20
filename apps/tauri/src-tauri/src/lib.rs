@@ -118,6 +118,7 @@ pub fn run() {
             vpn::vpn_kill_switch_release,
             vpn::vpn_kill_switch_status,
             vpn::vpn_install_apk_update,
+            vpn::vpn_cancel_apk_update_download,
             vpn::vpn_get_pending_apk_update,
             vpn::vpn_try_install_pending_apk,
             vpn::vpn_list_installed_apps,
