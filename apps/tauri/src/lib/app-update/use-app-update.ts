@@ -20,8 +20,6 @@ import {
   shouldRunForegroundUpdateCheck,
   shouldShowUpdatePrompt,
 } from '@/lib/app-update/dismiss'
-import { message } from '@/lib/ui/message'
-import { useConnectStore } from '@/stores/connect'
 
 export type AppUpdateOverlayPhase =
   | 'idle'
@@ -83,17 +81,6 @@ async function refreshPendingInstall() {
   }
 }
 
-function maybeHintDisconnectVpn() {
-  if (detectClientPlatform() !== 'android') return
-  try {
-    if (useConnectStore().isConnected) {
-      message.info('建议断开 VPN 后再更新')
-    }
-  } catch {
-    // store 未就绪时忽略
-  }
-}
-
 async function runCheck(options: { showPrompt?: boolean; isManual?: boolean } = {}) {
   const { showPrompt = false, isManual = false } = options
   if (isManual) {
@@ -136,7 +123,6 @@ async function runCheck(options: { showPrompt?: boolean; isManual?: boolean } = 
 async function acceptUpdate() {
   const result = state.updateResult
   if (!result) return
-  maybeHintDisconnectVpn()
   state.installing = true
   setPhase('downloading', '正在准备更新', 0)
   try {
@@ -264,6 +250,7 @@ async function bindAndroidEvents() {
   listenersBound = true
   const events = [
     'app-update://download-started',
+    'app-update://download-progress',
     'app-update://download-complete',
     'app-update://download-failed',
     'app-update://install-launched',
@@ -274,6 +261,10 @@ async function bindAndroidEvents() {
       if (event === 'app-update://download-started') {
         if (state.updateResult) markUpdateAccepted(state.updateResult)
         setPhase('downloading', '正在下载更新', 10)
+      } else if (event === 'app-update://download-progress') {
+        const data = payload.payload as { percent?: number }
+        const percent = typeof data.percent === 'number' ? data.percent : state.progress
+        setPhase('downloading', '正在下载更新', percent)
       } else if (event === 'app-update://download-complete') {
         const data = payload.payload as PendingApkUpdate
         state.pendingInstall = data

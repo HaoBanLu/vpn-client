@@ -18,4 +18,16 @@ describe('api-config download url', () => {
     const url = 'https://cdn.example.com/app.apk'
     expect(resolveAbsoluteDownloadUrl(url, apiBase)).toBe(url)
   })
+
+  it('resolveAbsoluteDownloadUrl normalizes relative upload without leading slash', () => {
+    expect(resolveAbsoluteDownloadUrl('api/uploads/apk/android_153.apk', apiBase)).toBe(
+      'http://192.229.87.112:44080/api/uploads/apk/android_153.apk',
+    )
+  })
+
+  it('resolveAbsoluteDownloadUrl prefixes /v1 paths with /api', () => {
+    expect(resolveAbsoluteDownloadUrl('/v1/client/version', apiBase)).toBe(
+      'http://192.229.87.112:44080/api/v1/client/version',
+    )
+  })
 })

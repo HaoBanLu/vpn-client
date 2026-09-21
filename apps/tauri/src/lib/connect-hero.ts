@@ -18,11 +18,14 @@ export function displayNodeLabel(node: string | null | undefined): string {
   return trimmed
 }
 
-function formatLatencyHint(tunnelLatencyMs?: number | null, entryLatencyMs?: number | null): string {
-  const parts: string[] = []
-  if (entryLatencyMs && entryLatencyMs > 0) parts.push(`入口 ${entryLatencyMs}ms`)
-  if (tunnelLatencyMs && tunnelLatencyMs > 0) parts.push(`隧道 ${tunnelLatencyMs}ms`)
-  return parts.join(' · ')
+/**
+ * 连接页探针文案：只展示经隧道的响应时间。
+ * 不用「延迟」一词；也不展示「入口」TCP 探测（常被机房/模拟器测成 1ms）。
+ */
+function formatLatencyHint(tunnelLatencyMs?: number | null, _entryLatencyMs?: number | null): string {
+  void _entryLatencyMs
+  if (tunnelLatencyMs && tunnelLatencyMs > 0) return `响应 ${tunnelLatencyMs}ms`
+  return ''
 }
 
 /**

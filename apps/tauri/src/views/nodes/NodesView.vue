@@ -1,6 +1,5 @@
 <template>
   <KyTabPage
-    title="节点选择"
     page-class="nodes-page"
     :on-refresh="onRefresh"
     :loading="loading && nodes.length === 0 && !loadError"
@@ -114,6 +113,7 @@ import {
   mergeLatencyResults,
   parseLatencyEndpoint,
   probeTcpLatency,
+  sanitizeLatencyMs,
 } from '@/lib/vpn/client-latency-probe'
 import {
   findFastestNodeId,
@@ -123,7 +123,6 @@ import {
 import { getEntryLatencyMs, saveEntryLatenciesByNodeId } from '@/lib/vpn/entry-latency-cache'
 import { useConnectStore } from '@/stores/connect'
 import { useAccountStore } from '@/stores/account'
-
 /** null = 全部 */
 const ALL_REGIONS = null as string | null
 
@@ -219,9 +218,9 @@ function isNodeConnecting(item: NodeItem) {
 
 function hydrateLatencyFromCache(list: NodeItem[]) {
   for (const node of list) {
-    if (latencyMap[node.id] > 0) continue
-    const cached = getEntryLatencyMs(node.id)
-    if (cached != null && cached > 0) latencyMap[node.id] = cached
+    if (sanitizeLatencyMs(latencyMap[node.id]) != null) continue
+    const cached = sanitizeLatencyMs(getEntryLatencyMs(node.id))
+    if (cached != null) latencyMap[node.id] = cached
   }
 }
 
@@ -287,10 +286,12 @@ async function selectNode(node: NodeItem) {
 
 async function persistLatencyCache(targets: NodeItem[]) {
   saveEntryLatenciesByNodeId(
-    targets.map((node) => ({
-      id: node.id,
-      latencyMs: latencyMap[node.id] ?? 0,
-    })),
+    targets
+      .map((node) => ({
+        id: node.id,
+        latencyMs: sanitizeLatencyMs(latencyMap[node.id]) ?? 0,
+      }))
+      .filter((item) => item.latencyMs > 0),
   )
 }
 
@@ -305,6 +306,7 @@ async function fillMissingFromServer(missing: NodeItem[]) {
       const serverMs = details[key]?.entry_latency_ms ?? results[key] ?? -1
       const merged = mergeLatencyResults(serverMs, latencyMap[node.id] ?? null)
       if (merged > 0) latencyMap[node.id] = merged
+      else if (sanitizeLatencyMs(latencyMap[node.id]) == null) delete latencyMap[node.id]
     }
   } catch {
     // 控制面补洞失败不影响已测出的本机结果
@@ -320,15 +322,15 @@ async function autoProbeLatency() {
   try {
     await mapPool(targets, CLIENT_LATENCY_CONCURRENCY, async (node) => {
       if (runId !== latencyRunId) return
-      if (latencyMap[node.id] > 0) return
+      if (sanitizeLatencyMs(latencyMap[node.id]) != null) return
       const endpoint = parseLatencyEndpoint(node.latency_endpoint)
       if (!endpoint) return
       const latency = await probeTcpLatency(endpoint.host, endpoint.port)
       if (runId !== latencyRunId) return
-      if (latency != null && latency > 0) latencyMap[node.id] = latency
+      if (latency != null) latencyMap[node.id] = latency
     })
     if (runId !== latencyRunId) return
-    const missing = targets.filter((node) => !(latencyMap[node.id] > 0))
+    const missing = targets.filter((node) => sanitizeLatencyMs(latencyMap[node.id]) == null)
     await fillMissingFromServer(missing)
     if (runId !== latencyRunId) return
     persistLatencyCache(targets)
@@ -347,13 +349,13 @@ onMounted(load)
   gap: 10px;
 }
 
-/* 标题下横向地区筛选：含「全部」；地区多时可横滑 */
+/* 页顶地区筛选：无品牌头，芯片条即顶栏；地区多时可横滑 */
 .nodes-region-nav {
   display: flex;
   flex-wrap: nowrap;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
-  padding: 2px 0 4px;
+  padding: 0 0 6px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
@@ -367,7 +369,7 @@ onMounted(load)
   appearance: none;
   border: 1px solid var(--ky-border);
   border-radius: var(--ky-radius-full);
-  padding: 7px 14px;
+  padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
@@ -390,7 +392,7 @@ onMounted(load)
   color: var(--ky-on-primary-container);
 }
 
-/* 与套餐等主 Tab 一致：卡片容器 + 页内留白 */
+/* 通栏紧凑列表：无大卡片圆角包裹，行内留白与分区标题对齐 */
 .nodes-book {
   position: relative;
   display: flex;
@@ -398,27 +400,40 @@ onMounted(load)
   flex: 1;
   min-height: calc(100dvh - 210px);
   margin: 0;
-  background: var(--ky-bg-card);
-  border-radius: var(--ky-radius-lg);
-  border: 1px solid var(--ky-border);
-  box-shadow: var(--ky-shadow-sm);
-  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
 }
 
 .nodes-book--empty {
   align-items: center;
   justify-content: center;
-  padding: 32px var(--ky-space-md);
+  margin: 0;
+  padding: 40px var(--ky-space-md);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .nodes-book__list {
   flex: 1;
   min-width: 0;
-  padding-bottom: 48px;
+  margin: 0;
+  padding-bottom: 56px;
+}
+
+.nodes-book__section {
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .nodes-book__section + .nodes-book__section {
-  margin-top: 2px;
+  margin-top: 6px;
 }
 
 .nodes-book__head {
@@ -429,30 +444,38 @@ onMounted(load)
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 10px 14px 10px 12px;
-  font-size: 13px;
-  font-weight: 750;
-  letter-spacing: 0.04em;
-  color: var(--ky-on-primary-container);
-  background: linear-gradient(180deg, #e8f0fe 0%, #eef4ff 100%);
-  border-bottom: 1px solid rgba(59, 130, 246, 0.18);
-  border-left: 3px solid var(--ky-accent);
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+  padding: 10px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ky-text-hint);
+  background: color-mix(in srgb, var(--ky-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border: 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.75);
+  box-shadow: none;
+}
+
+.nodes-book__head::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(226, 232, 240, 0.9);
 }
 
 .nodes-book__divider {
   height: 0;
-  margin: 0 14px;
+  margin: 0;
   border-top: 1px solid rgba(226, 232, 240, 0.85);
 }
 
 .nodes-book__section--muted {
-  opacity: 0.92;
+  opacity: 0.88;
 }
 
 .nodes-book__section--muted .nodes-book__head {
-  color: var(--ky-text-secondary);
-  background: var(--ky-surface-variant);
-  border-left-color: var(--ky-border-strong);
+  color: var(--ky-text-hint);
+  background: color-mix(in srgb, var(--ky-bg) 92%, transparent);
 }
 </style>

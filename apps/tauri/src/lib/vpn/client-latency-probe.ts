@@ -2,6 +2,18 @@ import { invoke } from '@tauri-apps/api/core'
 
 export const CLIENT_LATENCY_CONCURRENCY = 8
 
+/**
+ * 低于此值多半是同机房探针 / 模拟器噪声（常见 1–2ms），对用户选节点无参考价值。
+ * 真实用户到接入点的 RTT 极少稳定低于该阈值。
+ */
+export const MIN_PLAUSIBLE_LATENCY_MS = 8
+
+export function sanitizeLatencyMs(ms: number | null | undefined): number | null {
+  if (ms == null || !Number.isFinite(ms) || ms <= 0) return null
+  if (ms < MIN_PLAUSIBLE_LATENCY_MS) return null
+  return Math.round(ms)
+}
+
 export function parseLatencyEndpoint(endpoint?: string | null): { host: string; port: number } | null {
   const raw = endpoint?.trim() ?? ''
   if (!raw) return null
@@ -24,7 +36,7 @@ export async function probeTcpLatency(
       port,
       timeoutMs,
     })
-    return latency != null && latency >= 0 ? latency : null
+    return sanitizeLatencyMs(latency)
   } catch {
     return null
   }
@@ -32,8 +44,8 @@ export async function probeTcpLatency(
 
 /** 有本机结果就用本机；本机失败才用控制面（机房到节点，不能代表用户 RTT）。 */
 export function mergeLatencyResults(serverMs: number, clientMs: number | null): number {
-  const server = serverMs > 0 ? serverMs : -1
-  const client = clientMs != null && clientMs > 0 ? clientMs : -1
+  const client = sanitizeLatencyMs(clientMs) ?? -1
+  const server = sanitizeLatencyMs(serverMs) ?? -1
   if (client > 0) return client
   return server
 }

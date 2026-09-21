@@ -1,9 +1,32 @@
 import { describe, expect, it } from 'vitest'
-import { mapPool, mergeLatencyResults, parseLatencyEndpoint } from './client-latency-probe'
+import {
+  mapPool,
+  mergeLatencyResults,
+  parseLatencyEndpoint,
+  sanitizeLatencyMs,
+} from './client-latency-probe'
+
+describe('sanitizeLatencyMs', () => {
+  it('drops datacenter/emulator noise like 1–2ms', () => {
+    expect(sanitizeLatencyMs(1)).toBeNull()
+    expect(sanitizeLatencyMs(2)).toBeNull()
+    expect(sanitizeLatencyMs(7)).toBeNull()
+  })
+
+  it('keeps plausible user RTT', () => {
+    expect(sanitizeLatencyMs(8)).toBe(8)
+    expect(sanitizeLatencyMs(120.6)).toBe(121)
+  })
+})
 
 describe('mergeLatencyResults', () => {
   it('prefers client RTT over server datacenter 1ms', () => {
     expect(mergeLatencyResults(1, 120)).toBe(120)
+  })
+
+  it('drops implausible client noise instead of showing 1ms', () => {
+    expect(mergeLatencyResults(1, 1)).toBe(-1)
+    expect(mergeLatencyResults(-1, 2)).toBe(-1)
   })
 
   it('uses client when server failed', () => {

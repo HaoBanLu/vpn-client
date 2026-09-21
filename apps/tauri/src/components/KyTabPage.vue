@@ -20,7 +20,11 @@
       show-version
       tab
     />
-    <div v-if="$slots.sticky && pinChrome" class="ky-tab-sticky">
+    <div
+      v-if="$slots.sticky && pinChrome"
+      class="ky-tab-sticky"
+      :class="{ 'ky-tab-sticky--flush': !showMobileBrandHeader }"
+    >
       <slot name="sticky" />
     </div>
     <KyPullRefresh
@@ -137,6 +141,11 @@ onUnmounted(() => {
   flex-shrink: 0;
   margin-bottom: var(--ky-space-md);
   background: var(--ky-bg);
+}
+
+/* 无品牌头时，筛选条贴顶，少占一截空白 */
+.ky-tab-sticky--flush {
+  margin-bottom: 4px;
 }
 
 .ky-tab-sticky-inline {

@@ -1,8 +1,14 @@
 <template>
-  <!-- 对齐 Android CurrentSubscriptionSummaryBar：单行摘要，无进度条 -->
+  <!-- 紧凑单行状态条：无标题，信息一眼扫完 -->
   <div class="ky-subscription-summary">
-    <p class="ky-subscription-summary__label">{{ label }}</p>
-    <p class="ky-subscription-summary__line">{{ summaryLine }}</p>
+    <span class="ky-subscription-summary__tag">当前</span>
+    <p class="ky-subscription-summary__line">
+      <span class="ky-subscription-summary__name">{{ packageName }}</span>
+      <span class="ky-subscription-summary__sep" aria-hidden="true">·</span>
+      <span>剩余 {{ remainingText }}</span>
+      <span class="ky-subscription-summary__sep" aria-hidden="true">·</span>
+      <span>{{ expiryText }} 到期</span>
+    </p>
   </div>
 </template>
 
@@ -12,12 +18,10 @@ import { computed } from 'vue'
 const props = withDefaults(
   defineProps<{
     packageName: string
-    label?: string
     remainingGb?: number | null
     expiresAt?: string | null
   }>(),
   {
-    label: '当前套餐',
     remainingGb: null,
     expiresAt: null,
   },
@@ -40,32 +44,50 @@ const expiryText = computed(() => {
     day: '2-digit',
   })
 })
-
-const summaryLine = computed(
-  () => `${props.packageName} · 剩余 ${remainingText.value} · ${expiryText.value} 到期`,
-)
 </script>
 
 <style scoped>
 .ky-subscription-summary {
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: var(--ky-bg-card);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: var(--ky-shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ky-nav-active-pill);
+  border: 1px solid rgba(59, 130, 246, 0.16);
 }
 
-.ky-subscription-summary__label {
-  margin: 0;
-  font-size: var(--ky-font-xs);
-  color: var(--ky-text-muted);
+.ky-subscription-summary__tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ky-accent);
+  background: color-mix(in srgb, var(--ky-accent) 12%, white);
 }
 
 .ky-subscription-summary__line {
-  margin: 6px 0 0;
-  font-size: var(--ky-font-md);
-  font-weight: 650;
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: var(--ky-font-sm);
+  font-weight: 600;
   color: var(--ky-text);
-  line-height: 1.45;
+  line-height: 1.4;
+}
+
+.ky-subscription-summary__name {
+  font-weight: 700;
+}
+
+.ky-subscription-summary__sep {
+  color: var(--ky-text-muted);
+  font-weight: 500;
 }
 </style>

@@ -1,5 +1,5 @@
-export const APP_VERSION_NAME = '1.2.36'
-export const APP_VERSION_CODE = 156
+export const APP_VERSION_NAME = '1.2.37'
+export const APP_VERSION_CODE = 157
 export const PRIVACY_ACCEPTED_KEY = 'tauri_privacy_accepted'
 
 /** 注册勾选条款后调用，对齐 Android AppRepository.acceptPrivacy */

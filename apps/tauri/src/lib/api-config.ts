@@ -22,7 +22,15 @@ export function resolveAbsoluteDownloadUrl(downloadUrl?: string, apiBase?: strin
   const trimmed = downloadUrl?.trim()
   if (!trimmed) return undefined
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed
-  const origin = resolveAppOrigin(apiBase)
+  const base = apiBase ?? resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
+  const origin = resolveAppOrigin(base)
   const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
-  return `${origin}${path}`
+  // 常见误配：相对路径写成 api/uploads/...（无前导 /）
+  const normalized =
+    path.startsWith('/api/') || path.startsWith('/uploads/')
+      ? path
+      : path.startsWith('/v1/')
+        ? `/api${path}`
+        : path
+  return `${origin}${normalized}`
 }

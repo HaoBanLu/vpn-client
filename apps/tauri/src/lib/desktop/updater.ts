@@ -123,7 +123,7 @@ async function relaunchDesktopApp() {
 /**
  * 安装更新：
  * - 桌面：Tauri updater（带进度）+ 自动 relaunch
- * - Android：应用内 DownloadManager
+ * - Android：应用内 HTTP 下载 APK（优先绑物理网，规避 VPN 下 DownloadManager 失败）
  * - 其它：外链
  */
 export async function installAppUpdate(
@@ -227,7 +227,7 @@ export async function tryInstallPendingApk(): Promise<string | null> {
   }
 }
 
-/** Android：取消进行中的 APK DownloadManager 任务 */
+/** Android：取消进行中的 APK 下载任务 */
 export async function cancelApkDownload(): Promise<void> {
   if (detectClientPlatform() !== 'android') return
   await invoke('vpn_cancel_apk_update_download')

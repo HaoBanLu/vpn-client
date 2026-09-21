@@ -18,7 +18,7 @@ export function saveEntryLatenciesByNodeId(entries: Array<{ id: number; latencyM
   if (typeof sessionStorage === 'undefined') return
   const map = readMap()
   for (const item of entries) {
-    if (!(item.id > 0) || !(item.latencyMs > 0)) continue
+    if (!(item.id > 0) || !(item.latencyMs >= 8)) continue
     map[String(item.id)] = item.latencyMs
   }
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(map))
@@ -27,5 +27,7 @@ export function saveEntryLatenciesByNodeId(entries: Array<{ id: number; latencyM
 export function getEntryLatencyMs(nodeId: number | null | undefined): number | null {
   if (!(nodeId && nodeId > 0) || typeof sessionStorage === 'undefined') return null
   const value = readMap()[String(nodeId)]
-  return typeof value === 'number' && value > 0 ? value : null
+  if (typeof value !== 'number' || !(value > 0)) return null
+  // 过滤历史缓存里的机房/模拟器噪声（常见 1–2ms）
+  return value >= 8 ? value : null
 }

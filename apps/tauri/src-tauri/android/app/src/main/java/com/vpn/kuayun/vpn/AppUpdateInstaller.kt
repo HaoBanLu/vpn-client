@@ -7,22 +7,38 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import app.tauri.plugin.JSObject
 import java.io.File
+import java.io.FileOutputStream
 import java.lang.ref.WeakReference
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * 应用内更新：DownloadManager 拉 APK，pending 持久化，授权后可继续安装。
- * 对齐归档 Compose AppUpdateInstaller，并通过 [eventEmitter] 通知 WebView。
+ * 应用内更新：应用内 HTTP 拉 APK。
+ * VPN 下系统 DownloadManager 常失败；且进程默认走隧道也可能卡死，因此优先绑物理网下载。
+ * pending 持久化，授权后可继续安装；经 [eventEmitter] 通知 WebView。
  */
 class AppUpdateInstaller private constructor(context: Context) {
     private val appContext = context.applicationContext
@@ -30,10 +46,14 @@ class AppUpdateInstaller private constructor(context: Context) {
         appContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
     private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var activityRef: WeakReference<Activity>? = null
     private var downloadReceiver: BroadcastReceiver? = null
     private var pendingFileName: String? = null
     private var awaitingPermissionReturn = false
+    private var downloadJob: Job? = null
+    private val downloadCancelled = AtomicBoolean(false)
+    private val lastProgressPercent = AtomicInteger(-1)
 
     fun attachActivity(activity: Activity) {
         activityRef = WeakReference(activity)
@@ -64,27 +84,73 @@ class AppUpdateInstaller private constructor(context: Context) {
             emitFailed("下载地址无效，请稍后重试")
             return
         }
+        // VPN 下系统 DownloadManager 常失败；改为应用内 HTTP 下载（走隧道内控制面 DIRECT）
         cancelActiveDownload(silent = true)
         clearPendingInstall()
         val fileName = "kuayun-${sanitize(versionLabel)}.apk"
         pendingFileName = fileName
-        val request =
-            DownloadManager.Request(Uri.parse(url)).apply {
-                setTitle("跨云 App 更新")
-                setDescription("正在下载 $versionLabel")
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setMimeType("application/vnd.android.package-archive")
-                setDestinationInExternalFilesDir(appContext, Environment.DIRECTORY_DOWNLOADS, fileName)
-            }
-        val downloadId = downloadManager.enqueue(request)
-        saveActiveDownload(downloadId, fileName, versionLabel, versionCode)
-        registerReceiver(downloadId)
+        val apkFile = resolveApkFile(fileName)
+        runCatching { if (apkFile.exists()) apkFile.delete() }
+        saveActiveDownload(-1L, fileName, versionLabel, versionCode)
+        downloadJob?.cancel()
+        downloadCancelled.set(false)
         emitEvent(EVENT_DOWNLOAD_STARTED, JSObject())
         toast("已开始下载，完成后将提示安装")
+        downloadJob =
+            scope.launch {
+                val result =
+                    withContext(Dispatchers.IO) {
+                        downloadToFile(url, apkFile)
+                    }
+                if (downloadCancelled.get()) return@launch
+                result.fold(
+                    onSuccess = {
+                        if (!apkFile.exists() || apkFile.length() < 1024L) {
+                            emitFailed("安装包不完整，请重试")
+                            return@fold
+                        }
+                        savePendingInstall(fileName, versionLabel, versionCode)
+                        clearActiveDownload()
+                        val pending =
+                            PendingInstallInfo(
+                                versionLabel = versionLabel,
+                                versionCode = versionCode,
+                                apkFile = apkFile,
+                            )
+                        val (currentCode, currentName) = currentVersionInfo()
+                        if (isPendingInstallObsolete(pending.versionCode, pending.versionLabel, currentCode, currentName)) {
+                            clearPendingInstall(deleteApk = true)
+                            return@fold
+                        }
+                        emitDownloadComplete(pending)
+                        runOnMain {
+                            when (tryInstallPendingApk()) {
+                                InstallAttemptResult.NeedPermission -> {
+                                    toast("下载完成，请允许安装未知应用后再试")
+                                    openInstallPermissionSettings()
+                                }
+                                InstallAttemptResult.Launched -> toast("请按提示完成安装")
+                                InstallAttemptResult.Failed -> emitFailed("无法打开安装程序，请稍后重试")
+                                else -> Unit
+                            }
+                        }
+                    },
+                    onFailure = { err ->
+                        if (downloadCancelled.get()) return@fold
+                        runCatching { apkFile.delete() }
+                        clearActiveDownload()
+                        val msg = err.message?.takeIf { it.isNotBlank() } ?: "下载失败，请稍后重试"
+                        emitFailed(msg)
+                    },
+                )
+            }
     }
 
-    /** 取消当前 DownloadManager 任务，避免 VPN 下挂死后无法退出更新浮层 */
+    /** 取消当前下载任务，避免 VPN 下挂死后无法退出更新浮层 */
     fun cancelActiveDownload(silent: Boolean = false) {
+        downloadCancelled.set(true)
+        downloadJob?.cancel()
+        downloadJob = null
         cancelReceiver()
         val downloadId = prefs.getLong(KEY_DOWNLOAD_ID, -1L)
         if (downloadId >= 0L) {
@@ -177,6 +243,126 @@ class AppUpdateInstaller private constructor(context: Context) {
                 }
             }
         }
+    }
+
+    private fun downloadToFile(url: String, dest: File): Result<Unit> {
+        return runCatching {
+            lastProgressPercent.set(-1)
+            var current = url
+            var redirects = 0
+            while (redirects < 8) {
+                if (downloadCancelled.get()) error("已取消下载")
+                val conn = openDownloadConnection(current)
+                val code =
+                    try {
+                        conn.responseCode
+                    } catch (e: Exception) {
+                        conn.disconnect()
+                        throw e
+                    }
+                if (code in 300..399) {
+                    val next = conn.getHeaderField("Location")?.trim().orEmpty()
+                    conn.disconnect()
+                    if (next.isBlank()) error("下载重定向无效 ($code)")
+                    current =
+                        if (next.startsWith("http://") || next.startsWith("https://")) {
+                            next
+                        } else {
+                            URL(URL(current), next).toString()
+                        }
+                    redirects += 1
+                    continue
+                }
+                if (code !in 200..299) {
+                    val err = conn.errorStream?.bufferedReader()?.use { it.readText() }?.take(120)
+                    conn.disconnect()
+                    error(if (err.isNullOrBlank()) "下载失败 (HTTP $code)" else "下载失败 (HTTP $code): $err")
+                }
+                val total = conn.contentLengthLong.takeIf { it > 0 } ?: -1L
+                dest.parentFile?.mkdirs()
+                try {
+                    conn.inputStream.use { input ->
+                        FileOutputStream(dest).use { output ->
+                            val buf = ByteArray(64 * 1024)
+                            var written = 0L
+                            while (true) {
+                                if (downloadCancelled.get()) error("已取消下载")
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                output.write(buf, 0, n)
+                                written += n
+                                emitDownloadProgress(written, total)
+                            }
+                            output.flush()
+                        }
+                    }
+                } finally {
+                    conn.disconnect()
+                }
+                return@runCatching
+            }
+            error("下载重定向过多")
+        }
+    }
+
+    /** 优先走物理网，避免 VPN 隧道内 DownloadManager / 默认路由失败 */
+    private fun openDownloadConnection(url: String): HttpURLConnection {
+        val target = URL(url)
+        val physical = findBestPhysicalNetwork()
+        val raw =
+            if (physical != null) {
+                Log.i(TAG, "download via physical network")
+                physical.openConnection(target)
+            } else {
+                Log.i(TAG, "download via default network (no physical)")
+                target.openConnection()
+            }
+        return (raw as HttpURLConnection).apply {
+            instanceFollowRedirects = false
+            connectTimeout = 20_000
+            readTimeout = 120_000
+            requestMethod = "GET"
+            setRequestProperty("Accept", "*/*")
+            setRequestProperty("User-Agent", "KuayunAndroidUpdater/1.0")
+        }
+    }
+
+    private fun findBestPhysicalNetwork(): Network? {
+        val cm =
+            appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return null
+        val active = cm.activeNetwork
+        val activeCaps = active?.let { cm.getNetworkCapabilities(it) }
+        if (
+            active != null &&
+                activeCaps != null &&
+                !activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                activeCaps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        ) {
+            return active
+        }
+        return cm.allNetworks.firstOrNull { network ->
+            val caps = cm.getNetworkCapabilities(network) ?: return@firstOrNull false
+            !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }
+    }
+
+    private fun emitDownloadProgress(written: Long, total: Long) {
+        val percent =
+            when {
+                total > 0L -> ((written * 100L) / total).toInt().coerceIn(0, 99)
+                written > 0L -> 50
+                else -> 0
+            }
+        val prev = lastProgressPercent.get()
+        if (percent == prev || (percent < 99 && percent - prev < 2 && prev >= 0)) return
+        lastProgressPercent.set(percent)
+        val payload = JSObject()
+        payload.put("percent", percent)
+        payload.put("written", written)
+        payload.put("total", total)
+        emitEvent(EVENT_DOWNLOAD_PROGRESS, payload)
     }
 
     private fun handleDownloadComplete(downloadId: Long) {
@@ -396,11 +582,13 @@ class AppUpdateInstaller private constructor(context: Context) {
 
     companion object {
         const val EVENT_DOWNLOAD_STARTED = "app-update://download-started"
+        const val EVENT_DOWNLOAD_PROGRESS = "app-update://download-progress"
         const val EVENT_DOWNLOAD_COMPLETE = "app-update://download-complete"
         const val EVENT_DOWNLOAD_FAILED = "app-update://download-failed"
         const val EVENT_INSTALL_LAUNCHED = "app-update://install-launched"
         const val EVENT_RESUME = "app-update://resume"
 
+        private const val TAG = "AppUpdateInstaller"
         private const val PREFS_NAME = "kuayun_app_update"
         private const val KEY_DOWNLOAD_ID = "download_id"
         private const val KEY_ACTIVE_FILE_NAME = "active_file_name"

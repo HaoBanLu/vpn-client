@@ -24,16 +24,18 @@ export function displaySceneTags(
   return hideReturnHome ? raw.filter((t) => t !== '适合回国') : raw
 }
 
+import { sanitizeLatencyMs } from '@/lib/vpn/client-latency-probe'
+
 /** 有延迟的节点按延迟升序；未测速的排后面，保持相对稳定。 */
 export function sortNodesByLatency<T extends { id: number }>(
   nodes: T[],
   latencyMap: Record<number, number | undefined>,
 ): T[] {
   return [...nodes].sort((a, b) => {
-    const la = latencyMap[a.id]
-    const lb = latencyMap[b.id]
-    const aHas = typeof la === 'number' && la > 0
-    const bHas = typeof lb === 'number' && lb > 0
+    const la = sanitizeLatencyMs(latencyMap[a.id])
+    const lb = sanitizeLatencyMs(latencyMap[b.id])
+    const aHas = la != null
+    const bHas = lb != null
     if (aHas && bHas) return (la as number) - (lb as number)
     if (aHas) return -1
     if (bHas) return 1
@@ -49,8 +51,8 @@ export function findFastestNodeId(
   let bestId: number | null = null
   let bestMs = Number.POSITIVE_INFINITY
   for (const node of nodes) {
-    const ms = latencyMap[node.id]
-    if (typeof ms === 'number' && ms > 0 && ms < bestMs) {
+    const ms = sanitizeLatencyMs(latencyMap[node.id])
+    if (ms != null && ms < bestMs) {
       bestMs = ms
       bestId = node.id
     }

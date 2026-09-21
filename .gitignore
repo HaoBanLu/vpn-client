@@ -86,6 +86,8 @@ apps/tauri/**/keystore.properties
 apps/tauri/**/signing.properties
 apps/tauri/**/*.log
 apps/tauri/**/*.hprof
+apps/tauri/scripts/_ui_*.png
+apps/tauri/scripts/**/__pycache__/
 apps/tauri/**/lint-results*.html
 apps/tauri/**/lint-results*.xml
 # updater 私钥（公钥可在仓库；私钥与密码勿提交）

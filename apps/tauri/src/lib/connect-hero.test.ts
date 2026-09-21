@@ -33,7 +33,7 @@ describe('resolveConnectHeroCopy', () => {
     expect(copy.title).toBe('已保护')
     expect(copy.titleTone).toBe('success')
     expect(copy.connected).toBe(true)
-    expect(copy.subtitle).toContain('隧道 800ms')
+    expect(copy.subtitle).toContain('响应 800ms')
   })
 
   it('recoveringConnection shows soft reconnect title', () => {
@@ -45,7 +45,7 @@ describe('resolveConnectHeroCopy', () => {
     expect(copy.connecting).toBe(true)
   })
 
-  it('connected shows 已保护 without repeating node in subtitle', () => {
+  it('connected shows tunnel response only, not entry latency', () => {
     const copy = resolveConnectHeroCopy({
       connectionState: 'connected',
       selectedNode: '武汉',
@@ -53,8 +53,10 @@ describe('resolveConnectHeroCopy', () => {
       entryLatencyMs: 2,
     })
     expect(copy.title).toBe('已保护')
-    expect(copy.subtitle).toContain('入口 2ms')
-    expect(copy.subtitle).toContain('隧道 120ms')
+    expect(copy.subtitle).toContain('响应 120ms')
+    expect(copy.subtitle).not.toContain('入口')
+    expect(copy.subtitle).not.toContain('隧道')
+    expect(copy.subtitle).not.toContain('延迟')
     expect(copy.connected).toBe(true)
     expect(copy.subtitle).not.toContain('武汉')
   })

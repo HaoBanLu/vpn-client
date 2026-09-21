@@ -1,17 +1,10 @@
 <template>
   <KyTabPage
-    title="加速套餐"
+    page-class="packages-page"
     :on-refresh="load"
     :loading="loading && packages.length === 0 && !loadError"
+    stack-gap="md"
   >
-    <KySubscriptionSummary
-      v-if="account.subscription"
-      label="当前套餐"
-      :package-name="account.subscription.package?.name || '当前套餐'"
-      :remaining-gb="account.usage?.remaining ?? null"
-      :expires-at="account.subscription.expires_at"
-    />
-
     <div v-if="loadError" class="packages-error">
       <KyAlert type="error" :message="loadError" />
       <KyButton type="primary" block @click="load">重试</KyButton>
@@ -21,9 +14,9 @@
       <KyButton type="primary" @click="load">重新加载</KyButton>
     </KyEmpty>
 
-    <div v-else-if="packages.length > 0" class="packages-list">
+    <div v-else-if="displayPackages.length > 0" class="packages-list">
       <KyPackageCard
-        v-for="(item, index) in packages"
+        v-for="(item, index) in displayPackages"
         :key="item.id"
         :name="item.name"
         :price="formatMoney(item.price)"
@@ -32,7 +25,7 @@
         :description="item.description"
         :badge-text="packageBadgeText(item, index)"
         :badge-variant="packageBadgeVariant(item, index)"
-        :highlight="isCurrentPackage(account.subscription, item) || (index === 0 && !account.subscription)"
+        :highlight="isCurrentPackage(account.subscription, item)"
         :loading="buyingId === item.id"
         :disabled="!buttonState(item).enabled && buttonState(item).label !== '余额不足，去充值'"
         :action-label="buyingId === item.id ? '处理中…' : buttonState(item).label"
@@ -44,13 +37,12 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'PackagesView' })
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Modal } from '@/lib/ui/confirm'
 import { message } from '@/lib/ui/message'
 import KyTabPage from '@/components/KyTabPage.vue'
 import KyPackageCard from '@/components/KyPackageCard.vue'
-import KySubscriptionSummary from '@/components/KySubscriptionSummary.vue'
 import { KyAlert, KyButton, KyEmpty } from '@/components/ky'
 import type { StatusBadgeVariant } from '@/components/StatusBadge.vue'
 import { clientApi, type PackageItem } from '@/api/client'
@@ -72,6 +64,20 @@ const loading = ref(false)
 const loadError = ref<string | null>(null)
 const packages = ref<PackageItem[]>([])
 const buyingId = ref<number | null>(null)
+
+/** 当前套餐置顶，其余保持接口顺序 */
+const displayPackages = computed(() => {
+  const list = packages.value
+  const sub = account.subscription
+  if (!sub?.package_id || list.length < 2) return list
+  const current: PackageItem[] = []
+  const rest: PackageItem[] = []
+  for (const item of list) {
+    if (isCurrentPackage(sub, item)) current.push(item)
+    else rest.push(item)
+  }
+  return current.length ? [...current, ...rest] : list
+})
 
 function packageBadgeText(item: PackageItem, index: number) {
   if (isCurrentPackage(account.subscription, item)) return '当前套餐'
@@ -188,8 +194,16 @@ onMounted(load)
 }
 
 .packages-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding-top: 2px;
+}
+
+@media (min-width: 900px) {
+  .packages-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
 }
 </style>
