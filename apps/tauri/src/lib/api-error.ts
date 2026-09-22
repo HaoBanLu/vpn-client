@@ -93,7 +93,10 @@ export function mapApiError(
 /** 无 HTTP 响应：超时 / 断网 / 被残留 VPN 黑洞。此时不得当 401 清会话。 */
 export function isNetworkConnectivityError(error: unknown): boolean {
   if (error instanceof ApiBusinessError) {
-    return /网络异常|连接超时/.test(error.message)
+    return /网络异常|连接超时|加载超时/.test(error.message)
+  }
+  if (error instanceof Error && /超时|网络异常/.test(error.message)) {
+    return true
   }
   const axiosError = error as AxiosError
   if (axiosError.response) return false

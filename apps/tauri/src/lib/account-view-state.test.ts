@@ -1,30 +1,19 @@
-import { describe, expect, it, vi } from 'vitest'
-import { resolveAccountViewState, shareInflight } from './account-view-state'
+import { describe, expect, it } from 'vitest'
+import { resolveAccountViewState, shareInflight, withTimeout } from './account-view-state'
 
 describe('resolveAccountViewState', () => {
-  it('ready when subscription exists even if later refresh fails', () => {
+  it('ready when subscription present even if still loading', () => {
     expect(
       resolveAccountViewState({
-        loading: false,
-        fetched: true,
-        loadError: '连接超时',
+        loading: true,
+        fetched: false,
+        loadError: null,
         hasSubscription: true,
       }),
     ).toBe('ready')
   })
 
-  it('error when fetch failed and no subscription', () => {
-    expect(
-      resolveAccountViewState({
-        loading: false,
-        fetched: false,
-        loadError: '连接超时，请检查网络后重试',
-        hasSubscription: false,
-      }),
-    ).toBe('error')
-  })
-
-  it('empty only after successful fetch with no subscription', () => {
+  it('empty after successful fetch without subscription', () => {
     expect(
       resolveAccountViewState({
         loading: false,
@@ -33,6 +22,17 @@ describe('resolveAccountViewState', () => {
         hasSubscription: false,
       }),
     ).toBe('empty')
+  })
+
+  it('error when load failed and not loading', () => {
+    expect(
+      resolveAccountViewState({
+        loading: false,
+        fetched: false,
+        loadError: '网络异常',
+        hasSubscription: false,
+      }),
+    ).toBe('error')
   })
 
   it('loading before first successful fetch', () => {
@@ -51,7 +51,7 @@ describe('resolveAccountViewState', () => {
       resolveAccountViewState({
         loading: true,
         fetched: false,
-        loadError: '网络异常，请检查网络后重试',
+        loadError: '网络异常',
         hasSubscription: false,
       }),
     ).toBe('loading')
@@ -65,23 +65,32 @@ describe('resolveAccountViewState', () => {
         loadError: '连接超时，请检查网络后重试',
         hasSubscription: false,
       }),
-    ).not.toBe('empty')
+    ).toBe('error')
   })
 })
 
 describe('shareInflight', () => {
-  it('reuses the same promise for concurrent callers', async () => {
+  it('reuses the same promise until settled', async () => {
     const holder: { current: Promise<number> | null } = { current: null }
-    const run = vi.fn(async () => {
-      await Promise.resolve()
-      return 1
-    })
+    let runs = 0
+    const run = () => {
+      runs += 1
+      return Promise.resolve(runs)
+    }
     const [a, b] = await Promise.all([shareInflight(holder, run), shareInflight(holder, run)])
     expect(a).toBe(1)
     expect(b).toBe(1)
-    expect(run).toHaveBeenCalledTimes(1)
     const c = await shareInflight(holder, run)
-    expect(c).toBe(1)
-    expect(run).toHaveBeenCalledTimes(2)
+    expect(c).toBe(2)
+  })
+})
+
+describe('withTimeout', () => {
+  it('resolves when promise finishes in time', async () => {
+    await expect(withTimeout(Promise.resolve(7), 50)).resolves.toBe(7)
+  })
+
+  it('rejects when promise exceeds deadline', async () => {
+    await expect(withTimeout(new Promise(() => {}), 20, '加载超时')).rejects.toThrow('加载超时')
   })
 })

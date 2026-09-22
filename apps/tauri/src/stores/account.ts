@@ -5,7 +5,8 @@ import { clientApi, type OrderItem, type RechargeOrderItem, type SupportChannelI
 import { useAuthStore } from '@/stores/auth'
 import { configureAppDebug } from '@/lib/debug/app-debug-log'
 import { mapApiError } from '@/lib/api-error'
-import { shareInflight } from '@/lib/account-view-state'
+import { shareInflight, withTimeout } from '@/lib/account-view-state'
+import { BOOTSTRAP_FETCH_TIMEOUT_MS } from '@/lib/boot-session'
 
 export interface AppNotification {
   id: number
@@ -39,16 +40,28 @@ export const useAccountStore = defineStore('account', () => {
   async function runRefreshAccount() {
     loading.value = true
     try {
-      const [me, sub, orderRes, rechargeRes, supportRes] = await Promise.all([
-        clientApi.getMe(),
-        clientApi.getActiveSubscription(),
-        clientApi.getOrders(),
-        clientApi.getRechargeOrders(),
-        clientApi.getSupportConfig().catch(() => ({ data: { enabled: false, channels: [] } })),
-      ])
+      const [me, sub, orderRes, rechargeRes, supportRes] = await withTimeout(
+        Promise.all([
+          clientApi.getMe(),
+          clientApi.getActiveSubscription(),
+          clientApi.getOrders(),
+          clientApi.getRechargeOrders(),
+          clientApi.getSupportConfig().catch(() => ({ data: { enabled: false, channels: [] } })),
+        ]),
+        BOOTSTRAP_FETCH_TIMEOUT_MS,
+        '账户信息加载超时，请检查网络后重试',
+      )
       user.value = me.data
       subscription.value = sub.data
-      usage.value = subscription.value ? (await clientApi.getUsage()).data : null
+      usage.value = subscription.value
+        ? (
+            await withTimeout(
+              clientApi.getUsage(),
+              BOOTSTRAP_FETCH_TIMEOUT_MS,
+              '账户信息加载超时，请检查网络后重试',
+            )
+          ).data
+        : null
       orders.value = orderRes.data.orders ?? []
       const rechargeOrders = rechargeRes.data.orders ?? []
       knownRechargeStatuses = rechargeOrders.reduce<Record<number, string>>((acc, order) => {

@@ -65,10 +65,14 @@ import { updateTrayTooltip } from '@/lib/desktop/tray'
 import { appendDebugLog, flushDebugLogs } from '@/lib/debug/app-debug-log'
 import { quietNetworkErrorToasts } from '@/lib/vpn/network-error-toast'
 import { shouldIgnoreDisconnectedWhileConnecting } from '@/lib/vpn/connect-inflight'
-import { shareInflight } from '@/lib/account-view-state'
+import { shareInflight, withTimeout } from '@/lib/account-view-state'
 import { isNetworkConnectivityError, mapApiError } from '@/lib/api-error'
 import { APP_VERSION_CODE, detectClientPlatform } from '@/lib/app-meta'
 import {
+  BOOTSTRAP_FETCH_TIMEOUT_MS,
+  DROP_TUNNEL_TIMEOUT_MS,
+  isInUpgradeApiGrace,
+  markUpgradeApiGrace,
   persistAppVersionCode,
   readPersistedAppVersionCode,
   shouldDropLeftoverTunnelOnLaunch,
@@ -215,8 +219,12 @@ export const useConnectStore = defineStore('connect', () => {
     }
   }
 
-  /** 隧道仍在或正在建隧时，API 失败不作为「残留死隧道」处理 */
+  /**
+   * 隧道仍在或正在建隧时，API 失败不作为「残留死隧道」处理。
+   * 覆盖安装宽限期内强制 false：残留系统 VPN 常被误判为 connected，导致永不拆隧道、页面一直加载。
+   */
   function shouldKeepTunnelOnApiFailure() {
+    if (isInUpgradeApiGrace()) return false
     return (
       connectionState.value === 'connected' ||
       connectionState.value === 'connecting' ||
@@ -406,9 +414,14 @@ export const useConnectStore = defineStore('connect', () => {
   async function dropLeftoverTunnel(reason: string) {
     appendDebugLog('connect', `拆除残留隧道 · ${reason}`, 'info')
     try {
-      await disconnectVpn({ userInitiated: false })
+      await withTimeout(
+        disconnectVpn({ userInitiated: false }),
+        DROP_TUNNEL_TIMEOUT_MS,
+        '拆除隧道超时',
+      )
     } catch {
-      // 未连接或插件不可用时忽略
+      // 未连接、插件不可用或原生 disconnect 挂起时仍清本地态
+      appendDebugLog('connect', `拆除隧道软失败 · ${reason}`, 'warn')
     }
     connectionState.value = 'disconnected'
     connectPending.value = false
@@ -424,11 +437,11 @@ export const useConnectStore = defineStore('connect', () => {
     const previous = readPersistedAppVersionCode()
     let systemVpnActive = false
     try {
-      const status = await getVpnStatus()
+      const status = await withTimeout(getVpnStatus(), DROP_TUNNEL_TIMEOUT_MS, '读取 VPN 状态超时')
       connectionState.value = status.state
       systemVpnActive = status.systemVpnActive === true
     } catch {
-      // 浏览器开发模式没有 VPN 插件
+      // 浏览器开发模式没有 VPN 插件，或状态查询挂起
     }
     const vpnActive =
       connectionState.value === 'connected' || connectionState.value === 'connecting'
@@ -440,13 +453,18 @@ export const useConnectStore = defineStore('connect', () => {
     })
     persistAppVersionCode(APP_VERSION_CODE)
     if (shouldDrop) {
+      markUpgradeApiGrace()
       await dropLeftoverTunnel('app_upgrade')
     }
   }
 
   async function refreshAccountRecoveringTunnel() {
     try {
-      await account.refreshAccount()
+      await withTimeout(
+        account.refreshAccount(),
+        BOOTSTRAP_FETCH_TIMEOUT_MS,
+        '账户信息加载超时，请检查网络后重试',
+      )
     } catch (error) {
       if (!isNetworkConnectivityError(error)) throw error
       if (shouldKeepTunnelOnApiFailure()) {
@@ -454,7 +472,11 @@ export const useConnectStore = defineStore('connect', () => {
         return
       }
       await dropLeftoverTunnel('account_fetch_blocked')
-      await account.refreshAccount()
+      await withTimeout(
+        account.refreshAccount(),
+        BOOTSTRAP_FETCH_TIMEOUT_MS,
+        '账户信息加载超时，请检查网络后重试',
+      )
     }
   }
 
@@ -487,33 +509,7 @@ export const useConnectStore = defineStore('connect', () => {
     loading.value = true
     error.value = null
     try {
-      await refreshAccountRecoveringTunnel()
-      const [regionsRes, dashRes, prefRes] = await Promise.all([
-        clientApi.getRegions(),
-        (async () => {
-          try {
-            return await clientApi.getConnectDashboard(selectedNode.value)
-          } catch (error) {
-            if (!isNetworkConnectivityError(error)) throw error
-            if (shouldKeepTunnelOnApiFailure()) {
-              appendDebugLog('connect', '仪表盘刷新跳过（隧道仍在）', 'warn')
-              return { data: dashboard.value }
-            }
-            await dropLeftoverTunnel('dashboard_fetch_blocked')
-            return clientApi.getConnectDashboard(selectedNode.value)
-          }
-        })(),
-        clientApi.getUserPreferences().catch(() => null),
-      ])
-      regions.value = regionsRes.data.regions
-      if (dashRes?.data) dashboard.value = dashRes.data
-      if (prefRes?.data) {
-        const scenario = normalizeConnectionScenario(prefRes.data.connection_scenario)
-        connectionScenario.value = scenario
-        connectionScenarioLabelText.value =
-          prefRes.data.connection_scenario_label ?? connectionScenarioLabel(scenario)
-        applyResolvedConnectionConfig()
-      }
+      await withTimeout(runRefreshBody(), BOOTSTRAP_FETCH_TIMEOUT_MS + 8_000, '加载超时，请下拉刷新重试')
     } catch (e: unknown) {
       // 隧道已在/建隧中时，刷新 API 的短暂网络失败不要写成连接错误（底部会红闪「网络异常」）
       if (shouldKeepTunnelOnApiFailure() && isNetworkConnectivityError(e)) {
@@ -524,9 +520,42 @@ export const useConnectStore = defineStore('connect', () => {
         )
       } else {
         error.value = mapApiError(e, '加载失败')
+        if (!account.fetched && !account.loadError) {
+          account.loadError = mapApiError(e, '账户信息加载失败')
+        }
       }
     } finally {
       loading.value = false
+    }
+  }
+
+  async function runRefreshBody() {
+    await refreshAccountRecoveringTunnel()
+    const [regionsRes, dashRes, prefRes] = await Promise.all([
+      clientApi.getRegions(),
+      (async () => {
+        try {
+          return await clientApi.getConnectDashboard(selectedNode.value)
+        } catch (error) {
+          if (!isNetworkConnectivityError(error)) throw error
+          if (shouldKeepTunnelOnApiFailure()) {
+            appendDebugLog('connect', '仪表盘刷新跳过（隧道仍在）', 'warn')
+            return { data: dashboard.value }
+          }
+          await dropLeftoverTunnel('dashboard_fetch_blocked')
+          return clientApi.getConnectDashboard(selectedNode.value)
+        }
+      })(),
+      clientApi.getUserPreferences().catch(() => null),
+    ])
+    regions.value = regionsRes.data.regions
+    if (dashRes?.data) dashboard.value = dashRes.data
+    if (prefRes?.data) {
+      const scenario = normalizeConnectionScenario(prefRes.data.connection_scenario)
+      connectionScenario.value = scenario
+      connectionScenarioLabelText.value =
+        prefRes.data.connection_scenario_label ?? connectionScenarioLabel(scenario)
+      applyResolvedConnectionConfig()
     }
   }
 

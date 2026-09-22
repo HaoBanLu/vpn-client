@@ -31,6 +31,10 @@ describe('node-list-display', () => {
     expect(findFastestNodeId([{ id: 1 }], {})).toBeNull()
   })
 
+  it('does not let sub-8ms noise win fastest over real RTT', () => {
+    expect(findFastestNodeId([{ id: 1 }, { id: 2 }], { 1: 2, 2: 40 })).toBe(2)
+  })
+
   it('groups nodes by region order for contacts-style sections', () => {
     const sections = groupNodesByRegionOrder(
       [

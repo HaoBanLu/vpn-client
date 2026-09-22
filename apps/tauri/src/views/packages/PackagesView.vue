@@ -54,6 +54,8 @@ import {
   purchaseButtonState,
   purchaseSuccessMessage,
 } from '@/lib/subscription'
+import { withTimeout } from '@/lib/account-view-state'
+import { BOOTSTRAP_FETCH_TIMEOUT_MS, isInUpgradeApiGrace } from '@/lib/boot-session'
 import { useConnectStore } from '@/stores/connect'
 import { useAccountStore } from '@/stores/account'
 
@@ -107,14 +109,28 @@ async function load() {
     /* 账户失败走 store.loadError，不挡套餐列表 */
   })
   try {
-    packages.value = (await clientApi.getPackages()).data.packages
+    packages.value = (
+      await withTimeout(
+        clientApi.getPackages(),
+        BOOTSTRAP_FETCH_TIMEOUT_MS,
+        '套餐加载超时，请下拉刷新重试',
+      )
+    ).data.packages
   } catch (error) {
     if (isNetworkConnectivityError(error)) {
       try {
         if (!connect.isConnected && !connect.isConnecting && !connect.connectPending) {
           await connect.dropLeftoverTunnel('packages_fetch_blocked')
+        } else if (isInUpgradeApiGrace()) {
+          await connect.dropLeftoverTunnel('packages_fetch_blocked_upgrade')
         }
-        packages.value = (await clientApi.getPackages()).data.packages
+        packages.value = (
+          await withTimeout(
+            clientApi.getPackages(),
+            BOOTSTRAP_FETCH_TIMEOUT_MS,
+            '套餐加载超时，请下拉刷新重试',
+          )
+        ).data.packages
         loadError.value = null
         return
       } catch (retryError) {

@@ -12,7 +12,7 @@
         <KyListItem
           v-for="item in daily"
           :key="item.date"
-          :title="item.date"
+          :title="dailyTitle(item.date)"
           :subtitle="`合计 ${item.total_mb.toFixed(2)} MB · ↑ ${item.total_up_mb.toFixed(2)} / ↓ ${item.total_down_mb.toFixed(2)}`"
         />
       </KyCard>
@@ -28,10 +28,15 @@ import KyMetricCard from '@/components/KyMetricCard.vue'
 import KyListItem from '@/components/KyListItem.vue'
 import { KyEmpty, KySpin } from '@/components/ky'
 import { clientApi, type DailyTrafficItem, type TrafficSummary } from '@/api/client'
+import { formatDateOnly } from '@/lib/format'
 
 const loading = ref(false)
 const summary = ref<TrafficSummary | null>(null)
 const daily = ref<DailyTrafficItem[]>([])
+
+function dailyTitle(date: string) {
+  return formatDateOnly(date)
+}
 
 async function load() {
   loading.value = true

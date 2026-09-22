@@ -125,6 +125,8 @@ export function orderStatusColor(status: string): string {
 
 export function formatDateTime(value?: string): string {
   if (!value) return '-'
+  const normalized = normalizeChinaDateTime(value)
+  if (normalized) return normalized
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return value.slice(0, 16).replace('T', ' ')
@@ -137,6 +139,31 @@ export function formatDateTime(value?: string): string {
     minute: '2-digit',
     hour12: false,
   })
+}
+
+/** 日期：YYYY-MM-DD（去掉 T00:00:00Z） */
+export function formatDateOnly(value?: string): string {
+  if (!value) return '-'
+  const trimmed = value.trim()
+  const m = trimmed.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (m) return m[1]
+  const date = new Date(trimmed)
+  if (Number.isNaN(date.getTime())) return trimmed
+  const y = date.getFullYear()
+  const mo = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${mo}-${d}`
+}
+
+/** 兼容 API 新格式 YYYY-MM-DD HH:mm:ss 与历史 RFC3339 */
+function normalizeChinaDateTime(value: string): string | null {
+  const trimmed = value.trim()
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(trimmed)) {
+    return trimmed.slice(0, 19)
+  }
+  const m = trimmed.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/)
+  if (m) return `${m[1]} ${m[2]}`
+  return null
 }
 
 export function resolveAssetUrl(path?: string): string {

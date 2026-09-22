@@ -1,21 +1,38 @@
 import { describe, expect, it } from 'vitest'
 import {
+  displayLatencyMs,
+  latencySortKey,
   mapPool,
   mergeLatencyResults,
   parseLatencyEndpoint,
   sanitizeLatencyMs,
 } from './client-latency-probe'
 
-describe('sanitizeLatencyMs', () => {
-  it('drops datacenter/emulator noise like 1–2ms', () => {
-    expect(sanitizeLatencyMs(1)).toBeNull()
-    expect(sanitizeLatencyMs(2)).toBeNull()
-    expect(sanitizeLatencyMs(7)).toBeNull()
+describe('displayLatencyMs', () => {
+  it('keeps any successful positive RTT for UI', () => {
+    expect(displayLatencyMs(1)).toBe(1)
+    expect(displayLatencyMs(7)).toBe(7)
+    expect(displayLatencyMs(120.6)).toBe(121)
   })
 
-  it('keeps plausible user RTT', () => {
+  it('drops invalid values', () => {
+    expect(displayLatencyMs(0)).toBeNull()
+    expect(displayLatencyMs(-1)).toBeNull()
+    expect(displayLatencyMs(undefined)).toBeNull()
+  })
+})
+
+describe('sanitizeLatencyMs', () => {
+  it('matches displayLatencyMs (success should be visible)', () => {
+    expect(sanitizeLatencyMs(1)).toBe(1)
     expect(sanitizeLatencyMs(8)).toBe(8)
-    expect(sanitizeLatencyMs(120.6)).toBe(121)
+  })
+})
+
+describe('latencySortKey', () => {
+  it('deprioritizes sub-8ms noise for fastest ranking', () => {
+    expect(latencySortKey(2)!).toBeGreaterThan(latencySortKey(40)!)
+    expect(latencySortKey(11)!).toBeLessThan(latencySortKey(36)!)
   })
 })
 
@@ -24,9 +41,9 @@ describe('mergeLatencyResults', () => {
     expect(mergeLatencyResults(1, 120)).toBe(120)
   })
 
-  it('drops implausible client noise instead of showing 1ms', () => {
-    expect(mergeLatencyResults(1, 1)).toBe(-1)
-    expect(mergeLatencyResults(-1, 2)).toBe(-1)
+  it('keeps low client RTT for display instead of hiding as dash', () => {
+    expect(mergeLatencyResults(1, 1)).toBe(1)
+    expect(mergeLatencyResults(-1, 2)).toBe(2)
   })
 
   it('uses client when server failed', () => {

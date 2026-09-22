@@ -53,9 +53,23 @@
             最快
           </span>
         </span>
-        <span v-else-if="latencyPending" class="ky-node-row__latency ky-node-row__latency--muted">
+        <button
+          v-else-if="latencyPending"
+          type="button"
+          class="ky-node-row__latency ky-node-row__latency--muted ky-node-row__latency-btn"
+          disabled
+        >
           …
-        </span>
+        </button>
+        <button
+          v-else-if="latencyFailed"
+          type="button"
+          class="ky-node-row__latency ky-node-row__latency--fail ky-node-row__latency-btn"
+          title="点击重试测速"
+          @click.stop="onLatencyRetry"
+        >
+          超时
+        </button>
         <span v-else class="ky-node-row__latency ky-node-row__latency--muted">—</span>
 
         <button
@@ -110,7 +124,7 @@ import { computed } from 'vue'
 import type { NodeItem } from '@/api/client'
 import { latencyColor, nodeRegionLabel } from '@/lib/subscription'
 import { displaySceneTags, shouldShowRegionLine } from '@/lib/vpn/node-list-display'
-import { sanitizeLatencyMs } from '@/lib/vpn/client-latency-probe'
+import { displayLatencyMs } from '@/lib/vpn/client-latency-probe'
 
 const props = withDefaults(
   defineProps<{
@@ -123,6 +137,8 @@ const props = withDefaults(
     isActive?: boolean
     latencyMs?: number
     latencyPending?: boolean
+    /** 本机/控制面测速均失败 */
+    latencyFailed?: boolean
     fastest?: boolean
     actionLabel?: string
     actionLoading?: boolean
@@ -139,15 +155,20 @@ const props = withDefaults(
     actionLoading: false,
     actionDisabled: false,
     latencyPending: false,
+    latencyFailed: false,
   },
 )
 
-const emit = defineEmits<{ action: [] }>()
+const emit = defineEmits<{ action: []; 'retry-latency': [] }>()
 
 function onActionClick() {
   if (props.variant !== 'connectable' || props.isActive) return
   if (props.actionDisabled || props.actionLoading) return
   emit('action')
+}
+
+function onLatencyRetry() {
+  emit('retry-latency')
 }
 
 const displayName = computed(() => {
@@ -177,14 +198,14 @@ const metaLine = computed(() => {
 const statusOnline = computed(() => (props.node.status || '').toLowerCase() === 'online')
 
 const latencyLabel = computed(() => {
-  const ms = sanitizeLatencyMs(props.latencyMs)
+  const ms = displayLatencyMs(props.latencyMs)
   if (ms != null) return `${ms}ms`
   return ''
 })
 
-const hasLatency = computed(() => sanitizeLatencyMs(props.latencyMs) != null)
+const hasLatency = computed(() => displayLatencyMs(props.latencyMs) != null)
 
-const latencyColorValue = computed(() => latencyColor(sanitizeLatencyMs(props.latencyMs) || 0))
+const latencyColorValue = computed(() => latencyColor(displayLatencyMs(props.latencyMs) || 0))
 
 const isSwitchAction = computed(() => (props.actionLabel || '').includes('切换'))
 </script>
@@ -334,6 +355,26 @@ const isSwitchAction = computed(() => (props.actionLabel || '').includes('切换
 .ky-node-row__latency--muted {
   color: var(--ky-text-hint);
   font-weight: 500;
+}
+
+.ky-node-row__latency--fail {
+  color: #d97706;
+  font-weight: 650;
+}
+
+.ky-node-row__latency-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ky-node-row__latency-btn:disabled {
+  cursor: default;
 }
 
 .ky-node-row__fast {

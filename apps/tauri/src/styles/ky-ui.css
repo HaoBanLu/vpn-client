@@ -111,6 +111,19 @@
   border-right-color: transparent;
   border-radius: 50%;
   animation: ky-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* 按钮 loading / 图标 :spin 共用（此前缺 keyframes，圈会静止） */
+@keyframes ky-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.anticon-spin {
+  display: inline-block;
+  animation: ky-spin 0.7s linear infinite;
 }
 
 /* ── Input ── */

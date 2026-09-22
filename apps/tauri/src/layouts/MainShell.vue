@@ -163,7 +163,11 @@ onMounted(async () => {
     unlistenTray = null
   }
   await connect.initVpnBridge()
-  await connect.recoverAfterAppUpdate()
+  // 升级拆隧道最多等几秒，超时也继续拉账户，避免整 App 卡在加载中
+  await Promise.race([
+    connect.recoverAfterAppUpdate(),
+    new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
+  ])
   await connect.startWatchers()
   try {
     await connect.refresh()

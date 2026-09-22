@@ -61,12 +61,14 @@
                 :is-active="isNodeActive(item)"
                 :selected="isNodeSelected(item)"
                 :latency-ms="latencyMap[item.id]"
-                :latency-pending="latencyPending && latencyMap[item.id] === undefined"
+                :latency-pending="isLatencyPending(item.id)"
+                :latency-failed="latencyFailed[item.id] === true"
                 :fastest="fastestNodeId === item.id"
                 :action-label="connect.isConnected ? '切换' : '连接'"
                 :action-loading="isNodeConnecting(item)"
                 :action-disabled="connect.isSwitching"
                 @action="selectNode(item)"
+                @retry-latency="retryNodeLatency(item)"
               />
             </template>
           </section>
@@ -104,16 +106,18 @@ import KyTabPage from '@/components/KyTabPage.vue'
 import KyNodeCard from '@/components/KyNodeCard.vue'
 import { KyAlert, KyButton, KyEmpty } from '@/components/ky'
 import { isNetworkConnectivityError, mapApiError } from '@/lib/api-error'
+import { withTimeout } from '@/lib/account-view-state'
+import { BOOTSTRAP_FETCH_TIMEOUT_MS } from '@/lib/boot-session'
 import { clientApi, type NodeItem } from '@/api/client'
 import { isAppConnectable, unsupportedReason } from '@/lib/vpn/app-protocol-support'
 import { shouldConnectAfterNodeSelect, shouldNavigateToConnectAfterNodeSelect } from '@/lib/vpn/connect-navigation'
 import {
   CLIENT_LATENCY_CONCURRENCY,
+  displayLatencyMs,
   mapPool,
   mergeLatencyResults,
   parseLatencyEndpoint,
-  probeTcpLatency,
-  sanitizeLatencyMs,
+  probeTcpLatencyWithRetry,
 } from '@/lib/vpn/client-latency-probe'
 import {
   findFastestNodeId,
@@ -134,9 +138,17 @@ const loadError = ref<string | null>(null)
 const nodes = ref<NodeItem[]>([])
 const latencyPending = ref(false)
 const latencyMap = reactive<Record<number, number>>({})
+/** 测速失败（可点「超时」重试）；与「尚未测」区分开 */
+const latencyFailed = reactive<Record<number, boolean>>({})
+const latencyProbing = reactive<Record<number, boolean>>({})
 /** 地区筛选：默认「全部」 */
 const filterRegion = ref<string | null>(ALL_REGIONS)
 let latencyRunId = 0
+
+function isLatencyPending(nodeId: number) {
+  if (latencyProbing[nodeId]) return true
+  return latencyPending.value && latencyMap[nodeId] === undefined && !latencyFailed[nodeId]
+}
 
 const connectableNodes = computed(() => nodes.value.filter((node) => isAppConnectable(node)))
 const unsupportedNodes = computed(() => nodes.value.filter((node) => !isAppConnectable(node)))
@@ -218,9 +230,12 @@ function isNodeConnecting(item: NodeItem) {
 
 function hydrateLatencyFromCache(list: NodeItem[]) {
   for (const node of list) {
-    if (sanitizeLatencyMs(latencyMap[node.id]) != null) continue
-    const cached = sanitizeLatencyMs(getEntryLatencyMs(node.id))
-    if (cached != null) latencyMap[node.id] = cached
+    if (displayLatencyMs(latencyMap[node.id]) != null) continue
+    const cached = displayLatencyMs(getEntryLatencyMs(node.id))
+    if (cached != null) {
+      latencyMap[node.id] = cached
+      delete latencyFailed[node.id]
+    }
   }
 }
 
@@ -234,10 +249,18 @@ async function load() {
   const hadNodes = nodes.value.length > 0
   try {
     if (connect.regions.length === 0 && !account.fetched) {
-      await connect.refresh()
+      await withTimeout(
+        connect.refresh(),
+        BOOTSTRAP_FETCH_TIMEOUT_MS + 8_000,
+        '节点加载超时，请下拉刷新重试',
+      )
     }
     // force 即可跳过 TTL；勿先 invalidate，否则已连 VPN 时 API 超时无法回退缓存
-    nodes.value = await connect.fetchConnectNodesWithRecovery(true)
+    nodes.value = await withTimeout(
+      connect.fetchConnectNodesWithRecovery(true),
+      BOOTSTRAP_FETCH_TIMEOUT_MS,
+      '节点加载超时，请下拉刷新重试',
+    )
     loadError.value = null
     await connect.syncSavedNodeWithNodes(nodes.value)
     hydrateLatencyFromCache(nodes.value)
@@ -289,7 +312,7 @@ async function persistLatencyCache(targets: NodeItem[]) {
     targets
       .map((node) => ({
         id: node.id,
-        latencyMs: sanitizeLatencyMs(latencyMap[node.id]) ?? 0,
+        latencyMs: displayLatencyMs(latencyMap[node.id]) ?? 0,
       }))
       .filter((item) => item.latencyMs > 0),
   )
@@ -305,11 +328,53 @@ async function fillMissingFromServer(missing: NodeItem[]) {
       const key = String(node.id)
       const serverMs = details[key]?.entry_latency_ms ?? results[key] ?? -1
       const merged = mergeLatencyResults(serverMs, latencyMap[node.id] ?? null)
-      if (merged > 0) latencyMap[node.id] = merged
-      else if (sanitizeLatencyMs(latencyMap[node.id]) == null) delete latencyMap[node.id]
+      if (merged > 0) {
+        latencyMap[node.id] = merged
+        delete latencyFailed[node.id]
+      } else if (displayLatencyMs(latencyMap[node.id]) == null) {
+        delete latencyMap[node.id]
+        latencyFailed[node.id] = true
+      }
     }
   } catch {
     // 控制面补洞失败不影响已测出的本机结果
+    for (const node of missing) {
+      if (displayLatencyMs(latencyMap[node.id]) == null) latencyFailed[node.id] = true
+    }
+  }
+}
+
+async function probeOneNode(node: NodeItem): Promise<boolean> {
+  const endpoint = parseLatencyEndpoint(node.latency_endpoint)
+  if (!endpoint) {
+    latencyFailed[node.id] = true
+    return false
+  }
+  latencyProbing[node.id] = true
+  delete latencyFailed[node.id]
+  try {
+    const latency = await probeTcpLatencyWithRetry(endpoint.host, endpoint.port)
+    if (latency != null) {
+      latencyMap[node.id] = latency
+      delete latencyFailed[node.id]
+      return true
+    }
+    latencyFailed[node.id] = true
+    return false
+  } finally {
+    delete latencyProbing[node.id]
+  }
+}
+
+async function retryNodeLatency(node: NodeItem) {
+  delete latencyMap[node.id]
+  delete latencyFailed[node.id]
+  const ok = await probeOneNode(node)
+  if (!ok) {
+    await fillMissingFromServer([node])
+  }
+  if (displayLatencyMs(latencyMap[node.id]) != null) {
+    persistLatencyCache([node])
   }
 }
 
@@ -322,15 +387,11 @@ async function autoProbeLatency() {
   try {
     await mapPool(targets, CLIENT_LATENCY_CONCURRENCY, async (node) => {
       if (runId !== latencyRunId) return
-      if (sanitizeLatencyMs(latencyMap[node.id]) != null) return
-      const endpoint = parseLatencyEndpoint(node.latency_endpoint)
-      if (!endpoint) return
-      const latency = await probeTcpLatency(endpoint.host, endpoint.port)
-      if (runId !== latencyRunId) return
-      if (latency != null) latencyMap[node.id] = latency
+      if (displayLatencyMs(latencyMap[node.id]) != null) return
+      await probeOneNode(node)
     })
     if (runId !== latencyRunId) return
-    const missing = targets.filter((node) => sanitizeLatencyMs(latencyMap[node.id]) == null)
+    const missing = targets.filter((node) => displayLatencyMs(latencyMap[node.id]) == null)
     await fillMissingFromServer(missing)
     if (runId !== latencyRunId) return
     persistLatencyCache(targets)
