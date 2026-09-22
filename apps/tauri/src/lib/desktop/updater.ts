@@ -123,7 +123,7 @@ async function relaunchDesktopApp() {
 /**
  * 安装更新：
  * - 桌面：Tauri updater（带进度）+ 自动 relaunch
- * - Android：应用内 HTTP 下载 APK（优先绑物理网，规避 VPN 下 DownloadManager 失败）
+ * - Android：系统 DownloadManager 下载 APK（通知栏进度；完成后应用内安装）
  * - 其它：外链
  */
 export async function installAppUpdate(

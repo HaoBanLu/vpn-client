@@ -69,7 +69,7 @@ export function resolveConnectHeroCopy(input: {
     return {
       title: '加载失败',
       subtitle: '请检查网络后重试',
-      buttonLabel: '重试',
+      buttonLabel: '重新加载',
       variant: 'default',
       titleTone: 'error',
       connected: false,
@@ -111,7 +111,7 @@ export function resolveConnectHeroCopy(input: {
       title: isSwitching ? '切换中' : '连接中',
       subtitle,
       // 选节点/点按钮后立刻统一「连接中」，不再短暂显示「准备中」
-      buttonLabel: isSwitching ? '切换中' : '连接中',
+      buttonLabel: isSwitching ? '正在切换' : '正在连接',
       variant: 'connecting',
       titleTone: 'info',
       connected: false,
@@ -125,7 +125,7 @@ export function resolveConnectHeroCopy(input: {
       return {
         title: '正在重连…',
         subtitle: latencyHint || '请稍候',
-        buttonLabel: '重连中',
+        buttonLabel: '正在重连',
         variant: 'connecting',
         titleTone: 'info',
         connected: false,
@@ -136,7 +136,7 @@ export function resolveConnectHeroCopy(input: {
       return {
         title: '网络已断开',
         subtitle: autoReconnectEnabled ? '网络恢复后将自动重连' : '请检查网络后手动重连',
-        buttonLabel: '断开',
+        buttonLabel: '断开连接',
         variant: 'connected',
         titleTone: 'warning',
         connected: true,
@@ -147,7 +147,7 @@ export function resolveConnectHeroCopy(input: {
     return {
       title: '已保护',
       subtitle: latencyHint || '',
-      buttonLabel: '断开',
+      buttonLabel: '断开连接',
       variant: 'connected',
       titleTone: 'success',
       connected: true,

@@ -78,6 +78,7 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { KyButton, KyProgress } from '@/components/ky'
 import { useAppUpdate } from '@/lib/app-update/use-app-update'
+import { detectClientPlatform } from '@/lib/app-meta'
 import { isDesktopPlatform } from '@/lib/layout'
 
 const {
@@ -113,9 +114,10 @@ const bodyText = computed(() => {
   return ''
 })
 
-const showProgress = computed(() =>
-  ['downloading', 'installing', 'done'].includes(state.phase),
-)
+const showProgress = computed(() => {
+  if (state.phase === 'downloading' && detectClientPlatform() === 'android') return false
+  return ['downloading', 'installing', 'done'].includes(state.phase)
+})
 
 const showFooter = computed(() =>
   ['prompt', 'pending_install', 'error', 'done', 'downloading'].includes(state.phase),

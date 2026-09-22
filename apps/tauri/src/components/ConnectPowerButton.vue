@@ -28,8 +28,30 @@
         @click="onClick"
       >
         <span v-if="variant === 'connected'" class="power-btn__sheen" />
-        <SafetyOutlined v-if="variant === 'connected'" class="power-icon power-icon--shield" />
-        <PoweroffOutlined v-else class="power-icon" />
+        <span class="power-btn__icon" aria-hidden="true">
+          <span v-if="connecting" class="power-btn__spinner" />
+          <svg v-else-if="variant === 'connected'" class="power-btn__svg" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M12 2.5 18.5 6v5.2c0 4.45-2.95 8.62-6.5 9.3-3.55-.68-6.5-4.85-6.5-9.3V6L12 2.5Z"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M8.75 12.25 11 14.5l5.25-5.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <svg v-else class="power-btn__svg" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M13.2 2.5 5.5 14.2h6.3l-1.1 7.3 8.3-11.5h-6.4l.6-7.5Z"
+              fill="currentColor"
+            />
+          </svg>
+        </span>
         <span class="power-label">{{ label }}</span>
       </button>
     </div>
@@ -38,7 +60,6 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { PoweroffOutlined, SafetyOutlined } from '@ant-design/icons-vue'
 
 const props = defineProps<{
   label: string
@@ -99,7 +120,7 @@ function onClick() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   cursor: pointer;
   color: var(--ky-on-accent);
   overflow: hidden;
@@ -148,26 +169,48 @@ function onClick() {
   pointer-events: none;
 }
 
-.power-icon {
-  font-size: 28px;
-  line-height: 1;
+.power-btn__icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 1;
+  flex-shrink: 0;
 }
 
-.power-icon--shield {
-  font-size: 30px;
+.power-btn__svg {
+  width: 44px;
+  height: 44px;
+  display: block;
+}
+
+.power-btn__spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: power-spin 0.75s linear infinite;
+}
+
+@keyframes power-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .power-label {
   z-index: 1;
   font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  min-width: 4em;
+  text-align: center;
 }
 
 .power-btn.connected .power-label {
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .ripple-layer {

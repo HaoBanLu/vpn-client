@@ -78,7 +78,7 @@ describe('resolveConnectHeroCopy', () => {
     })
     expect(copy.title).toBe('连接中')
     expect(copy.connecting).toBe(true)
-    expect(copy.buttonLabel).toBe('连接中')
+    expect(copy.buttonLabel).toBe('正在连接')
     expect(copy.subtitle).toContain('正在连接 杭州1')
     expect(copy.subtitle).not.toContain('再点可取消')
   })
@@ -90,7 +90,7 @@ describe('resolveConnectHeroCopy', () => {
       selectedNode: '新加坡2',
     })
     expect(copy.title).toBe('连接中')
-    expect(copy.buttonLabel).toBe('连接中')
+    expect(copy.buttonLabel).toBe('正在连接')
     expect(copy.connecting).toBe(true)
     expect(copy.subtitle).toContain('正在连接 新加坡2')
   })
@@ -121,7 +121,7 @@ describe('resolveConnectHeroCopy', () => {
       emptyReason: 'load_error',
     })
     expect(copy.title).toBe('加载失败')
-    expect(copy.buttonLabel).toBe('重试')
+    expect(copy.buttonLabel).toBe('重新加载')
     expect(copy.subtitle).not.toContain('暂无')
   })
 })

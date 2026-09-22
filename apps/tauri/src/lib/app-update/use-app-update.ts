@@ -124,7 +124,10 @@ async function acceptUpdate() {
   const result = state.updateResult
   if (!result) return
   state.installing = true
-  setPhase('downloading', '正在准备更新', 0)
+  const isAndroid = detectClientPlatform() === 'android'
+  if (!isAndroid) {
+    setPhase('downloading', '正在准备更新', 0)
+  }
   try {
     const installResult = await installAppUpdate(
       {
@@ -154,9 +157,9 @@ async function acceptUpdate() {
       if (state.pendingInstall) {
         setPhase('pending_install', `版本 ${state.pendingInstall.versionLabel} 已下载完成，请点击立即安装`)
       } else {
-        setPhase('downloading', '正在下载，完成后将提示安装', 30)
+        // Android 走系统 DownloadManager，进度在通知栏；不挡 App 内假进度条
+        hideOverlay()
       }
-      // 保留 updateResult，便于下载失败后重试
       return
     }
     setPhase('done', '更新完成，正在重启', 100)
@@ -172,8 +175,12 @@ function dismissPrompt() {
   if (state.updateResult && !state.updateResult.forceUpdate) {
     markUpdateDismissed(state.updateResult)
   }
-  state.updateResult = null
-  hideOverlay()
+  // 仅收起自动浮层；保留 updateResult，方便「关于」页仍可点下载
+  state.visible = false
+  state.phase = 'idle'
+  state.progress = 0
+  state.statusMessage = ''
+  state.installing = false
 }
 
 /** 错误态「稍后再说」：只清 accepted，不写入 dismiss，便于同版本再次提示 */
@@ -250,7 +257,6 @@ async function bindAndroidEvents() {
   listenersBound = true
   const events = [
     'app-update://download-started',
-    'app-update://download-progress',
     'app-update://download-complete',
     'app-update://download-failed',
     'app-update://install-launched',
@@ -260,11 +266,7 @@ async function bindAndroidEvents() {
     const unlisten = await listen(event, async (payload) => {
       if (event === 'app-update://download-started') {
         if (state.updateResult) markUpdateAccepted(state.updateResult)
-        setPhase('downloading', '正在下载更新', 10)
-      } else if (event === 'app-update://download-progress') {
-        const data = payload.payload as { percent?: number }
-        const percent = typeof data.percent === 'number' ? data.percent : state.progress
-        setPhase('downloading', '正在下载更新', percent)
+        hideOverlay()
       } else if (event === 'app-update://download-complete') {
         const data = payload.payload as PendingApkUpdate
         state.pendingInstall = data
