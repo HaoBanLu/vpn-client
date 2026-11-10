@@ -22,7 +22,7 @@ function Read-DotEnv($path) {
 $envMap = Read-DotEnv $EnvFile
 $apiBase = $envMap["VITE_API_BASE_URL"]
 if ([string]::IsNullOrWhiteSpace($apiBase)) {
-    $apiBase = "http://192.229.87.112:44080/api"
+    $apiBase = "https://vpn.huofan.top/api"
 }
 $pubkey = $envMap["TAURI_UPDATER_PUBKEY"]
 if ([string]::IsNullOrWhiteSpace($pubkey) -and (Test-Path (Join-Path $Root ".tauri\updater.key.pub"))) {
