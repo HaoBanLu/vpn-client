@@ -263,7 +263,7 @@ def verify_ota(cdp: Cdp) -> None:
     print(f"  startDownload={json.dumps(start, ensure_ascii=False)}")
     if not start or not start.get("ok"):
         # fallback to known reachable HTTPS apk
-        fallback = "https://vpn.eodkko.xyz/api/uploads/apk/android_153_20260921100607.apk"
+        fallback = "https://vpn.huofan.top/api/uploads/apk/android_153_20260921100607.apk"
         start = cdp.eval(
             f"""
             (async () => {{

@@ -8,7 +8,7 @@ import java.io.File
 import com.android.build.gradle.tasks.MergeSourceSetFolders
 
 /** Release / 默认线上地址 */
-/**val releaseAppBaseUrl = "https://vpn.eodkko.xyz/"**/
+/**val releaseAppBaseUrl = "https://vpn.huofan.top/"**/
 /** 本地联调可临时改为：http://192.229.87.112:44080/ */
 val releaseAppBaseUrl = "http://192.229.87.112:44080/"
 
